@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.tests;
 
 import com.appium.drivers.DriverManager;

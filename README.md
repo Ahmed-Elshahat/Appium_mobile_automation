@@ -124,3 +124,6 @@ mvn allure:report
 ## 7. Known Limitations
 *   **Deep Link**: iOS Deep Linking behavior varies by app implementation.
 *   **Linting**: Automated linting (`Spotless`) is currently disabled due to incompatibility with **JDK 25**. Please use IDE formatting.
+
+## Author
+**Ahmed-Elshahat** - *Lead Automation Engineer*

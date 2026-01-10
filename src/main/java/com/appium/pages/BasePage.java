@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.pages;
 
 import com.appium.utils.WaitUtils;

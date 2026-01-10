@@ -12,6 +12,16 @@
     <name>Appium Automation Project</name>
     <url>http://maven.apache.org</url>
 
+    <developers>
+        <developer>
+            <id>Ahmed-Elshahat</id>
+            <name>Ahmed-Elshahat</name>
+            <roles>
+                <role>Lead Automation Engineer</role>
+            </roles>
+        </developer>
+    </developers>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>

@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.report;
 
 import com.appium.utils.ScreenshotUtils;

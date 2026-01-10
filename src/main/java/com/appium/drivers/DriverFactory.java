@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.drivers;
 
 import com.appium.config.ConfigFactory;

@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.drivers;
 
 import io.appium.java_client.AppiumDriver;

@@ -1,3 +1,6 @@
+/**
+ * @author Ahmed-Elshahat
+ */
 package com.appium.config;
 
 import org.aeonbits.owner.Config;
