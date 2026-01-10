@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Appium Automation Suite" parallel="tests" thread-count="2">
+    
+    <listeners>
+        <listener class-name="com.appium.report.TestListener"/>
+    </listeners>
+
+    <test name="TestSuite">
+        <classes>
+            <class name="com.appium.tests.GmailTests"/>
+        </classes>
+    </test>
+</suite>

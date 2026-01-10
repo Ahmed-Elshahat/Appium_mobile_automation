@@ -1,0 +1,17 @@
+[
+    {
+        "testCaseId": "TC_001",
+        "emailProvider": "Google",
+        "description": "Verify Google option is present"
+    },
+    {
+        "testCaseId": "TC_002",
+        "emailProvider": "Outlook, Hotmail, and Live",
+        "description": "Verify Outlook option is present"
+    },
+    {
+        "testCaseId": "TC_003",
+        "emailProvider": "Yahoo",
+        "description": "Verify Yahoo option is present"
+    }
+]

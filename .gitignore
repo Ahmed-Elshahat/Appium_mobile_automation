@@ -1,0 +1,33 @@
+# Maven
+target/
+*.war
+*.ear
+*.apk
+*.zip
+*.tar.gz
+*.rar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Mac
+.DS_Store
+
+# Appium / Allure / Logs
+allure-results/
+.allure/
+logs/
+*.log
+*.dump
+test-output/
