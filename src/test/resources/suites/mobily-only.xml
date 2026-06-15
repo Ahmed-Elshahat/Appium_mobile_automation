@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Mobily Only" verbose="2">
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+    <test name="Mobily Recharge">
+        <groups>
+            <run><include name="mobily"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TelecomRechargeTest"/>
+        </classes>
+    </test>
+</suite>

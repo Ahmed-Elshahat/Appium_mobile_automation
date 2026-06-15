@@ -1,0 +1,45 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Telecom Recharge Collection" verbose="1" parallel="tests" thread-count="3">
+
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+
+    <!--
+        3 parallel LambdaTest sessions — each provider on its own device.
+        Each <test> block = 1 thread = 1 LambdaTest session = 1 login.
+        Tests within each block run sequentially via dependsOnMethods.
+
+        Zain:   recharge → order history → re-order
+        Mobily: recharge → order history → re-order
+        STC:    sawa recharge → sawa re-order → quicknet recharge
+    -->
+
+    <test name="Zain Recharge">
+        <groups>
+            <run><include name="zain"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TelecomRechargeTest"/>
+        </classes>
+    </test>
+
+    <test name="Mobily Recharge">
+        <groups>
+            <run><include name="mobily"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TelecomRechargeTest"/>
+        </classes>
+    </test>
+
+    <test name="STC Recharge">
+        <groups>
+            <run><include name="stc"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TelecomRechargeTest"/>
+        </classes>
+    </test>
+
+</suite>

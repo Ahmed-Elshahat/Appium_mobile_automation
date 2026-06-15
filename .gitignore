@@ -1,0 +1,40 @@
+# ── Build & IDE ──
+target/
+.idea/
+*.iml
+*.class
+*.jar
+*.war
+*.ear
+.project
+.classpath
+.settings/
+
+# ── Logs & crash dumps ──
+*.log
+hs_err_pid*.log
+replay_pid*.log
+*.dump
+*.dumpstream
+
+# ── Test outputs ──
+allure-results/
+Reports/
+screenshots/
+videos/
+test-output/
+surefire-reports/
+
+# ── Allure CLI (downloaded locally) ──
+.allure/
+
+# ── OS junk ──
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Secrets & credentials ──
+# Never commit LambdaTest credentials or .env files
+.env
+*.env
+secrets.properties

@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="URPay Smoke Suite" verbose="1">
+
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+
+    <test name="Smoke Tests">
+        <classes>
+            <class name="com.urpay.tests.auth.SmokeTest"/>
+        </classes>
+    </test>
+
+</suite>

@@ -1,0 +1,99 @@
+package com.urpay.core;
+
+import com.urpay.reporting.ReportManager;
+import com.urpay.utils.ScreenshotUtils;
+import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.InteractsWithApps;
+import io.qameta.allure.Allure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.*;
+
+/**
+ * Base test class — all test classes extend this.
+ *
+ * SOLID:
+ *   SRP — Only handles driver lifecycle and suite setup.
+ *         Reporting/screenshots/cloud hooks in TestExecutionListener.
+ *   DIP — Uses DriverFactory.getInstance() (DriverProvider interface).
+ *
+ * Rules enforced:
+ *   - Driver lifecycle in @BeforeMethod/@AfterMethod (not suite-level).
+ *   - No Thread.sleep().
+ *   - No assertions (those belong in test classes).
+ *   - No reporting logic (that's the listener's job).
+ */
+@Listeners(TestExecutionListener.class)
+public abstract class BaseTest {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected ConfigManager config;
+
+    @BeforeSuite(alwaysRun = true)
+    public void setupSuite() {
+        config = ConfigManager.getInstance();
+
+        String profileName = config.getProfileName();
+        ReportManager.initReports("URPay-" + profileName);
+
+        log.info("═══════════════════════════════════════════");
+        log.info("  URPay Test Suite Starting");
+        log.info("  Profile: {}", profileName);
+        log.info("  Platform: {}", config.get("platform", "android"));
+        log.info("  Remote: {}", config.getBoolean("remote", false));
+        log.info("═══════════════════════════════════════════");
+    }
+
+    @BeforeMethod(alwaysRun = true)
+    public void setupDriver() {
+        // Only init driver if not already active (supports chained tests via dependsOnMethods)
+        if (!DriverFactory.getInstance().isDriverActive()) {
+            DriverFactory.getInstance().initDriver();
+        }
+    }
+
+    @AfterSuite(alwaysRun = true)
+    public void teardownSuite() {
+        ReportManager.flush();
+        DriverFactory.getInstance().quitDriver();
+        log.info("Suite completed. Report generated.");
+    }
+
+    // ── Convenience for subclasses ─────────────────────────────────
+
+    protected AppiumDriver getDriver() {
+        return DriverFactory.getInstance().getDriver();
+    }
+
+    protected void forceRestartApp() {
+        String pkg = config.get("appPackage", "com.urpay.consumer.sit");
+        try {
+            AppiumDriver driver = getDriver();
+            if (driver instanceof InteractsWithApps) {
+                ((InteractsWithApps) driver).terminateApp(pkg);
+                ((InteractsWithApps) driver).activateApp(pkg);
+            }
+            log.info("App restarted: {}", pkg);
+        } catch (Exception e) {
+            log.warn("App restart failed, reinitializing driver: {}", e.getMessage());
+            DriverFactory.getInstance().quitDriver();
+            DriverFactory.getInstance().initDriver();
+        }
+    }
+
+    /**
+     * Capture screenshot and attach to Allure report.
+     * Call this INSIDE a test method (where Allure context is active).
+     */
+    protected void captureScreenshot(String name) {
+        try {
+            byte[] screenshot = ScreenshotUtils.takeScreenshotAsBytes(getDriver());
+            if (screenshot.length > 0) {
+                Allure.addAttachment(name, "image/png",
+                        new java.io.ByteArrayInputStream(screenshot), ".png");
+            }
+        } catch (Exception e) {
+            log.warn("Screenshot capture failed: {}", e.getMessage());
+        }
+    }
+}

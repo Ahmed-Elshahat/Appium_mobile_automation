@@ -1,0 +1,21 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Zain Only" verbose="2">
+
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+
+    <test name="Zain Recharge">
+        <groups>
+            <run><include name="zain"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TelecomRechargeTest">
+                <methods>
+                    <include name="testZainRecharge"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

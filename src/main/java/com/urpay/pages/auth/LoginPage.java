@@ -1,0 +1,47 @@
+package com.urpay.pages.auth;
+
+import com.urpay.core.BasePage;
+import io.appium.java_client.pagefactory.AndroidFindBy;
+import io.qameta.allure.Step;
+import org.openqa.selenium.WebElement;
+
+public class LoginPage extends BasePage {
+
+    @AndroidFindBy(accessibility = "testID-input-direct-mobile")
+    private WebElement mobileNumberField;
+
+    @AndroidFindBy(accessibility = "testID-input-direct-id")
+    private WebElement idField;
+
+    @AndroidFindBy(accessibility = "testID-primary--main")
+    private WebElement loginButton;
+
+    @Step("Enter mobile number: {mobile}")
+    public void enterMobileNumber(String mobile) {
+        tap(mobileNumberField);
+        type(mobileNumberField, mobile);
+    }
+
+    @Step("Enter ID: {id}")
+    public void enterId(String id) {
+        tap(idField);
+        type(idField, id);
+    }
+
+    @Step("Tap Login button")
+    public void clickLogin() {
+        hideKeyboard();
+        tap(loginButton, 30);
+    }
+
+    @Step("Login with mobile={mobile}, id={id}")
+    public void login(String mobile, String id) {
+        enterMobileNumber(mobile);
+        enterId(id);
+        clickLogin();
+    }
+
+    public boolean isLoaded() {
+        return isDisplayed(mobileNumberField, 10);
+    }
+}
