@@ -203,6 +203,57 @@ public class CardsTest extends BaseTest {
 
 ---
 
+## KATALON MIGRATION — STRICT FLOW EXTRACTION PROCESS
+
+When migrating a Katalon test case to Appium, follow these steps **in exact order**. Do NOT skip or reorder.
+
+### Step 1: Read the Katalon Groovy Script
+- Find the test script under `Scripts/` in the Katalon project (e.g., `Scripts/PaymntAndCards/Telecom Recharge/validateZainRecharge/`)
+- Read the `.groovy` file line by line
+- Identify every `findTestObject()` call — each is a UI interaction step
+- Identify `callTestCase()` calls — these are shared dependencies (login, navigation, setup)
+- Note the **exact order** of steps — the Flow class must replicate this sequence
+
+### Step 2: Read Every .rs File Referenced
+- For each `findTestObject('Object Repository/android/...')`, locate the corresponding `.rs` file
+- Extract the `content-desc` or `accessibilityID` value from `<webElementProperties>`
+- If `content-desc` contains a `testID-` prefix, use `@AndroidFindBy(accessibility = "testID-xxx")`
+- If no accessibility ID exists, check the `<locator>` tag for XPath (use as last resort)
+- **Record every locator** — do not guess or assume element IDs
+
+### Step 3: Read Shared/Dependency Scripts
+- If the Katalon script calls `callTestCase("SharedSteps/ScrollToTelecomRechargeSection")`, read that script too
+- Understand the full navigation path: how does Katalon get from Dashboard to the target screen?
+- Common shared steps: login → deep link to home → search → tap service card → target page
+
+### Step 4: Build the Flow — Match Katalon Step Order Exactly
+- The Flow class method must call page object methods in the **same order** as the Katalon script
+- Every `tap()` in Katalon → a page action method call in the Flow
+- Every `sendKeys()` in Katalon → a page input method call in the Flow
+- Every `swipe()` or `scrollToText()` in Katalon → a scroll/swipe call in the Flow
+- Every `WebUI.delay()` or `Thread.sleep()` in Katalon → replace with `WaitUtils` wait for the NEXT element
+- Every `verifyElementExist()` in Katalon → a boolean check method in the Page Object (assertion stays in Test)
+
+### Step 5: Build the Page Object — One Locator Per .rs File
+- Create `@AndroidFindBy` field for each `.rs` locator found in Step 2
+- Create one action method per UI interaction (tap, type, getText)
+- Group related locators with comments referencing the Katalon `.rs` file name
+
+### Step 6: Build the Test — Assertions Only Here
+- Call the Flow method (arrange + act)
+- Assert on the result using values from the Katalon `verifyEqual` / `verifyElementExist` calls
+- Use `@Description` annotation describing what the Katalon test case validates
+
+### CRITICAL: Never Deviate from Katalon Flow Order
+- If Katalon taps A → B → C, the Appium Flow must tap A → B → C
+- If Katalon scrolls twice before tapping Next, the Flow must scroll twice before tapping Next
+- If Katalon searches "Telecom Services" then taps a specific card, do exactly that — not a shortcut
+- If Katalon uses `refreshThePage()` before re-order, add a swipe-down refresh in the Flow
+- **Never add extra steps** that Katalon doesn't do (no extra scrolls, no extra waits, no "improvements")
+- **Never remove steps** that Katalon does (even if they seem redundant)
+
+---
+
 ## KATALON MIGRATION TRANSLATION TABLE
 
 | Katalon Code | Appium Replacement |
