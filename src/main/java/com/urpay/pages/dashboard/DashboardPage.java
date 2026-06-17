@@ -1,10 +1,14 @@
 package com.urpay.pages.dashboard;
 
+import java.util.List;
+
+import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
 
+import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
 import io.qameta.allure.Step;
@@ -18,6 +22,19 @@ public class DashboardPage extends BasePage {
     private static final double NAV_TRANSFER_X_RATIO = 0.50;
     private static final double NAV_STORE_X_RATIO = 0.69;
     private static final double NAV_MORE_X_RATIO = 0.87;
+
+    // ── Popup dismiss ──────────────────────────────────
+    private static final By LATER_BTN =
+            AppiumBy.xpath("//*[@text='Later']");
+    private static final By CLOSE_BTN =
+            AppiumBy.xpath("//*[@text='×' or @text='✕' or @text='X']");
+    private static final By SYSTEM_DIALOG = AppiumBy.xpath(
+            "//*[@text='No thanks' or @text='NO THANKS' or @text='Allow' "
+            + "or @text='ALLOW' or @text='While using the app']");
+
+    // ── Search icon (dashboard presence marker) ────────
+    private static final By SEARCH_ICON =
+            AppiumBy.accessibilityId("testID-right-icon-0");
 
     @AndroidFindBy(accessibility = "testID-master-amount-main")
     @iOSXCUITFindBy(accessibility = "testID-master-amount-main")
@@ -67,32 +84,47 @@ public class DashboardPage extends BasePage {
     public void clickWallet() { tap(walletButton); }
 
     public boolean isLoaded() {
-        dismissNotifications();
-        // Check balance label OR search icon (balance may be hidden with ******)
+        dismissPopups();
         return isDisplayed(yourBalanceLabel, 10)
-                || isPresent(io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-0"), 5);
+                || isPresent(SEARCH_ICON, 5);
     }
 
-    @Step("Dismiss any popups (Notifications, maintenance, consent)")
-    public void dismissNotifications() {
+    @Step("Dismiss any popups (Later, close buttons)")
+    public void dismissPopups() {
         try {
-            // "Later" button for notifications popup
-            java.util.List<org.openqa.selenium.WebElement> laterBtns = waitUtils.findQuick(
-                    io.appium.java_client.AppiumBy.xpath("//*[@text='Later']"), 3);
+            List<WebElement> laterBtns = waitUtils.findQuick(LATER_BTN, 3);
             if (!laterBtns.isEmpty()) {
                 laterBtns.get(0).click();
-                log.info("Dismissed Notifications popup");
+                log.info("Dismissed popup via 'Later'");
             }
-            // "×" close button for maintenance banner
-            java.util.List<org.openqa.selenium.WebElement> closeBtns = waitUtils.findQuick(
-                    io.appium.java_client.AppiumBy.xpath("//*[@text='×' or @text='✕' or @text='X']"), 1);
+            List<WebElement> closeBtns = waitUtils.findQuick(CLOSE_BTN, 1);
             if (!closeBtns.isEmpty()) {
                 closeBtns.get(0).click();
-                log.info("Dismissed maintenance banner");
+                log.info("Dismissed popup via close button");
             }
         } catch (Exception e) {
             log.debug("No popups to dismiss");
         }
+    }
+
+    @Step("Dismiss system dialogs (Allow, Skip, No thanks)")
+    public void dismissSystemDialogs() {
+        try {
+            List<WebElement> dialogs = waitUtils.findQuick(SYSTEM_DIALOG, 2);
+            for (WebElement el : dialogs) {
+                try {
+                    if (el.isDisplayed()) {
+                        el.click();
+                        log.info("Dismissed system dialog");
+                        break;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public boolean isSearchIconVisible(long timeoutSec) {
+        return isPresent(SEARCH_ICON, timeoutSec);
     }
 
     @Step("Get balance text from dashboard")

@@ -30,6 +30,9 @@ public class DriverFactory implements DriverProvider {
     private static final ThreadLocal<MobilePlatformActions> actionsThread = new ThreadLocal<>();
     private static final ThreadLocal<Platform> platformThread = new ThreadLocal<>();
 
+    // Registry of all drivers across threads for reliable parallel cleanup
+    private static final Map<Long, AppiumDriver> allDrivers = new ConcurrentHashMap<>();
+
     // OCP: Strategy registry — add new providers without modifying this class
     private static final Map<String, DriverCreationStrategy> strategies = new ConcurrentHashMap<>();
     private static final DriverFactory INSTANCE = new DriverFactory();
@@ -76,6 +79,7 @@ public class DriverFactory implements DriverProvider {
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(timeout));
 
         driverThread.set(driver);
+        allDrivers.put(Thread.currentThread().getId(), driver);
         actionsThread.set(PlatformActionsFactory.create(driver));
         platformThread.set(PlatformActionsFactory.detectPlatform(driver));
         log.info("Driver initialized. Session: {}", driver.getSessionId());
@@ -100,11 +104,33 @@ public class DriverFactory implements DriverProvider {
             } catch (Exception e) {
                 log.warn("Error quitting driver: {}", e.getMessage());
             } finally {
+                allDrivers.remove(Thread.currentThread().getId());
                 driverThread.remove();
                 actionsThread.remove();
                 platformThread.remove();
             }
         }
+    }
+
+    /**
+     * Quit all drivers across all threads. Use at suite teardown to prevent session leaks.
+     */
+    public void quitAllDrivers() {
+        for (Map.Entry<Long, AppiumDriver> entry : allDrivers.entrySet()) {
+            try {
+                AppiumDriver driver = entry.getValue();
+                if (driver != null) {
+                    log.info("Quitting driver for thread {}. Session: {}", entry.getKey(), driver.getSessionId());
+                    driver.quit();
+                }
+            } catch (Exception e) {
+                log.warn("Error quitting driver for thread {}: {}", entry.getKey(), e.getMessage());
+            }
+        }
+        allDrivers.clear();
+        driverThread.remove();
+        actionsThread.remove();
+        platformThread.remove();
     }
 
     @Override

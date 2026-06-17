@@ -9,12 +9,16 @@ import org.slf4j.LoggerFactory;
 
 import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
+import com.urpay.pages.auth.OtpPage;
+import com.urpay.pages.common.CommonComponentsPage;
+import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.dashboard.SearchPage;
 import com.urpay.pages.payments.TelecomRechargePage;
 import com.urpay.platform.MobilePlatformActions;
 import com.urpay.platform.PlatformActionsFactory;
 import com.urpay.utils.WaitUtils;
 
+import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Allure;
 import io.qameta.allure.Step;
@@ -36,11 +40,17 @@ public class TelecomRechargeFlow {
     private final AppiumDriver driver;
     private final WaitUtils waits;
     private final MobilePlatformActions platformActions;
+    private final CommonComponentsPage common;
+    private final OtpPage otpPage;
+    private final DashboardPage dashboardPage;
 
     public TelecomRechargeFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
         this.platformActions = PlatformActionsFactory.create(driver);
+        this.common = new CommonComponentsPage();
+        this.otpPage = new OtpPage();
+        this.dashboardPage = new DashboardPage();
     }
 
     // ══════════════════════════════════════════════════
@@ -51,8 +61,7 @@ public class TelecomRechargeFlow {
     public TelecomRechargePage navigateToTelecomRecharge() {
         // Press back until search icon is visible (explicit wait)
         for (int i = 0; i < 3; i++) {
-            if (waits.isPresent(
-                    io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-0"), 2)) {
+            if (dashboardPage.isSearchIconVisible(2)) {
                 break;
             }
             driver.navigate().back();
@@ -219,31 +228,13 @@ public class TelecomRechargeFlow {
 
     @Step("Enter verification code")
     private void enterVerificationCode() {
-        // Wait for OTP field to appear and tap it first (like LoginFlow.enterOtp)
-        try {
-            waits.waitForClickable(
-                    io.appium.java_client.AppiumBy.accessibilityId("testID-OTP-Input-Field-0"), 15);
-            driver.findElement(
-                    io.appium.java_client.AppiumBy.accessibilityId("testID-OTP-Input-Field-0")).click();
-        } catch (Exception ignored) {}
-
         String code = ConfigManager.getInstance().get("urpayUser.verificationCode", "1234");
-        platformActions.enterDigits(code);
+        otpPage.enterOtp(code);
     }
 
     /** Wait for result screen after OTP — success (Done button) or error popup */
     private void waitAfterOtp() {
-        try {
-            waits.waitForVisible(
-                    io.appium.java_client.AppiumBy.xpath(
-                            "//*[@content-desc='testID-primary-action-main'] | " +
-                            "//*[contains(@text,'Service') or contains(@text,'unavailable') " +
-                            "or contains(@text,'declined') or contains(@text,'error') " +
-                            "or contains(@text,'Error') or contains(@text,'try again')]"),
-                    30);
-        } catch (Exception e) {
-            log.warn("waitAfterOtp: no success/error screen within 30s");
-        }
+        common.waitForResultAfterOtp(30);
     }
 
     /** Capture multiple screenshots immediately after OTP to catch transient error popups */
@@ -266,6 +257,6 @@ public class TelecomRechargeFlow {
     }
 
     private void dismissKeyboard() {
-        platformActions.dismissKeyboard();
+        common.dismissKeyboard();
     }
 }

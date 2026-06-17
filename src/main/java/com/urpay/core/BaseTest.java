@@ -59,8 +59,8 @@ public abstract class BaseTest {
     @AfterSuite(alwaysRun = true)
     public void teardownSuite() {
         ReportManager.flush();
-        DriverFactory.getInstance().quitDriver();
-        log.info("Suite completed. Report generated.");
+        DriverFactory.getInstance().quitAllDrivers();
+        log.info("Suite completed. All drivers cleaned up. Report generated.");
     }
 
     // ── Convenience for subclasses ─────────────────────────────────

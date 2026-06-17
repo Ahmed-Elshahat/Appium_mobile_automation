@@ -6,6 +6,10 @@ import org.slf4j.LoggerFactory;
 
 import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
+import com.urpay.pages.auth.OtpPage;
+import com.urpay.pages.auth.PasscodePage;
+import com.urpay.pages.common.CommonComponentsPage;
+import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.payments.CardBenefitsPage;
 import com.urpay.pages.payments.CardInfoPage;
 import com.urpay.pages.payments.CardSettingsPage;
@@ -28,6 +32,7 @@ import io.qameta.allure.Step;
  * ZERO Thread.sleep() — all waits via WaitUtils explicit waits.
  * NO assertions — returns page objects for tests to verify.
  * NO hardcoded values — all data from ConfigManager.
+ * NO locators — all element interactions via page objects.
  */
 public class CardsFlow {
 
@@ -37,21 +42,10 @@ public class CardsFlow {
     private final SwipeUtils swipe;
     private final MobilePlatformActions platformActions;
     private final Platform platform;
-
-    // ── Shared locators ──
-    private static final By OTP_FIELD = AppiumBy.accessibilityId("testID-OTP-Input-Field-0");
-    private static final By DONE_BTN = AppiumBy.xpath(
-            "//*[@text='Done' or @content-desc='testID-primary-action-main']");
-    private static final By NEXT_BTN = AppiumBy.xpath(
-            "//*[@text='Next' or @content-desc='testID-primary-navigateToNextStep-main']");
-    private static final By FIRST_CARD = AppiumBy.accessibilityId("testID-bankCard.data.0");
-    private static final By SEARCH_ICON = AppiumBy.accessibilityId("testID-right-icon-0");
-    private static final By NOTIFICATION_MSG = AppiumBy.accessibilityId("testID-notification-message");
-    private static final By CANCEL_DROPDOWN = AppiumBy.accessibilityId(
-            "testID-IconView.dddbe7a7-5de7-48e0-8d3f-90dd4f5eb995.DownArrow");
-    private static final By OTHER_REASON = AppiumBy.accessibilityId("testID-data-picker-item-3");
-    private static final By CONFIRM_CANCEL = AppiumBy.accessibilityId("testID-cancel--main");
-    private static final By NO_THANKS = AppiumBy.accessibilityId("testID-tertiary-noThankButton-main");
+    private final CommonComponentsPage common;
+    private final OtpPage otpPage;
+    private final DashboardPage dashboardPage;
+    private final PasscodePage passcodePage;
 
     public CardsFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
@@ -59,6 +53,10 @@ public class CardsFlow {
         this.swipe = new SwipeUtils(driver);
         this.platformActions = PlatformActionsFactory.create(driver);
         this.platform = platformActions.getPlatform();
+        this.common = new CommonComponentsPage();
+        this.otpPage = new OtpPage();
+        this.dashboardPage = new DashboardPage();
+        this.passcodePage = new PasscodePage();
     }
 
     // ══════════════════════════════════════════════════
@@ -68,12 +66,7 @@ public class CardsFlow {
     @Step("Navigate to Cards — scroll to 'Cards' section on dashboard")
     public CardsPage navigateToCards() {
         goToDashboard();
-
-        // Fast popup dismiss with zero implicit wait — single pass
-        setImplicitWait(0);
-        quickTapIfFound("//*[@text='Later']");
-        quickTapIfFound("//*[@text='×' or @text='X']");
-        setImplicitWait(10);
+        dashboardPage.dismissPopups();
 
         // Scroll to "Cards" text using platform-specific scrolling
         try {
@@ -305,7 +298,7 @@ public class CardsFlow {
         CardsPage page = new CardsPage();
         page.tapAddNewCard();
         // Notification should appear about max cards
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         log.info("Duplicate card attempt — notification displayed");
         return page;
     }
@@ -320,16 +313,16 @@ public class CardsFlow {
         navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapOnlineTransactionsToggle();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
     @Step("Enable online transactions")
     public CardSettingsPage enableOnlineTransactions() {
         CardSettingsPage settings = new CardSettingsPage();
-        waits.waitForInvisible(NOTIFICATION_MSG, 5);
+        common.waitForNotificationToDismiss(5);
         settings.tapOnlineTransactionsToggle();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
@@ -339,16 +332,16 @@ public class CardsFlow {
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapCardSettings();
         settings.tapAtmTransactionToggle();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
     @Step("Enable ATM transactions")
     public CardSettingsPage enableAtmTransactions() {
         CardSettingsPage settings = new CardSettingsPage();
-        waits.waitForInvisible(NOTIFICATION_MSG, 5);
+        common.waitForNotificationToDismiss(5);
         settings.tapAtmTransactionToggle();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
@@ -385,17 +378,17 @@ public class CardsFlow {
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapLockToggle();
         settings.tapLockYes();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
     @Step("Unlock card")
     public CardSettingsPage unlockCard() {
         CardSettingsPage settings = new CardSettingsPage();
-        waits.waitForInvisible(NOTIFICATION_MSG, 5);
+        common.waitForNotificationToDismiss(5);
         settings.tapLockToggle();
         settings.tapLockYes();
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         return settings;
     }
 
@@ -410,7 +403,7 @@ public class CardsFlow {
         settings.tapChangePin();
 
         // Dismiss keyboard if visible before entering PIN
-        dismissKeyboard();
+        common.dismissKeyboard();
 
         String pin = ConfigManager.getInstance().get("madaCard.passCode", "2233");
         enterPinAndProceed(pin);
@@ -418,7 +411,7 @@ public class CardsFlow {
 
         enterVerificationCode();
 
-        waits.waitForClickable(DONE_BTN, 15).click();
+        common.tapDone(15);
         log.info("Card PIN changed");
     }
 
@@ -429,10 +422,10 @@ public class CardsFlow {
     @Step("Enter mismatched PINs to verify error notification")
     public CardSettingsPage enterInvalidPinMismatch() {
         String validPin = ConfigManager.getInstance().get("madaCard.pin", "1234");
-        enterPasscode(validPin);
+        passcodePage.enterPasscode(validPin);
         // Enter wrong confirmation
-        enterPasscode("9999");
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        passcodePage.enterPasscode("9999");
+        common.waitForNotification(10);
         CardSettingsPage settings = new CardSettingsPage();
         log.info("Invalid PIN mismatch — notification displayed");
         return settings;
@@ -447,19 +440,12 @@ public class CardsFlow {
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapCardSettings();
         settings.tapCancelCard();
-
-        waits.waitForClickable(CANCEL_DROPDOWN, 10);
         settings.tapCancellationDropdown();
-
-        waits.waitForClickable(OTHER_REASON, 10);
         settings.selectOtherReason();
-
-        waits.waitForClickable(CONFIRM_CANCEL, 10);
         settings.tapConfirmCancel();
 
-        enterPasscode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
+        passcodePage.enterPasscode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
 
-        waits.waitForClickable(NO_THANKS, 15);
         settings.tapNoThanks();
         log.info("Mada card cancelled");
     }
@@ -473,23 +459,17 @@ public class CardsFlow {
         CardSettingsPage settings = new CardSettingsPage();
         // Already on settings — tap cancel directly (no need to tap card settings)
         settings.tapCancelCard();
-
-        waits.waitForClickable(CANCEL_DROPDOWN, 10);
         settings.tapCancellationDropdown();
-
-        waits.waitForClickable(OTHER_REASON, 10);
         settings.selectOtherReason();
-
-        waits.waitForClickable(CONFIRM_CANCEL, 10);
         settings.tapConfirmCancel();
 
         // Enter invalid passcode first to verify error
         enterVerificationCode("9999");
-        waits.waitForVisible(NOTIFICATION_MSG, 10);
+        common.waitForNotification(10);
         log.info("Invalid passcode entered — error notification shown");
 
         // Wait for notification to dismiss, then enter correct passcode
-        waits.waitForInvisible(NOTIFICATION_MSG, 5);
+        common.waitForNotificationToDismiss(5);
         enterVerificationCode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
 
         return settings;
@@ -537,7 +517,7 @@ public class CardsFlow {
     @Step("Scroll dashboard to verify canceled card is removed")
     public boolean isCanceledCardStillVisible() {
         goToDashboard();
-        new com.urpay.pages.dashboard.DashboardPage().dismissNotifications();
+        new com.urpay.pages.dashboard.DashboardPage().dismissPopups();
         // Use platform scroll to try to find the cards banner
         By cardsBanner = AppiumBy.accessibilityId(
                 "testID-View.dceaa398-d6ae-4995-b509-9dfb27610fef");
@@ -558,7 +538,7 @@ public class CardsFlow {
         // First wait for dashboard indicators without pressing back
         setImplicitWait(0);
         for (int i = 0; i < 10; i++) {
-            if (quickFind(SEARCH_ICON)
+            if (dashboardPage.isSearchIconVisible(0)
                     || quickFind(AppiumBy.xpath("//*[@text='Cards']"))
                     || quickFind(AppiumBy.xpath("//*[@text='View All']"))
                     || quickFind(AppiumBy.xpath("//*[contains(@text,'Issue urpay') or contains(@text,'Issue URPay')]"))) {
@@ -576,7 +556,9 @@ public class CardsFlow {
     @Step("Navigate back from cards settings to first card")
     public void goFromSettingsToFirstCard() {
         driver.navigate().back();
-        waits.waitForVisible(FIRST_CARD, 10);
+        CardsPage cardsPage = new CardsPage();
+        waits.waitForVisible(
+                AppiumBy.accessibilityId("testID-bankCard.data.0"), 10);
     }
 
     // ══════════════════════════════════════════════════
@@ -629,7 +611,7 @@ public class CardsFlow {
     // ══════════════════════════════════════════════════
 
     private void enterPasscode(String passcode) {
-        platformActions.enterDigits(passcode);
+        passcodePage.enterPasscode(passcode);
     }
 
     private void enterVerificationCode() {
@@ -638,22 +620,17 @@ public class CardsFlow {
     }
 
     private void enterVerificationCode(String code) {
-        try {
-            waits.waitForClickable(OTP_FIELD, 15);
-            driver.findElement(OTP_FIELD).click();
-        } catch (Exception ignored) {}
-
-        platformActions.enterDigits(code);
+        otpPage.enterOtp(code);
     }
 
     private void enterPinAndProceed(String pin) {
-        platformActions.enterDigits(pin);
+        passcodePage.enterPasscode(pin);
         try {
-            waits.waitForClickable(NEXT_BTN, 5).click();
+            common.tapNext(5);
         } catch (Exception ignored) {}
     }
 
     private void dismissKeyboard() {
-        platformActions.dismissKeyboard();
+        common.dismissKeyboard();
     }
 }

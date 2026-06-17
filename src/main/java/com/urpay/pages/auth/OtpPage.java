@@ -16,11 +16,20 @@ public class OtpPage extends BasePage {
 
     @Step("Enter OTP: {code}")
     public void enterOtp(String code) {
-        tap(otpField0);
-        otpField0.sendKeys(code);
+        try {
+            waitUtils.waitForClickable(otpField0, 15);
+            otpField0.click();
+        } catch (Exception ignored) {
+            log.debug("OTP field click attempt failed — may auto-focus");
+        }
+        platformActions.enterDigits(code);
     }
 
     public boolean isLoaded() {
         return isDisplayed(otpField0, 10);
+    }
+
+    public boolean isVisible(long timeoutSec) {
+        return isDisplayed(otpField0, timeoutSec);
     }
 }

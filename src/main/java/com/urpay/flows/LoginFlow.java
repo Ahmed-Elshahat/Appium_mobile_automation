@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 
 import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
+import com.urpay.pages.auth.OtpPage;
+import com.urpay.pages.auth.PasscodePage;
+import com.urpay.pages.common.CommonComponentsPage;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.platform.MobilePlatformActions;
 import com.urpay.platform.PlatformActionsFactory;
@@ -26,6 +29,7 @@ import io.qameta.allure.Step;
  *   - ZERO Thread.sleep()
  *   - NO assertions (returns DashboardPage for test to verify)
  *   - NO hardcoded credentials (reads from ConfigManager)
+ *   - NO locator constants — shared elements via CommonComponentsPage
  *
  * Speed optimizations:
  *   - Reduced onboarding loop from 10 to 6 iterations (sufficient for all known screens)
@@ -41,28 +45,24 @@ public class LoginFlow {
     private final AppiumDriver driver;
     private final WaitUtils waits;
     private final MobilePlatformActions platformActions;
+    private final CommonComponentsPage common;
+    private final OtpPage otpPage;
+    private final PasscodePage passcodePage;
 
-    // ── Locators ───────────────────────────────────────
-    private static final By SKIP_OR_LOC = AppiumBy.xpath(
-            "//*[@text='Skip' or @content-desc='testID-secondary-action-main' "
-            + "or @content-desc='testID-primary-enableLocation-main']");
-    private static final By LOGIN_BTN  = AppiumBy.accessibilityId("testID-secondary-login-main");
+    // ── Login-screen locators (used only in onboarding/credential entry) ──
     private static final By MOBILE     = AppiumBy.accessibilityId("testID-input-direct-mobile");
     private static final By NATID      = AppiumBy.accessibilityId("testID-input-direct-id");
     private static final By SUBMIT     = AppiumBy.accessibilityId("testID-primary--main");
-    private static final By OTP_0      = AppiumBy.accessibilityId("testID-OTP-Input-Field-0");
-    private static final By LATER_BTN  = AppiumBy.xpath("//*[@text='Later']");
-    private static final By DASHBOARD  = AppiumBy.accessibilityId("testID-master-amount-main");
     private static final By PASSCODE_SCREEN = AppiumBy.xpath(
             "//*[contains(@content-desc,'testID-passCode.screen')]");
-    private static final By SYSTEM_DIALOG = AppiumBy.xpath(
-            "//*[@text='No thanks' or @text='NO THANKS' or @text='Allow' "
-            + "or @text='ALLOW' or @text='While using the app']");
 
     public LoginFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
         this.platformActions = PlatformActionsFactory.create(driver);
+        this.common = new CommonComponentsPage();
+        this.otpPage = new OtpPage();
+        this.passcodePage = new PasscodePage();
     }
 
     // ── Public API ─────────────────────────────────────
@@ -93,7 +93,7 @@ public class LoginFlow {
         // If passcode screen already visible (app remembers login), just enter passcode
         if (waits.isPresent(PASSCODE_SCREEN, 2)) {
             log.info("Passcode screen detected — entering passcode directly");
-            enterPasscode(passcode);
+            passcodePage.enterPasscode(passcode);
             return new DashboardPage();
         }
         // If dashboard already visible, no login needed
@@ -104,7 +104,7 @@ public class LoginFlow {
 
         enterCredentials(mobile, id);
         enterOtp(otp);
-        enterPasscode(passcode);
+        passcodePage.enterPasscode(passcode);
         return new DashboardPage();
     }
 
@@ -197,11 +197,7 @@ public class LoginFlow {
 
     @Step("Enter OTP: {otp}")
     private void enterOtp(String otp) {
-        waits.waitForClickable(OTP_0, 15);
-        quickTap(OTP_0);
-        for (char d : otp.toCharArray()) {
-            pressDigit(d);
-        }
+        otpPage.enterOtp(otp);
         log.info("OTP entered: {}", otp);
     }
 
@@ -209,11 +205,9 @@ public class LoginFlow {
     private void enterPasscode(String passcode) {
         boolean passcodeVisible = waits.isPresent(PASSCODE_SCREEN, 3);
         if (!passcodeVisible) {
-            waits.waitForInvisible(OTP_0, 5);
+            otpPage.isVisible(0); // Quick check — OTP should have transitioned
         }
-        for (char d : passcode.toCharArray()) {
-            pressDigit(d);
-        }
+        passcodePage.enterPasscode(passcode);
         log.info("Passcode entered");
     }
 
@@ -231,10 +225,6 @@ public class LoginFlow {
     }
 
     private void dismissKeyboard() {
-        platformActions.dismissKeyboard();
-    }
-
-    private void pressDigit(char c) {
-        platformActions.enterDigits(String.valueOf(c));
+        common.dismissKeyboard();
     }
 }

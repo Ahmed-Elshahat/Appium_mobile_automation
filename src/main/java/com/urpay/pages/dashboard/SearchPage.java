@@ -61,21 +61,7 @@ public class SearchPage extends BasePage {
 
     /** Dismiss Notifications or other popups that may block search icon */
     private void dismissPopups() {
-        try {
-            java.util.List<org.openqa.selenium.WebElement> laterBtns = waitUtils.findQuick(
-                    io.appium.java_client.AppiumBy.xpath("//*[@text='Later']"), 3);
-            if (!laterBtns.isEmpty()) {
-                laterBtns.get(0).click();
-                log.info("Dismissed Notifications popup via Later");
-            }
-            java.util.List<org.openqa.selenium.WebElement> closeBtns = waitUtils.findQuick(
-                    io.appium.java_client.AppiumBy.xpath("//*[@text='\u00D7' or @text='X' or @content-desc='Close']"), 1);
-            if (!closeBtns.isEmpty()) {
-                closeBtns.get(0).click();
-            }
-        } catch (Exception e) {
-            log.debug("No popups to dismiss");
-        }
+        new DashboardPage().dismissPopups();
     }
 
     public boolean isSearchFieldVisible() {
