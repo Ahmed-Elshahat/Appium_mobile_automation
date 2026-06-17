@@ -2,8 +2,10 @@ package com.urpay.core;
 
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.options.UiAutomator2Options;
 import io.appium.java_client.ios.IOSDriver;
-import org.openqa.selenium.remote.DesiredCapabilities;
+import io.appium.java_client.ios.options.XCUITestOptions;
+import org.openqa.selenium.MutableCapabilities;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -12,12 +14,13 @@ import java.util.Map;
 
 /**
  * OCP: Strategy for creating LambdaTest remote drivers.
- * To add BrowserStack, create BrowserStackDriverStrategy — no modifications here.
+ * Supports both Android and iOS with typed options (no deprecated DesiredCapabilities).
  */
 public class LambdaTestDriverStrategy implements DriverCreationStrategy {
 
     private static final String DEFAULT_APP_PACKAGE = "com.urpay.consumer.sit";
     private static final String DEFAULT_APP_ACTIVITY = "com.urpay.consumer.sit.MainActivity";
+    private static final String DEFAULT_BUNDLE_ID = "com.urpay.consumer.sit";
 
     @Override
     public AppiumDriver createDriver(ConfigManager config) {
@@ -26,41 +29,59 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         String ltKey = config.get("lt.accessKey", "");
         String ltUrl = config.get("lt.url", "https://mobile-hub.lambdatest.com/wd/hub");
 
-        DesiredCapabilities caps = buildCapabilities(config, platform);
-        attachLtOptions(caps, config, ltUser, ltKey);
+        Map<String, Object> ltOptions = buildLtOptions(config, ltUser, ltKey);
 
         try {
             String remoteUrl = String.format("https://%s:%s@%s",
                     ltUser, ltKey, ltUrl.replaceFirst("https?://", ""));
+
             if ("ios".equalsIgnoreCase(platform)) {
-                return new IOSDriver(new URL(remoteUrl), caps);
+                return createIOSDriver(config, ltOptions, remoteUrl);
             } else {
-                return new AndroidDriver(new URL(remoteUrl), caps);
+                return createAndroidDriver(config, ltOptions, remoteUrl);
             }
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid LambdaTest URL", e);
         }
     }
 
-    private DesiredCapabilities buildCapabilities(ConfigManager config, String platform) {
-        DesiredCapabilities caps = new DesiredCapabilities();
-        caps.setCapability("platformName", "ios".equalsIgnoreCase(platform) ? "iOS" : "Android");
-        caps.setCapability("deviceName", config.get("deviceName", "Samsung Galaxy S23"));
-        caps.setCapability("platformVersion", config.get("platformVersion", "14.0"));
+    private AppiumDriver createAndroidDriver(ConfigManager config,
+                                              Map<String, Object> ltOptions,
+                                              String remoteUrl) throws MalformedURLException {
+        UiAutomator2Options options = new UiAutomator2Options();
+        options.setPlatformName("Android");
+        options.setAutomationName("UiAutomator2");
+        options.setDeviceName(config.get("deviceName", "Samsung Galaxy S23"));
+        options.setPlatformVersion(config.get("platformVersion", "14.0"));
+        options.setAppPackage(config.get("appPackage", DEFAULT_APP_PACKAGE));
+        options.setAppActivity(config.get("appActivity", DEFAULT_APP_ACTIVITY));
 
-        if ("ios".equalsIgnoreCase(platform)) {
-            caps.setCapability("automationName", "XCUITest");
-            caps.setCapability("bundleId", config.get("bundleId", DEFAULT_APP_PACKAGE));
-        } else {
-            caps.setCapability("automationName", "UiAutomator2");
-            caps.setCapability("appPackage", config.get("appPackage", DEFAULT_APP_PACKAGE));
-            caps.setCapability("appActivity", config.get("appActivity", DEFAULT_APP_ACTIVITY));
-        }
-        return caps;
+        String appUrl = config.get("lt.appUrl", "");
+        if (!appUrl.isEmpty()) options.setApp(appUrl);
+
+        options.setCapability("lt:options", ltOptions);
+        return new AndroidDriver(new URL(remoteUrl), options);
     }
 
-    private void attachLtOptions(DesiredCapabilities caps, ConfigManager config,
-                                 String ltUser, String ltKey) {
+    private AppiumDriver createIOSDriver(ConfigManager config,
+                                          Map<String, Object> ltOptions,
+                                          String remoteUrl) throws MalformedURLException {
+        XCUITestOptions options = new XCUITestOptions();
+        options.setPlatformName("iOS");
+        options.setAutomationName("XCUITest");
+        options.setDeviceName(config.get("deviceName", "iPhone 15 Pro"));
+        options.setPlatformVersion(config.get("platformVersion", "17.0"));
+        options.setBundleId(config.get("bundleId", DEFAULT_BUNDLE_ID));
+
+        String appUrl = config.get("lt.appUrl", "");
+        if (!appUrl.isEmpty()) options.setApp(appUrl);
+
+        options.setCapability("lt:options", ltOptions);
+        return new IOSDriver(new URL(remoteUrl), options);
+    }
+
+    private Map<String, Object> buildLtOptions(ConfigManager config,
+                                                String ltUser, String ltKey) {
         Map<String, Object> ltOptions = new HashMap<>();
         ltOptions.put("username", ltUser);
         ltOptions.put("accessKey", ltKey);
@@ -74,14 +95,6 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         ltOptions.put("idleTimeout", 300);
         ltOptions.put("newCommandTimeout", 300);
         ltOptions.put("appiumVersion", "2.12.1");
-
-        String appUrl = config.get("lt.appUrl", "");
-        if (!appUrl.isEmpty()) {
-            ltOptions.put("app", appUrl);
-            // Also set at top level for compatibility
-            caps.setCapability("app", appUrl);
-        }
-
-        caps.setCapability("lt:options", ltOptions);
+        return ltOptions;
     }
 }

@@ -134,6 +134,13 @@
             <version>2.0.13</version>
         </dependency>
 
+        <!-- Oracle JDBC (for IVR skip — query EAI_MESSAGE_DUMP) -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>23.3.0.23.09</version>
+        </dependency>
+
     </dependencies>
 
     <build>

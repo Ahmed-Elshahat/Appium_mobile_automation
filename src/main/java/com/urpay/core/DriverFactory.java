@@ -1,12 +1,17 @@
 package com.urpay.core;
 
-import io.appium.java_client.AppiumDriver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.urpay.platform.MobilePlatformActions;
+import com.urpay.platform.Platform;
+import com.urpay.platform.PlatformActionsFactory;
+
+import io.appium.java_client.AppiumDriver;
 
 /**
  * Thread-safe Appium driver factory.
@@ -22,6 +27,8 @@ public class DriverFactory implements DriverProvider {
 
     private static final Logger log = LoggerFactory.getLogger(DriverFactory.class);
     private static final ThreadLocal<AppiumDriver> driverThread = new ThreadLocal<>();
+    private static final ThreadLocal<MobilePlatformActions> actionsThread = new ThreadLocal<>();
+    private static final ThreadLocal<Platform> platformThread = new ThreadLocal<>();
 
     // OCP: Strategy registry — add new providers without modifying this class
     private static final Map<String, DriverCreationStrategy> strategies = new ConcurrentHashMap<>();
@@ -69,6 +76,8 @@ public class DriverFactory implements DriverProvider {
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(timeout));
 
         driverThread.set(driver);
+        actionsThread.set(PlatformActionsFactory.create(driver));
+        platformThread.set(PlatformActionsFactory.detectPlatform(driver));
         log.info("Driver initialized. Session: {}", driver.getSessionId());
     }
 
@@ -92,6 +101,8 @@ public class DriverFactory implements DriverProvider {
                 log.warn("Error quitting driver: {}", e.getMessage());
             } finally {
                 driverThread.remove();
+                actionsThread.remove();
+                platformThread.remove();
             }
         }
     }
@@ -105,5 +116,38 @@ public class DriverFactory implements DriverProvider {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Get platform-specific actions for the current thread's driver.
+     */
+    public MobilePlatformActions getPlatformActions() {
+        MobilePlatformActions actions = actionsThread.get();
+        if (actions == null) {
+            throw new IllegalStateException("PlatformActions not initialized. Call initDriver() first.");
+        }
+        return actions;
+    }
+
+    /**
+     * Get the current platform for the active driver.
+     */
+    public Platform getPlatform() {
+        Platform p = platformThread.get();
+        return p != null ? p : Platform.ANDROID;
+    }
+
+    /**
+     * Check if running on Android.
+     */
+    public boolean isAndroid() {
+        return getPlatform().isAndroid();
+    }
+
+    /**
+     * Check if running on iOS.
+     */
+    public boolean isIOS() {
+        return getPlatform().isIOS();
     }
 }

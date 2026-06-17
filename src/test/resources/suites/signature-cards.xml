@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Signature Card Management" verbose="1">
+    <test name="Signature Card">
+        <classes>
+            <class name="com.urpay.tests.payments.SignatureCardTest"/>
+        </classes>
+    </test>
+</suite>

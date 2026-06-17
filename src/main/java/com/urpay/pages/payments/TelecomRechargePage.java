@@ -3,8 +3,10 @@ package com.urpay.pages.payments;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.platform.Platform;
 
 import io.appium.java_client.pagefactory.AndroidFindBy;
+import io.appium.java_client.pagefactory.iOSXCUITFindBy;
 import io.qameta.allure.Step;
 
 /**
@@ -17,112 +19,135 @@ public class TelecomRechargePage extends BasePage {
 
     // ── Provider Buttons ──
     @AndroidFindBy(accessibility = "testID-viewElementelecomZAIN2")
+    @iOSXCUITFindBy(accessibility = "testID-viewElementelecomZAIN2")
     private WebElement zainButton;
 
     @AndroidFindBy(accessibility = "testID-viewElementelecomMobily2")
+    @iOSXCUITFindBy(accessibility = "testID-viewElementelecomMobily2")
     private WebElement mobilyButton;
 
     @AndroidFindBy(accessibility = "testID-viewElementelecomSTC2")
+    @iOSXCUITFindBy(accessibility = "testID-viewElementelecomSTC2")
     private WebElement stcButton;
 
     // ── STC Sub-options ──
-    // sawaRechargeButton.rs → testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0
     @AndroidFindBy(accessibility = "testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0")
+    @iOSXCUITFindBy(accessibility = "testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0")
     private WebElement sawaRechargeButton;
 
-    // sawaPackagesRechargeOption.rs
     @AndroidFindBy(accessibility = "testID-TouchableWithoutFeedback.af5035ae-a8e2-4fd4-9452-40564ccbb18f.2")
+    @iOSXCUITFindBy(accessibility = "testID-TouchableWithoutFeedback.af5035ae-a8e2-4fd4-9452-40564ccbb18f.2")
     private WebElement sawaPackagesOption;
 
-    // quickNetRechargeOption.rs
     @AndroidFindBy(accessibility = "testID-TouchableWithoutFeedback.af5035ae-a8e2-4fd4-9452-40564ccbb18f.1")
+    @iOSXCUITFindBy(accessibility = "testID-TouchableWithoutFeedback.af5035ae-a8e2-4fd4-9452-40564ccbb18f.1")
     private WebElement quickNetOption;
 
     // ── First Card (zainFirstCard / mobilyFirstCard) → testID-data-0 ──
     @AndroidFindBy(accessibility = "testID-data-0")
+    @iOSXCUITFindBy(accessibility = "testID-data-0")
     private WebElement firstCard;
 
-    // ── First Package (sawaFirstBackage.rs) → content-desc ──
+    // ── First Package ──
     @AndroidFindBy(accessibility = "testID-View.0e93aa95-ebe7-44d5-81b9-b5871a1fbd37.0")
+    @iOSXCUITFindBy(accessibility = "testID-View.0e93aa95-ebe7-44d5-81b9-b5871a1fbd37.0")
     private WebElement firstPackage;
 
-    // ── Next Button — packages page (nextButtonPackagesPage.rs XPATH = testID-primary-onPress-main) ──
+    // ── Next Button — packages page ──
     @AndroidFindBy(accessibility = "testID-primary-onPress-main")
+    @iOSXCUITFindBy(accessibility = "testID-primary-onPress-main")
     private WebElement nextButtonPackages;
 
-    // ── Next Button — confirm mobile number (nextButtonToConfirmMobileNumber.rs) ──
+    // ── Next Button — confirm mobile number ──
     @AndroidFindBy(accessibility = "testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6")
+    @iOSXCUITFindBy(accessibility = "testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6")
     private WebElement nextButtonMobile;
 
-    // ── Mobile Number Field (stcMobileNumberTextField.rs) → testID-input-direct-undefined ──
+    // ── Mobile Number Field ──
     @AndroidFindBy(accessibility = "testID-input-direct-undefined")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-undefined")
     private WebElement mobileNumberField;
 
-    // ── Confirm Button (ConfirmButton.rs) → xpath with content-desc or text ──
+    // ── Confirm Button ──
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main' or @text='Confirm']")
+    @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
     private WebElement confirmButton;
 
-    // ── Re-order Confirm (reorderConfirmBtn.rs) ──
+    // ── Re-order Confirm ──
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main' or @text='Confirm']")
+    @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
     private WebElement reorderConfirmButton;
 
     // ── Amount Display ──
     @AndroidFindBy(accessibility = "testID-master-amount-main")
+    @iOSXCUITFindBy(accessibility = "testID-master-amount-main")
     private WebElement totalAmountInteger;
 
     @AndroidFindBy(accessibility = "testID-fraction-amount-main")
+    @iOSXCUITFindBy(accessibility = "testID-fraction-amount-main")
     private WebElement totalAmountFraction;
 
     // ── Success Screen ──
-    // RechargeAnotherNumberButton.rs → testID-secondary-action-main
     @AndroidFindBy(accessibility = "testID-secondary-action-main")
+    @iOSXCUITFindBy(accessibility = "testID-secondary-action-main")
     private WebElement rechargeAnotherNumberButton;
 
     // DoneButton.rs → testID-primary-action-main
     @AndroidFindBy(accessibility = "testID-primary-action-main")
+    @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement doneButton;
 
     // ── Order History — first card in last order ──
-    // firstCardInLastOrder.rs → (//android.view.ViewGroup[@content-desc="testID-data-0"])[1]
     @AndroidFindBy(xpath = "(//android.view.ViewGroup[@content-desc=\"testID-data-0\"])[1]")
+    @iOSXCUITFindBy(accessibility = "testID-data-0")
     private WebElement firstCardInLastOrder;
 
     // firstCardServiceName.rs
     @AndroidFindBy(xpath = "(//*[@content-desc[contains(., 'testID-Text.title')]])[1]")
+    @iOSXCUITFindBy(iOSNsPredicate = "name CONTAINS 'testID-Text.title'")
     private WebElement firstCardServiceName;
 
     // ── Order Detail Values (label-value-N) ──
     @AndroidFindBy(accessibility = "testID-label-value-0")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-0")
     private WebElement providerNameValue;
 
     @AndroidFindBy(accessibility = "testID-label-value-2")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-2")
     private WebElement productNameValue;
 
     @AndroidFindBy(accessibility = "testID-label-value-4")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-4")
     private WebElement accountNumberValue;
 
     @AndroidFindBy(accessibility = "testID-label-value-6")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-6")
     private WebElement purchaseAmountValue;
 
     @AndroidFindBy(accessibility = "testID-label-value-8")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-8")
     private WebElement purchaseDateValue;
 
     @AndroidFindBy(accessibility = "testID-label-value-10")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-10")
     private WebElement durationValue;
 
     // ── Re-order ──
-    // reOrderOnFirstCardBtn.rs
     @AndroidFindBy(xpath = "(//*[@content-desc[contains(., 'testID-primary-action-main')]])[1]")
+    @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement reorderButton;
 
     @AndroidFindBy(accessibility = "testID-Text.e9250b94-72e6-44e9-a4a0-71b686634ef1")
+    @iOSXCUITFindBy(accessibility = "testID-Text.e9250b94-72e6-44e9-a4a0-71b686634ef1")
     private WebElement mobileNumberHeader;
 
     @AndroidFindBy(accessibility = "testID-label-value-2")
+    @iOSXCUITFindBy(accessibility = "testID-label-value-2")
     private WebElement reorderMobileNumberValue;
 
-    // ── Back Button (backBtn.rs) → testID-right-icon-item ──
+    // ── Back Button ──
     @AndroidFindBy(accessibility = "testID-right-icon-item")
+    @iOSXCUITFindBy(accessibility = "testID-right-icon-item")
     private WebElement backButton;
 
     // ══════════════════════════════════════════════════
@@ -171,10 +196,15 @@ public class TelecomRechargePage extends BasePage {
 
     @Step("Tap Confirm")
     public void tapConfirm() {
-        // Match "Confirm", "Select Package", or the content-desc
-        driver.findElement(io.appium.java_client.AppiumBy.androidUIAutomator(
-                "new UiSelector().className(\"android.view.ViewGroup\")" +
-                ".childSelector(new UiSelector().textMatches(\"Confirm|Select Package\"))")).click();
+        if (platform.isAndroid()) {
+            // Android: use UiAutomator selector for complex match
+            driver.findElement(io.appium.java_client.AppiumBy.androidUIAutomator(
+                    "new UiSelector().className(\"android.view.ViewGroup\")" +
+                    ".childSelector(new UiSelector().textMatches(\"Confirm|Select Package\"))")).click();
+        } else {
+            // iOS: use accessibility-based confirm button
+            tap(confirmButton);
+        }
         log.info("tapConfirm: clicked");
     }
 

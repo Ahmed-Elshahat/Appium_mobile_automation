@@ -11,12 +11,12 @@ import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
 import com.urpay.pages.dashboard.SearchPage;
 import com.urpay.pages.payments.TelecomRechargePage;
+import com.urpay.platform.MobilePlatformActions;
+import com.urpay.platform.PlatformActionsFactory;
 import com.urpay.utils.WaitUtils;
 
-import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Allure;
-import io.appium.java_client.android.nativekey.AndroidKey;
-import io.appium.java_client.android.nativekey.KeyEvent;
 import io.qameta.allure.Step;
 
 /**
@@ -33,12 +33,14 @@ import io.qameta.allure.Step;
 public class TelecomRechargeFlow {
 
     private static final Logger log = LoggerFactory.getLogger(TelecomRechargeFlow.class);
-    private final AndroidDriver driver;
+    private final AppiumDriver driver;
     private final WaitUtils waits;
+    private final MobilePlatformActions platformActions;
 
     public TelecomRechargeFlow() {
-        this.driver = (AndroidDriver) DriverFactory.getInstance().getDriver();
+        this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
+        this.platformActions = PlatformActionsFactory.create(driver);
     }
 
     // ══════════════════════════════════════════════════
@@ -226,10 +228,7 @@ public class TelecomRechargeFlow {
         } catch (Exception ignored) {}
 
         String code = ConfigManager.getInstance().get("urpayUser.verificationCode", "1234");
-        for (char d : code.toCharArray()) {
-            driver.pressKey(new KeyEvent(AndroidKey.valueOf("DIGIT_" + d)));
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-        }
+        platformActions.enterDigits(code);
     }
 
     /** Wait for result screen after OTP — success (Done button) or error popup */
@@ -267,6 +266,6 @@ public class TelecomRechargeFlow {
     }
 
     private void dismissKeyboard() {
-        try { driver.pressKey(new KeyEvent(AndroidKey.ENTER)); } catch (Exception ignored) {}
+        platformActions.dismissKeyboard();
     }
 }

@@ -10,6 +10,7 @@ import java.time.Duration;
 
 /**
  * OCP: Strategy for creating local iOS drivers.
+ * Mirrors LocalAndroidDriverStrategy with iOS-specific options.
  */
 public class LocalIOSDriverStrategy implements DriverCreationStrategy {
 
@@ -25,17 +26,36 @@ public class LocalIOSDriverStrategy implements DriverCreationStrategy {
         options.setNoReset(true);
         options.setNewCommandTimeout(Duration.ofSeconds(300));
 
-        String deviceName = config.get("deviceName", "");
-        if (!deviceName.isEmpty()) options.setDeviceName(deviceName);
+        // Auto-accept system alerts (permissions)
+        options.setCapability("autoAcceptAlerts", true);
 
-        String platformVersion = config.get("platformVersion", "");
-        if (!platformVersion.isEmpty()) options.setPlatformVersion(platformVersion);
+        setOptional(options, config);
 
         try {
             String appiumUrl = config.get("appiumUrl", DEFAULT_APPIUM_URL);
             return new IOSDriver(new URL(appiumUrl), options);
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid Appium URL: " + config.get("appiumUrl"), e);
+        }
+    }
+
+    private void setOptional(XCUITestOptions options, ConfigManager config) {
+        String deviceName = config.get("deviceName", "");
+        if (!deviceName.isEmpty()) options.setDeviceName(deviceName);
+
+        String platformVersion = config.get("platformVersion", "");
+        if (!platformVersion.isEmpty()) options.setPlatformVersion(platformVersion);
+
+        String udid = config.get("udid", "");
+        if (!udid.isEmpty()) options.setUdid(udid);
+
+        String appPath = config.get("appPath", "");
+        if (!appPath.isEmpty()) options.setApp(appPath);
+
+        // WDA settings for stability
+        String wdaLocalPort = config.get("wdaLocalPort", "");
+        if (!wdaLocalPort.isEmpty()) {
+            options.setCapability("wdaLocalPort", Integer.parseInt(wdaLocalPort));
         }
     }
 }

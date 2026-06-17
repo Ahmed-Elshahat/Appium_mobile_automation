@@ -12,10 +12,12 @@ import org.openqa.selenium.support.PageFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.urpay.platform.MobilePlatformActions;
+import com.urpay.platform.Platform;
+import com.urpay.platform.PlatformActionsFactory;
 import com.urpay.utils.SwipeUtils;
 import com.urpay.utils.WaitUtils;
 
-import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.HidesKeyboard;
 import io.appium.java_client.pagefactory.AppiumFieldDecorator;
@@ -41,6 +43,8 @@ public abstract class BasePage {
     protected final AppiumDriver driver;
     protected final WaitUtils waitUtils;
     protected final SwipeUtils swipeUtils;
+    protected final MobilePlatformActions platformActions;
+    protected final Platform platform;
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private static final long DEFAULT_TIMEOUT = 15;
@@ -49,6 +53,8 @@ public abstract class BasePage {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waitUtils = new WaitUtils(driver, DEFAULT_TIMEOUT);
         this.swipeUtils = new SwipeUtils(driver);
+        this.platformActions = PlatformActionsFactory.create(driver);
+        this.platform = platformActions.getPlatform();
         PageFactory.initElements(new AppiumFieldDecorator(driver, Duration.ofSeconds(DEFAULT_TIMEOUT)), this);
     }
 
@@ -123,12 +129,10 @@ public abstract class BasePage {
         }
     }
 
-    // ── Scroll / Swipe (delegated to SwipeUtils) ──────────────────
+    // ── Scroll / Swipe (delegated to SwipeUtils / PlatformActions) ──
 
     protected WebElement scrollToText(String text) {
-        return driver.findElement(AppiumBy.androidUIAutomator(
-                "new UiScrollable(new UiSelector().scrollable(true))" +
-                        ".scrollTextIntoView(\"" + text + "\")"));
+        return platformActions.scrollToText(text);
     }
 
     protected void swipeUp() {

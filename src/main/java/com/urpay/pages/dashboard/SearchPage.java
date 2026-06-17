@@ -5,6 +5,7 @@ import org.openqa.selenium.WebElement;
 import com.urpay.core.BasePage;
 
 import io.appium.java_client.pagefactory.AndroidFindBy;
+import io.appium.java_client.pagefactory.iOSXCUITFindBy;
 import io.qameta.allure.Step;
 
 /**
@@ -18,12 +19,15 @@ import io.qameta.allure.Step;
 public class SearchPage extends BasePage {
 
     @AndroidFindBy(accessibility = "testID-right-icon-0")
+    @iOSXCUITFindBy(accessibility = "testID-right-icon-0")
     private WebElement searchIcon;
 
     @AndroidFindBy(accessibility = "testID-Search-Input")
+    @iOSXCUITFindBy(accessibility = "testID-Search-Input")
     private WebElement searchInputField;
 
     @AndroidFindBy(accessibility = "testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0")
+    @iOSXCUITFindBy(accessibility = "testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0")
     private WebElement firstSearchResult;
 
     @Step("Tap search icon")

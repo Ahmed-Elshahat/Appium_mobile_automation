@@ -1,5 +1,7 @@
 package com.urpay.core;
 
+import com.urpay.platform.health.AppHealthChecker;
+import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
 import io.appium.java_client.AppiumDriver;
@@ -28,6 +30,7 @@ public abstract class BaseTest {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected ConfigManager config;
+    protected AppHealthChecker healthChecker;
 
     @BeforeSuite(alwaysRun = true)
     public void setupSuite() {
@@ -50,6 +53,7 @@ public abstract class BaseTest {
         if (!DriverFactory.getInstance().isDriverActive()) {
             DriverFactory.getInstance().initDriver();
         }
+        healthChecker = AppHealthCheckerFactory.create(getDriver());
     }
 
     @AfterSuite(alwaysRun = true)
@@ -66,14 +70,16 @@ public abstract class BaseTest {
     }
 
     protected void forceRestartApp() {
-        String pkg = config.get("appPackage", "com.urpay.consumer.sit");
+        String appId = config.get("platform", "android").equalsIgnoreCase("ios")
+                ? config.get("bundleId", "com.urpay.consumer.sit")
+                : config.get("appPackage", "com.urpay.consumer.sit");
         try {
             AppiumDriver driver = getDriver();
             if (driver instanceof InteractsWithApps) {
-                ((InteractsWithApps) driver).terminateApp(pkg);
-                ((InteractsWithApps) driver).activateApp(pkg);
+                ((InteractsWithApps) driver).terminateApp(appId);
+                ((InteractsWithApps) driver).activateApp(appId);
             }
-            log.info("App restarted: {}", pkg);
+            log.info("App restarted: {}", appId);
         } catch (Exception e) {
             log.warn("App restart failed, reinitializing driver: {}", e.getMessage());
             DriverFactory.getInstance().quitDriver();

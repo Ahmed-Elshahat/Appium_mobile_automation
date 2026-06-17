@@ -1,0 +1,36 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  All Cards Management — runs in PARALLEL (4 threads).
+  Each card type uses a UNIQUE user account to avoid session conflicts:
+    Mada:      0520683060 / 2539797452
+    Al-Ahli:   0520202572 / 2395950146
+    Platinum:  0520228810 / 1766117517
+    Signature: 0520080284 / 2094569585
+-->
+<suite name="All Cards Management" verbose="1" parallel="tests" thread-count="4">
+
+    <test name="Mada Card">
+        <classes>
+            <class name="com.urpay.tests.payments.MadaCardTest"/>
+        </classes>
+    </test>
+
+    <test name="Al-Ahli Club Card">
+        <classes>
+            <class name="com.urpay.tests.payments.AlAhliCardTest"/>
+        </classes>
+    </test>
+
+    <test name="Platinum Card">
+        <classes>
+            <class name="com.urpay.tests.payments.PlatinumCardTest"/>
+        </classes>
+    </test>
+
+    <test name="Signature Card">
+        <classes>
+            <class name="com.urpay.tests.payments.SignatureCardTest"/>
+        </classes>
+    </test>
+
+</suite>

@@ -2,18 +2,22 @@ package com.urpay.pages.auth;
 
 import com.urpay.core.BasePage;
 import io.appium.java_client.pagefactory.AndroidFindBy;
+import io.appium.java_client.pagefactory.iOSXCUITFindBy;
 import io.qameta.allure.Step;
 import org.openqa.selenium.WebElement;
 
 public class LoginPage extends BasePage {
 
     @AndroidFindBy(accessibility = "testID-input-direct-mobile")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-mobile")
     private WebElement mobileNumberField;
 
     @AndroidFindBy(accessibility = "testID-input-direct-id")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-id")
     private WebElement idField;
 
     @AndroidFindBy(accessibility = "testID-primary--main")
+    @iOSXCUITFindBy(accessibility = "testID-primary--main")
     private WebElement loginButton;
 
     @Step("Enter mobile number: {mobile}")

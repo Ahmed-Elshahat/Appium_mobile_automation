@@ -64,16 +64,38 @@ public class ConfigManager {
 
     // ── Getters ────────────────────────────────────────────────────
 
+    /**
+     * Get a configuration value with precedence:
+     * 1. System property (e.g. -Durpay.platform=ios)
+     * 2. Environment variable (e.g. URPAY_PLATFORM=ios, dots→underscores, uppercase)
+     * 3. Properties file value
+     * 4. Empty string
+     */
     public String get(String key) {
-        return properties.getProperty(key, "");
+        return resolveWithPrecedence(key, "");
     }
 
     public String get(String key, String defaultValue) {
+        return resolveWithPrecedence(key, defaultValue);
+    }
+
+    private String resolveWithPrecedence(String key, String defaultValue) {
+        // 1. System property (urpay.xxx or exact key)
+        String sysProp = System.getProperty("urpay." + key);
+        if (sysProp == null) sysProp = System.getProperty(key);
+        if (sysProp != null && !sysProp.isEmpty()) return sysProp;
+
+        // 2. Environment variable (URPAY_XXX_YYY, dots→underscores, uppercase)
+        String envKey = "URPAY_" + key.replace(".", "_").toUpperCase();
+        String envVal = System.getenv(envKey);
+        if (envVal != null && !envVal.isEmpty()) return envVal;
+
+        // 3. Properties file
         return properties.getProperty(key, defaultValue);
     }
 
     public int getInt(String key, int defaultValue) {
-        String val = properties.getProperty(key);
+        String val = resolveWithPrecedence(key, null);
         if (val == null || val.isEmpty()) return defaultValue;
         try {
             return Integer.parseInt(val.trim());
@@ -83,7 +105,7 @@ public class ConfigManager {
     }
 
     public double getDouble(String key, double defaultValue) {
-        String val = properties.getProperty(key);
+        String val = resolveWithPrecedence(key, null);
         if (val == null || val.isEmpty()) return defaultValue;
         try {
             return Double.parseDouble(val.trim());
@@ -93,7 +115,7 @@ public class ConfigManager {
     }
 
     public boolean getBoolean(String key, boolean defaultValue) {
-        String val = properties.getProperty(key);
+        String val = resolveWithPrecedence(key, null);
         if (val == null || val.isEmpty()) return defaultValue;
         return Boolean.parseBoolean(val.trim());
     }

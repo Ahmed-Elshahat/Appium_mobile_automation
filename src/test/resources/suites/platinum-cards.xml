@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Platinum Card Management" verbose="1">
+    <test name="Platinum Card">
+        <classes>
+            <class name="com.urpay.tests.payments.PlatinumCardTest"/>
+        </classes>
+    </test>
+</suite>

@@ -1,13 +1,17 @@
 package com.urpay.pages.auth;
 
-import com.urpay.core.BasePage;
-import io.appium.java_client.pagefactory.AndroidFindBy;
-import io.qameta.allure.Step;
 import org.openqa.selenium.WebElement;
+
+import com.urpay.core.BasePage;
+
+import io.appium.java_client.pagefactory.AndroidFindBy;
+import io.appium.java_client.pagefactory.iOSXCUITFindBy;
+import io.qameta.allure.Step;
 
 public class OtpPage extends BasePage {
 
     @AndroidFindBy(accessibility = "testID-OTP-Input-Field-0")
+    @iOSXCUITFindBy(accessibility = "testID-OTP-Input-Field-0")
     private WebElement otpField0;
 
     @Step("Enter OTP: {code}")
