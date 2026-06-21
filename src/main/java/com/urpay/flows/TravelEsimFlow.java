@@ -61,7 +61,6 @@ public class TravelEsimFlow {
 
     @Step("Navigate to Travel E-Sim via search")
     public TravelEsimPage navigateToTravelEsim() {
-        // Ensure we're at a screen with search icon visible
         for (int i = 0; i < 3; i++) {
             if (dashboardPage.isSearchIconVisible(2)) {
                 break;
@@ -74,13 +73,13 @@ public class TravelEsimFlow {
         search.searchAndSelect(serviceName);
 
         TravelEsimPage page = new TravelEsimPage();
-        // Handle two scenarios:
-        // 1. User has existing orders → "My Orders" page with "New E-Sim" button
-        // 2. Fresh user → directly shows plan selection page (Global/Local/Regional)
+        // Wait for either My Orders page or plan selection page
         waits.waitForVisible(
-                AppiumBy.xpath("//*[@text='New E-Sim' or @text='Global' or @text='Local' or @text='Regional']"), 15);
+                AppiumBy.xpath("//*[@text='New E-Sim' or @label='New E-Sim'"
+                        + " or @text='Global' or @label='Global'"
+                        + " or @text='Local' or @label='Local']"), 15);
 
-        if (waits.isPresent(AppiumBy.xpath("//*[@class=\"android.view.ViewGroup\" and ./*[@text=\"New E-Sim\"]]"), 2)) {
+        if (page.isMyOrdersPageLoaded()) {
             log.info("Travel E-Sim My Orders page loaded (user has existing orders)");
         } else {
             log.info("Travel E-Sim plan selection page loaded directly (fresh user)");
@@ -95,7 +94,7 @@ public class TravelEsimFlow {
     @Step("Purchase new Global E-SIM (first available plan)")
     public TravelEsimPage purchaseGlobalEsim() {
         TravelEsimPage page = navigateToTravelEsim();
-        page.tapNewEsim();
+        openPlanSelection(page);
         page.selectGlobalTab();
         page.selectFirstPackage();
         page.tapNext();
@@ -129,7 +128,7 @@ public class TravelEsimFlow {
     @Step("Purchase new Local E-SIM (first available plan)")
     public TravelEsimPage purchaseLocalEsim() {
         TravelEsimPage page = navigateToTravelEsim();
-        page.tapNewEsim();
+        openPlanSelection(page);
         page.selectLocalTab();
         page.selectFirstPackage();
         page.tapNext();
@@ -146,7 +145,7 @@ public class TravelEsimFlow {
     @Step("Purchase new Regional E-SIM (first available plan)")
     public TravelEsimPage purchaseRegionalEsim() {
         TravelEsimPage page = navigateToTravelEsim();
-        page.tapNewEsim();
+        openPlanSelection(page);
         page.selectRegionalTab();
         page.selectFirstPackage();
         page.tapNext();
@@ -160,9 +159,20 @@ public class TravelEsimFlow {
     //  HELPERS
     // ══════════════════════════════════════════════════
 
+    /** Tap New eSIM only if on My Orders page; skip if already on plan selection */
+    @Step("Open plan selection (tap New eSIM if needed)")
+    private void openPlanSelection(TravelEsimPage page) {
+        if (page.isMyOrdersPageLoaded()) {
+            page.tapNewEsim();
+            log.info("Tapped New E-Sim from My Orders page");
+        } else {
+            log.info("Already on plan selection page, skipping New E-Sim tap");
+        }
+    }
+
     @Step("Enter verification code")
     private void enterVerificationCode() {
-        String code = ConfigManager.getInstance().get("urpayUser.verificationCode", "1234");
+        String code = ConfigManager.getInstance().get("travelEsim.verificationCode", "1234");
         otpPage.enterOtp(code);
     }
 
