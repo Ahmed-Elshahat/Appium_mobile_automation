@@ -58,19 +58,24 @@ public class TravelEsimTest extends BaseTest {
             + "verify confirmation page shows Country/Region, Package Name, Package Validity")
     @Severity(SeverityLevel.CRITICAL)
     public void testPurchaseNewGlobalEsim() {
-        // Step 1: Search "Travel E-Sim" and navigate to My Orders page
+        // Step 1: Search "Travel E-Sim" and navigate
         TravelEsimFlow flow = new TravelEsimFlow();
         TravelEsimPage page = flow.navigateToTravelEsim();
-        Assert.assertTrue(page.isMyOrdersPageLoaded(),
-                "My Orders page should be loaded with 'New E-Sim' button visible");
 
-        // Step 2: Tap "New E-Sim" → Select "Global" → first option → "Next"
-        page.tapNewEsim();
+        // Step 2: If "My Orders" page → tap "New E-Sim", otherwise already on selection
+        if (page.isMyOrdersPageLoaded()) {
+            log.info("My Orders page detected — tapping New E-Sim");
+            page.tapNewEsim();
+        } else {
+            log.info("Already on plan selection page (fresh user)");
+        }
+
+        // Step 3: Select "Global" → first package (7 Days) → "Next"
         page.selectGlobalTab();
-        page.selectFirstGlobalOption();
+        page.selectFirstPackage();
         page.tapNext();
 
-        // Step 3: Verify confirmation page data (migrated from Katalon assertions)
+        // Step 4: Verify confirmation page data (migrated from Katalon assertions)
         Assert.assertTrue(page.isConfirmationPageLoaded(),
                 "Confirmation page should be loaded");
 
@@ -92,5 +97,20 @@ public class TravelEsimTest extends BaseTest {
         log.info("Country/Region: {}", countryRegion);
         log.info("Package Name: {}", packageName);
         log.info("Package Validity: {}", packageValidity);
+    }
+
+    @Test(groups = {"payments", "travel-esim"}, priority = 3,
+            dependsOnMethods = "testPurchaseNewGlobalEsim")
+    @Story("Global E-SIM Purchase")
+    @Description("Confirm E-SIM purchase from confirmation page and complete OTP verification")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testConfirmEsimPurchase() {
+        // Step 1: Tap Confirm on the confirmation page (session continues from previous test)
+        TravelEsimFlow flow = new TravelEsimFlow();
+        TravelEsimPage page = new TravelEsimPage();
+        flow.confirmPurchase(page);
+
+        captureScreenshot("After E-SIM Purchase Confirmation");
+        log.info("E-SIM purchase confirmation completed");
     }
 }

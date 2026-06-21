@@ -1,0 +1,18 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Saddad Bills Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+
+    <!-- Saddad Bills CRUD Operations -->
+    <test name="Saddad Bills Management">
+        <groups>
+            <run>
+                <include name="sadad-bills"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.SadadBillsTest"/>
+        </classes>
+    </test>
+</suite>

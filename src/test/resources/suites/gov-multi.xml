@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Gov - Multi Violation" verbose="1">
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+    <test name="Multi Violation Payment">
+        <classes>
+            <class name="com.urpay.tests.payments.GovernmentServicesMultiTest"/>
+        </classes>
+    </test>
+</suite>

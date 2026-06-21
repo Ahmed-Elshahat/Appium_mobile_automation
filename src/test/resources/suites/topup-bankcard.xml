@@ -1,0 +1,18 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Top Up Bank Card Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+
+    <!-- Top Up Using Bank Card — Full Lifecycle -->
+    <test name="Top Up Bank Card">
+        <groups>
+            <run>
+                <include name="topup-bankcard"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.payments.TopUpBankCardTest"/>
+        </classes>
+    </test>
+</suite>

@@ -74,9 +74,17 @@ public class TravelEsimFlow {
         search.searchAndSelect(serviceName);
 
         TravelEsimPage page = new TravelEsimPage();
+        // Handle two scenarios:
+        // 1. User has existing orders → "My Orders" page with "New E-Sim" button
+        // 2. Fresh user → directly shows plan selection page (Global/Local/Regional)
         waits.waitForVisible(
-                AppiumBy.xpath("//*[@class=\"android.view.ViewGroup\" and ./*[@text=\"New E-Sim\"]]"), 15);
-        log.info("Travel E-Sim My Orders page loaded");
+                AppiumBy.xpath("//*[@text='New E-Sim' or @text='Global' or @text='Local' or @text='Regional']"), 15);
+
+        if (waits.isPresent(AppiumBy.xpath("//*[@class=\"android.view.ViewGroup\" and ./*[@text=\"New E-Sim\"]]"), 2)) {
+            log.info("Travel E-Sim My Orders page loaded (user has existing orders)");
+        } else {
+            log.info("Travel E-Sim plan selection page loaded directly (fresh user)");
+        }
         return page;
     }
 
@@ -89,7 +97,7 @@ public class TravelEsimFlow {
         TravelEsimPage page = navigateToTravelEsim();
         page.tapNewEsim();
         page.selectGlobalTab();
-        page.selectFirstGlobalOption();
+        page.selectFirstPackage();
         page.tapNext();
 
         // Wait for confirmation page to load
@@ -123,7 +131,7 @@ public class TravelEsimFlow {
         TravelEsimPage page = navigateToTravelEsim();
         page.tapNewEsim();
         page.selectLocalTab();
-        page.selectFirstGlobalOption(); // Same locator testID-data-0 for first option
+        page.selectFirstPackage();
         page.tapNext();
 
         waits.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
@@ -140,7 +148,7 @@ public class TravelEsimFlow {
         TravelEsimPage page = navigateToTravelEsim();
         page.tapNewEsim();
         page.selectRegionalTab();
-        page.selectFirstGlobalOption(); // Same locator testID-data-0 for first option
+        page.selectFirstPackage();
         page.tapNext();
 
         waits.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);

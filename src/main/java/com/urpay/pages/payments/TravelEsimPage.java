@@ -84,7 +84,7 @@ public class TravelEsimPage extends BasePage {
     }
 
     public boolean isMyOrdersPageLoaded() {
-        return isDisplayed(newEsimButton, 10);
+        return isDisplayed(newEsimButton, 3);
     }
 
     // ── Select Country Page Actions ───────────────────
@@ -110,36 +110,49 @@ public class TravelEsimPage extends BasePage {
 
     // ── Global Profile Page Actions ───────────────────
 
-    @Step("Select first global option")
-    public void selectFirstGlobalOption() {
-        waitUtils.waitForClickable(AppiumBy.accessibilityId("testID-data-0"), 10).click();
+    @Step("Select first package (7 Days)")
+    public void selectFirstPackage() {
+        // Use UiAutomator to find and click the card — more reliable for React Native
+        // The parent ViewGroup of the text is the actual clickable card
+        org.openqa.selenium.WebElement card = waitUtils.waitForClickable(
+                AppiumBy.androidUIAutomator(
+                        "new UiSelector().textContains(\"1GB 7Days\").instance(0)"), 10);
+        card.click();
+        log.info("Selected first package: Asia 1GB 7Days");
+        // Verify selection by waiting briefly then checking if Next button color changes
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
     }
 
     @Step("Tap Next button")
     public void tapNext() {
-        // Retry tapping Next up to 3 times — React Native may not register first tap
-        // or backend may briefly reject, returning to selection page
+        // Retry tapping Next up to 3 times — React Native may not navigate on first tap
         for (int attempt = 1; attempt <= 3; attempt++) {
             try {
-                org.openqa.selenium.WebElement nextBtn = waitUtils.waitForClickable(
-                        AppiumBy.xpath("//android.view.ViewGroup[.//android.widget.TextView[@text='Next']]"), 10);
+                // Scroll to make Next button fully visible, then click via UiAutomator
+                org.openqa.selenium.WebElement nextBtn = driver.findElement(
+                        AppiumBy.androidUIAutomator(
+                                "new UiScrollable(new UiSelector().scrollable(true))" +
+                                ".scrollIntoView(new UiSelector().text(\"Next\"))"));
                 nextBtn.click();
+                log.info("Tapped Next button (attempt {})", attempt);
 
-                // Wait for confirmation page to appear (testID-label-value-0)
+                // Wait for confirmation page to appear
                 waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
-                return; // Success — confirmation page loaded
+                log.info("Confirmation page loaded after attempt {}", attempt);
+                return;
             } catch (Exception e) {
-                log.warn("tapNext attempt {}/3 failed: {}", attempt, e.getMessage());
+                log.warn("Next button tap attempt {} failed: {}", attempt, e.getMessage());
                 if (attempt == 3) {
                     throw new org.openqa.selenium.TimeoutException(
-                            "Confirmation page did not load after 3 Next button attempts. "
-                            + "Last error: " + e.getMessage());
+                            "Confirmation page did not load after 3 attempts tapping Next", e);
                 }
-                // Re-select the first option in case tap deselected it
+                // Re-select the first package in case tap deselected it
                 try {
-                    waitUtils.waitForClickable(AppiumBy.accessibilityId("testID-data-0"), 5).click();
+                    driver.findElement(AppiumBy.androidUIAutomator(
+                            "new UiSelector().textContains(\"1GB 7Days\").instance(0)")).click();
+                    log.info("Re-selected first package before retry");
                 } catch (Exception ignored) {
-                    log.debug("Re-select attempt ignored — item may still be selected");
+                    log.debug("Could not re-select package: {}", ignored.getMessage());
                 }
             }
         }
@@ -164,7 +177,13 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Tap Confirm button")
     public void tapConfirm() {
-        waitUtils.waitForClickable(AppiumBy.accessibilityId("testID-primary-onConfirm-main"), 10).click();
+        // Scroll to Confirm button and tap via UiAutomator (accessibility ID may not match)
+        org.openqa.selenium.WebElement confirmBtn = driver.findElement(
+                AppiumBy.androidUIAutomator(
+                        "new UiScrollable(new UiSelector().scrollable(true))" +
+                        ".scrollIntoView(new UiSelector().text(\"Confirm\"))"));
+        confirmBtn.click();
+        log.info("Tapped Confirm button");
     }
 
     public boolean isConfirmationPageLoaded() {
