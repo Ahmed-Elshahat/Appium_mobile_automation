@@ -147,4 +147,11 @@ public class TravelEsimPage extends BasePage {
     public boolean isConfirmationPageLoaded() {
         return isDisplayed(countryRegionValue, 30);
     }
+
+    public boolean isPurchaseSuccessful(long timeoutSec) {
+        return isPresent(
+                AppiumBy.xpath("//*[@content-desc='testID-primary-action-main' or @name='testID-primary-action-main'] | "
+                        + "//*[contains(@text,'Success') or contains(@label,'Success')]"),
+                timeoutSec);
+    }
 }

@@ -105,12 +105,12 @@ public class TravelEsimTest extends BaseTest {
     @Description("Confirm E-SIM purchase from confirmation page and complete OTP verification")
     @Severity(SeverityLevel.CRITICAL)
     public void testConfirmEsimPurchase() {
-        // Step 1: Tap Confirm on the confirmation page (session continues from previous test)
         TravelEsimFlow flow = new TravelEsimFlow();
         TravelEsimPage page = new TravelEsimPage();
         flow.confirmPurchase(page);
 
         captureScreenshot("After E-SIM Purchase Confirmation");
-        log.info("E-SIM purchase confirmation completed");
+        Assert.assertTrue(page.isPurchaseSuccessful(10),
+                "E-SIM purchase should show success screen after OTP");
     }
 }

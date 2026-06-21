@@ -39,6 +39,7 @@ import io.qameta.allure.Step;
 public class TravelEsimFlow {
 
     private static final Logger log = LoggerFactory.getLogger(TravelEsimFlow.class);
+
     private final AppiumDriver driver;
     private final WaitUtils waits;
     private final MobilePlatformActions platformActions;
@@ -110,8 +111,8 @@ public class TravelEsimFlow {
         page.tapConfirm();
         enterVerificationCode();
         captureAfterOtp("Travel E-SIM Purchase - Post OTP");
-        waitAfterOtp();
-        log.info("E-SIM purchase confirmed");
+        common.waitForResultAfterOtp(30);
+        log.info("E-SIM purchase OTP submitted");
         return page;
     }
 
