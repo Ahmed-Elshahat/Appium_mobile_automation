@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Account Details Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.urpay.core.TestExecutionListener"/>
+    </listeners>
+    <test name="Account Details Full Flow">
+        <classes>
+            <class name="com.urpay.tests.wallet.AccountDetailsTest">
+                <methods>
+                    <include name="testAccountDetailsFullFlow"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
