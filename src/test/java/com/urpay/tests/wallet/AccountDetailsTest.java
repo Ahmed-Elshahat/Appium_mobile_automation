@@ -17,6 +17,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
+import io.qameta.allure.Step;
 import io.qameta.allure.Story;
 
 /**
@@ -36,70 +37,95 @@ public class AccountDetailsTest extends BaseTest {
             + "balance, footer, cashback, pending amounts, account statement, share → back")
     @Severity(SeverityLevel.CRITICAL)
     public void testAccountDetailsFullFlow() {
-        ConfigManager c = ConfigManager.getInstance();
+        ConfigManager config = ConfigManager.getInstance();
 
-        // Step 1: Login with Account Details user
-        DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("accountDetails.mobileNumber"),
-                c.get("accountDetails.id"),
-                c.get("accountDetails.verificationCode", "1234"),
-                c.get("accountDetails.passCode", "2233"));
-        Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
+        DashboardPage dashboard = login(config);
+        String dashboardBalance = captureDashboardBalance(dashboard);
 
-        // Step 2: Get dashboard balance → navigate to Account Details
-        AccountDetailsFlow flow = new AccountDetailsFlow();
-        String dashboardBalance = flow.getDashboardBalance();
-        Assert.assertNotNull(dashboardBalance, "Dashboard balance should not be null");
-
-        AccountDetailsPage page = flow.navigateToAccountDetails();
+        AccountDetailsPage page = new AccountDetailsFlow().navigateToAccountDetails();
         Assert.assertTrue(page.isAccountDetailsLoaded(),
                 "Account Details header should be visible");
 
-        // Step 3: Verify QR code
+        verifyAccountIdentity(page, config);
+        verifyBalance(page, dashboardBalance);
+        verifyCashback(page);
+        verifyPendingAmounts(page);
+        verifyAccountStatement(page);
+        verifyShareAndReturn(page);
+
+        log.info("Account Details full flow completed successfully");
+    }
+
+    // ══════════════════════════════════════════════════
+    //  ALLURE STEP METHODS
+    // ══════════════════════════════════════════════════
+
+    @Step("Login with Account Details user")
+    private DashboardPage login(ConfigManager config) {
+        DashboardPage dashboard = new LoginFlow().loginWith(
+                config.get("accountDetails.mobileNumber"),
+                config.get("accountDetails.id"),
+                config.get("accountDetails.verificationCode", "1234"),
+                config.get("accountDetails.passCode", "2233"));
+        Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
+        return dashboard;
+    }
+
+    @Step("Capture dashboard balance before navigation")
+    private String captureDashboardBalance(DashboardPage dashboard) {
+        AccountDetailsFlow flow = new AccountDetailsFlow();
+        String balance = flow.getDashboardBalance();
+        Assert.assertNotNull(balance, "Dashboard balance should not be null");
+        return balance;
+    }
+
+    @Step("Verify bank name, IBAN, QR code and copy IBAN")
+    private void verifyAccountIdentity(AccountDetailsPage page, ConfigManager config) {
         Assert.assertTrue(page.isQrCodeVisible(),
                 "QR code should be visible on Account Details page");
         String qrText = page.getQrCodeText();
         Assert.assertTrue(qrText.contains("For transfers use the QR code or details below"),
                 "QR text mismatch. Actual: " + qrText);
 
-        // Step 4: Verify bank name
-        String actualBankName = page.getBankName();
-        Assert.assertEquals(actualBankName, c.get("accountDetails.bankName"),
+        Assert.assertEquals(page.getBankName(), config.get("accountDetails.bankName"),
                 "Bank name should match expected value");
 
-        // Step 5: Verify IBAN & copy
-        String actualIban = page.getIbanText();
-        Assert.assertEquals(actualIban, c.get("accountDetails.iban"),
+        Assert.assertEquals(page.getIbanText(), config.get("accountDetails.iban"),
                 "IBAN should match expected value");
+
         page.tapCopyIban();
         log.info("Copy IBAN tapped");
+    }
 
-        // Step 6: Verify available balance matches dashboard
+    @Step("Verify available balance matches dashboard and footer text")
+    private void verifyBalance(AccountDetailsPage page, String dashboardBalance) {
         String accountBalance = page.getAvailableBalance();
         Assert.assertNotNull(accountBalance, "Available balance should not be null");
         Assert.assertFalse(accountBalance.trim().isEmpty(),
                 "Available balance should not be empty");
+
         BigDecimal accountBd = parseCurrency(accountBalance);
         BigDecimal dashboardBd = parseCurrency(dashboardBalance);
         Assert.assertEquals(accountBd.compareTo(dashboardBd), 0,
                 "Balance mismatch. Account: " + accountBalance + ", Dashboard: " + dashboardBalance);
         log.info("Available balance: {}", accountBalance);
 
-        // Step 7: Verify footer text
         String footerText = page.getFooterText();
         Assert.assertNotNull(footerText, "Footer text should not be null");
         Assert.assertTrue(footerText.contains("Cashback has already been added to your balance"),
                 "Footer mismatch. Actual: " + footerText);
+    }
 
-        // Step 8: Verify cashback — View All → compare amounts → back
+    @Step("Verify cashback details")
+    private void verifyCashback(AccountDetailsPage page) {
         String cashbackBefore = page.getCashbackAmountBefore();
         Assert.assertNotNull(cashbackBefore, "Cashback amount (before) should not be null");
         log.info("Cashback before: {}", cashbackBefore);
+
         page.tapViewAllCashbackDetails();
         try {
-            String cashbackHeader = page.getCashbackScreenHeader();
-            Assert.assertTrue(cashbackHeader.contains("Cashback"),
-                    "Cashback header mismatch. Actual: " + cashbackHeader);
+            Assert.assertTrue(page.getCashbackScreenHeader().contains("Cashback"),
+                    "Cashback header should contain 'Cashback'");
             String cashbackAfter = page.getCashbackAmountAfter();
             Assert.assertNotNull(cashbackAfter, "Cashback amount (after) should not be null");
             log.info("Cashback after: {}", cashbackAfter);
@@ -108,37 +134,50 @@ public class AccountDetailsTest extends BaseTest {
         } finally {
             page.tapBack();
         }
+    }
 
-        // Step 9: Verify pending amounts screen — View All → check header → back
+    @Step("Verify pending amounts")
+    private void verifyPendingAmounts(AccountDetailsPage page) {
         page.tapViewAllHoldAmounts();
         try {
-            String holdHeader = page.getHoldBalanceHeader();
-            Assert.assertTrue(holdHeader.contains("Pending Amounts"),
-                    "Pending Amounts header mismatch. Actual: " + holdHeader);
+            Assert.assertTrue(page.getHoldBalanceHeader().contains("Pending Amounts"),
+                    "Pending Amounts header mismatch");
         } finally {
             page.tapBack();
         }
+    }
 
-        // Step 10: Verify account statement screen → back
+    @Step("Verify account statement")
+    private void verifyAccountStatement(AccountDetailsPage page) {
         page.tapAccountStatement();
         try {
-            String statementHeader = page.getAccountStatementHeader();
-            Assert.assertTrue(statementHeader.contains("Account Statement"),
-                    "Account Statement header mismatch. Actual: " + statementHeader);
+            Assert.assertTrue(page.getAccountStatementHeader().contains("Account Statement"),
+                    "Account Statement header mismatch");
         } finally {
             page.tapBack();
         }
+    }
 
-        // Step 11: Verify share button visible & go back to Dashboard
+    @Step("Verify share button and return to dashboard")
+    private void verifyShareAndReturn(AccountDetailsPage page) {
         Assert.assertTrue(page.isShareButtonVisible(),
                 "Share button should be visible on Account Details page");
         page.tapBack();
-
-        log.info("Account Details full flow completed successfully");
     }
 
+    // ══════════════════════════════════════════════════
+    //  UTILITY
+    // ══════════════════════════════════════════════════
+
     private BigDecimal parseCurrency(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Cannot parse null currency value");
+        }
         String clean = value.replaceAll("[^\\d.]", "").trim();
-        return new BigDecimal(clean.isEmpty() ? "0" : clean);
+        if (clean.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Cannot parse currency from value: '" + value + "' — no digits found");
+        }
+        return new BigDecimal(clean);
     }
 }

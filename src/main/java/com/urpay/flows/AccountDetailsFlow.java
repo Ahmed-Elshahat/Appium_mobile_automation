@@ -3,13 +3,11 @@ package com.urpay.flows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.wallet.AccountDetailsPage;
 import com.urpay.utils.WaitUtils;
 
-import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Step;
 
@@ -23,7 +21,7 @@ import io.qameta.allure.Step;
  * Rules:
  *   - ZERO Thread.sleep()
  *   - NO assertions (returns page objects/values for test to verify)
- *   - NO hardcoded credentials (reads from ConfigManager)
+ *   - NO hardcoded values
  */
 public class AccountDetailsFlow {
 
@@ -52,12 +50,11 @@ public class AccountDetailsFlow {
     public AccountDetailsPage navigateToAccountDetails() {
         dashboardPage.clickWallet();
 
-        // Wait for Account Details screen to load (header text)
-        waits.waitForVisible(
-                AppiumBy.xpath("//android.widget.TextView[@text='Account Details']"), 15);
+        AccountDetailsPage page = new AccountDetailsPage();
+        page.waitUntilLoaded();
         log.info("Account Details page loaded");
 
-        return new AccountDetailsPage();
+        return page;
     }
 
     /**

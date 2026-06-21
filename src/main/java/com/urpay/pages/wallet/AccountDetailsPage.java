@@ -124,7 +124,10 @@ public class AccountDetailsPage extends BasePage {
     // ══════════════════════════════════════════════════
     //  PAGE STATE QUERIES (no assertions — tests decide)
     // ══════════════════════════════════════════════════
-
+    @Step("Wait for Account Details page to load")
+    public void waitUntilLoaded() {
+        waitUtils.waitForVisible(accountDetailsHeader, 15);
+    }
     public boolean isAccountDetailsLoaded() {
         return isDisplayed(accountDetailsHeader, 15);
     }
@@ -186,9 +189,9 @@ public class AccountDetailsPage extends BasePage {
     @Step("Tap 'View All' Cashback Details button")
     public void tapViewAllCashbackDetails() {
         tap(viewAllCashbackButton);
-        // Wait for Cashback Details screen to load
+        // Wait for Cashback Details screen header with distinct text
         waitUtils.waitForVisible(
-                AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"), 10);
+                AppiumBy.xpath("//android.widget.TextView[contains(@text,'Cashback')]"), 10);
     }
 
     @Step("Get cashback amount from Cashback Details screen")
@@ -198,7 +201,7 @@ public class AccountDetailsPage extends BasePage {
 
     @Step("Get Cashback screen header text")
     public String getCashbackScreenHeader() {
-        return getText(AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"));
+        return getText(AppiumBy.xpath("//android.widget.TextView[contains(@text,'Cashback')]"));
     }
 
     // ══════════════════════════════════════════════════
@@ -208,14 +211,14 @@ public class AccountDetailsPage extends BasePage {
     @Step("Tap 'View All Incoming Hold Amounts' button")
     public void tapViewAllHoldAmounts() {
         tap(viewAllHoldAmountsButton);
-        // Wait for Hold Balance screen to load
+        // Wait for Pending Amounts screen header with distinct text
         waitUtils.waitForVisible(
-                AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"), 10);
+                AppiumBy.xpath("//android.widget.TextView[contains(@text,'Pending Amounts')]"), 10);
     }
 
     @Step("Get Hold Balance screen header text")
     public String getHoldBalanceHeader() {
-        return getText(AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"));
+        return getText(AppiumBy.xpath("//android.widget.TextView[contains(@text,'Pending Amounts')]"));
     }
 
     // ══════════════════════════════════════════════════
@@ -226,14 +229,14 @@ public class AccountDetailsPage extends BasePage {
     public void tapAccountStatement() {
         swipeUp();
         tap(accountStatementButton);
-        // Wait for Account Statement screen to load
+        // Wait for Account Statement screen header with distinct text
         waitUtils.waitForVisible(
-                AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"), 10);
+                AppiumBy.xpath("//android.widget.TextView[contains(@text,'Account Statement')]"), 10);
     }
 
     @Step("Get Account Statement screen header text")
     public String getAccountStatementHeader() {
-        return getText(AppiumBy.accessibilityId("testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42"));
+        return getText(AppiumBy.xpath("//android.widget.TextView[contains(@text,'Account Statement')]"));
     }
 
     // ══════════════════════════════════════════════════
