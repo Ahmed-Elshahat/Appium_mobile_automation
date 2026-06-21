@@ -1,10 +1,6 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="Government Services Suite" verbose="1" parallel="tests" thread-count="2">
-    <listeners>
-        <listener class-name="com.urpay.core.TestExecutionListener"/>
-    </listeners>
-
-    <!-- Single Violation - own device -->
+<!-- Single Violation - own device -->
     <test name="Gov - Single Violation Payment">
         <classes>
             <class name="com.urpay.tests.payments.GovernmentServicesTest"/>

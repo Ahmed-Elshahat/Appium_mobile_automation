@@ -1,9 +1,6 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="Travel E-SIM Suite" verbose="1">
-    <listeners>
-        <listener class-name="com.urpay.core.TestExecutionListener"/>
-    </listeners>
-    <test name="Travel E-SIM Purchase">
+<test name="Travel E-SIM Purchase">
         <groups>
             <run>
                 <include name="travel-esim"/>

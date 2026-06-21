@@ -44,27 +44,26 @@ public class GovernmentServicesFlow {
 
     /** Locator that matches when Government Services page is loaded */
     private static final By GOV_PAGE_LOADED = AppiumBy.xpath(
-            "//*[@content-desc='testID-multi-select-category'] | "
-                    + "//*[@text='Traffic Violations'] | "
-                    + "//*[@text='Government Services']");
+            "//*[@content-desc='testID-multi-select-category' or @name='testID-multi-select-category'] | "
+                    + "//*[@text='Traffic Violations' or @label='Traffic Violations'] | "
+                    + "//*[@text='Government Services' or @label='Government Services']");
 
     /** Locator for violations list loaded */
-    private static final By VIOLATIONS_LOADED = AppiumBy.xpath(
-            "//*[@content-desc='testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0']");
+    private static final By VIOLATIONS_LOADED =
+            AppiumBy.accessibilityId("testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0");
 
     private static final By INSUFFICIENT_BALANCE = AppiumBy.xpath(
-            "//*[contains(@text,'Insufficient Balance')]");
+            "//*[contains(@text,'Insufficient Balance') or contains(@label,'Insufficient Balance')]");
 
     /** Locator for confirm payment screen */
-    private static final By CONFIRM_SCREEN = AppiumBy.xpath(
-            "//*[@content-desc='testID-primary-onConfirm-main']");
+    private static final By CONFIRM_SCREEN =
+            AppiumBy.accessibilityId("testID-primary-onConfirm-main");
 
     /** Locator for done/success screen */
     private static final By DONE_SCREEN = AppiumBy.xpath(
-            "//*[@content-desc='testID-primary-onPressDone-main'] | "
-                    + "//*[@text='Done'] | "
-                    + "//*[contains(@text,'Success')] | "
-                    + "//*[contains(@text,'success')]");
+            "//*[@content-desc='testID-primary-onPressDone-main' or @name='testID-primary-onPressDone-main'] | "
+                    + "//*[@text='Done' or @label='Done'] | "
+                    + "//*[contains(@text,'Success') or contains(@label,'Success')]");
 
     private final AppiumDriver driver;
     private final WaitUtils waits;

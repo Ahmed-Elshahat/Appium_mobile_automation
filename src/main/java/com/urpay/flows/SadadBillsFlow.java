@@ -51,9 +51,10 @@ public class SadadBillsFlow {
 
     /** Locator that matches when Saddad Bills page is loaded (tabs OR empty state) */
     private static final org.openqa.selenium.By SADAD_PAGE_LOADED = AppiumBy.xpath(
-            "//*[@content-desc='testID-tags-menu-0'] | "
-                    + "//*[@content-desc='testID-IconView.dddbe7a7-5de7-48e0-8d3f-90dd4f5eb995.Plus'] | "
-                    + "//*[@text='My bills' or @text='New Bill']");
+            "//*[@content-desc='testID-tags-menu-0' or @name='testID-tags-menu-0'] | "
+                    + "//*[@content-desc='testID-IconView.dddbe7a7-5de7-48e0-8d3f-90dd4f5eb995.Plus' "
+                    + "or @name='testID-IconView.dddbe7a7-5de7-48e0-8d3f-90dd4f5eb995.Plus'] | "
+                    + "//*[@text='My bills' or @label='My bills' or @text='New Bill' or @label='New Bill']");
 
     private final AppiumDriver driver;
     private final WaitUtils waits;

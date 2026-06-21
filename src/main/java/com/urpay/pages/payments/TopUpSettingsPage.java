@@ -33,8 +33,9 @@ public class TopUpSettingsPage extends BasePage {
     // ── Top-Up Settings Entry ─────────────────────────
     // Visible after scrolling down on the Add Money screen
     private static final By TOP_UP_SETTINGS_BTN = AppiumBy.xpath(
-            "//*[@text='Top Up Settings' or @text='Top-Up Settings'"
-            + " or contains(@text,'Settings')]");
+            "//*[@text='Top Up Settings' or @label='Top Up Settings'"
+            + " or @text='Top-Up Settings' or @label='Top-Up Settings'"
+            + " or contains(@text,'Settings') or contains(@label,'Settings')]");
 
     // ── Auto Top-Up Tab / Arrow ───────────────────────
     @AndroidFindBy(xpath = "//*[contains(@content-desc,'testID-TouchableWithoutFeedback.af5035ae')][1]")
@@ -57,17 +58,17 @@ public class TopUpSettingsPage extends BasePage {
     // ── Limit Configuration ───────────────────────────
     // First input-container = top-up limit, second = lower limit
     private static final By SET_TOPUP_LIMIT_BTN = AppiumBy.xpath(
-            "(//*[@content-desc='testID-input-container-undefined'])[1]");
+            "(//*[@content-desc='testID-input-container-undefined' or @name='testID-input-container-undefined'])[1]");
 
     private static final By SET_LOWER_LIMIT_BTN = AppiumBy.xpath(
-            "(//*[@content-desc='testID-input-container-undefined'])[2]");
+            "(//*[@content-desc='testID-input-container-undefined' or @name='testID-input-container-undefined'])[2]");
 
     @AndroidFindBy(xpath = "//*[contains(@content-desc,'testID-TextInput.')]")
     @iOSXCUITFindBy(xpath = "//*[contains(@name,'testID-TextInput.')]")
     private WebElement limitInputField;
 
     private static final By SAVE_BTN = AppiumBy.xpath(
-            "//*[@text='Save' or @text='SAVE']");
+            "//*[@text='Save' or @label='Save' or @text='SAVE' or @label='SAVE']");
 
     // ── Confirm Auto Top-Up ───────────────────────────
     @AndroidFindBy(accessibility = "testID-primary-onSave-main")

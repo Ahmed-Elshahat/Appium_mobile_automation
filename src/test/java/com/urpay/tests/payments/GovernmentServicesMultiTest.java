@@ -36,15 +36,15 @@ public class GovernmentServicesMultiTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
 
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("gov.mobileNumber"),
-                c.get("gov.id"),
-                c.get("gov.verificationCode", "1234"),
-                c.get("gov.passCode", "2233"));
+                c.get("gov.multi.mobileNumber"),
+                c.get("gov.multi.id"),
+                c.get("gov.multi.verificationCode", "1234"),
+                c.get("gov.multi.passCode", "2233"));
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
         GovernmentServicesFlow flow = new GovernmentServicesFlow();
         GovernmentServicesPage page = flow.payMultipleViolations(
-                c.get("gov.violatorId", "1131236050"));
+                c.get("gov.multi.violatorId", "1131236050"));
 
         Assert.assertTrue(page.isDoneButtonVisible(30),
                 "Done button should be visible after multi-violation payment");

@@ -16,6 +16,8 @@ import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
+import com.urpay.platform.health.AppHealthChecker;
+import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
 
@@ -60,6 +62,36 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
 
         try {
             AppiumDriver driver = DriverFactory.getInstance().getDriver();
+
+            // Capture app health state before screenshot/recovery
+            try {
+                AppHealthChecker healthChecker = AppHealthCheckerFactory.create(driver);
+                String appState = healthChecker.getAppState();
+                boolean inForeground = healthChecker.isAppInForeground();
+                boolean crashed = healthChecker.hasAppCrashed();
+
+                String healthReport = String.format(
+                        "App State: %s | Foreground: %s | Crashed: %s",
+                        appState, inForeground, crashed);
+                log.info("Health check for {}: {}", testName, healthReport);
+
+                // Attach health info to Allure
+                Files.createDirectories(ALLURE_DIR);
+                String healthFileName = UUID.randomUUID() + "-health.txt";
+                Files.write(ALLURE_DIR.resolve(healthFileName),
+                        healthReport.getBytes(StandardCharsets.UTF_8));
+
+                if (crashed) {
+                    log.error("⚠ APP CRASHED during {}", testName);
+                    ReportManager.fail("APP CRASH DETECTED: " + healthReport);
+                } else if (!inForeground) {
+                    log.warn("⚠ App not in foreground during {}: {}", testName, appState);
+                    ReportManager.fail("APP NOT IN FOREGROUND: " + healthReport);
+                }
+            } catch (Exception healthEx) {
+                log.debug("Health check unavailable: {}", healthEx.getMessage());
+            }
+
             byte[] screenshotBytes = ScreenshotUtils.takeScreenshotAsBytes(driver);
 
             if (screenshotBytes.length > 0) {

@@ -1,11 +1,6 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="Telecom Recharge Collection" verbose="1" parallel="tests" thread-count="3">
-
-    <listeners>
-        <listener class-name="com.urpay.core.TestExecutionListener"/>
-    </listeners>
-
-    <!--
+<!--
         3 parallel LambdaTest sessions — each provider on its own device.
         Each <test> block = 1 thread = 1 LambdaTest session = 1 login.
         Tests within each block run sequentially via dependsOnMethods.
