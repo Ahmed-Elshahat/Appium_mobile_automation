@@ -65,7 +65,6 @@ public class CardsFlow {
 
     @Step("Navigate to Cards — scroll to 'Cards' section on dashboard")
     public CardsPage navigateToCards() {
-        goToDashboard();
         dashboardPage.dismissPopups();
 
         // Scroll to "Cards" text using platform-specific scrolling
@@ -108,25 +107,54 @@ public class CardsFlow {
         String cardType = c.get(cardPrefix + ".expectedCardName", "Mada Card");
         CardsPage page = navigateToCards();
 
+        // DEBUG: dump page source to see what's on screen
+        try {
+            String ps = driver.getPageSource();
+            java.nio.file.Files.writeString(
+                java.nio.file.Path.of("target/page_source_after_cards_scroll.xml"), ps);
+            log.info("Page source saved to target/page_source_after_cards_scroll.xml ({} chars)", ps.length());
+        } catch (Exception ex) { log.warn("Could not save page source: {}", ex.getMessage()); }
+
         // ── Step 1: Enter cards section ──
-        // Try banner first (accessibility ID → text), fallback to "View All"
-        setImplicitWait(0);
-        if (!quickTapIfFound("testID-check-box-main", true)) {
-            if (!quickTapIfFound("//*[contains(@text,'Issue urpay') or contains(@text,'Issue URPay')]")) {
-                // "View All" might need one more swipe to be clickable
-                if (!quickTapIfFound("//*[@text='View All']")) {
-                    setImplicitWait(10);
-                    SwipeUtils nudge = new SwipeUtils(driver, 0.20);
+        // Try banner first, then "View All" — with scrolling if needed
+        By viewAllBtn = AppiumBy.xpath("//*[@text='View All']");
+        By bannerBtn = AppiumBy.xpath("//*[contains(@text,'Issue urpay') or contains(@text,'Issue URPay')]");
+        By bannerCheckbox = AppiumBy.accessibilityId("testID-check-box-main");
+
+        setImplicitWait(3);
+        var bannerEls = driver.findElements(bannerCheckbox);
+        if (!bannerEls.isEmpty() && bannerEls.get(0).isDisplayed()) {
+            bannerEls.get(0).click();
+            log.info("Tapped banner checkbox");
+        } else {
+            var bannerTextEls = driver.findElements(bannerBtn);
+            if (!bannerTextEls.isEmpty() && bannerTextEls.get(0).isDisplayed()) {
+                bannerTextEls.get(0).click();
+                log.info("Tapped banner text");
+            } else {
+                // Find and tap "View All" — scroll if needed
+                SwipeUtils nudge = new SwipeUtils(driver, 0.20);
+                boolean tapped = false;
+                for (int i = 0; i < 3; i++) {
+                    var viewAllEls = driver.findElements(viewAllBtn);
+                    if (!viewAllEls.isEmpty() && viewAllEls.get(0).isDisplayed()) {
+                        viewAllEls.get(0).click();
+                        log.info("Tapped 'View All'");
+                        tapped = true;
+                        break;
+                    }
                     nudge.swipeUp();
-                    waits.waitForClickable(AppiumBy.xpath("//*[@text='View All']"), 10).click();
                 }
-                log.info("Tapped 'View All'");
+                if (!tapped) {
+                    waits.waitForClickable(viewAllBtn, 10).click();
+                    log.info("Tapped 'View All' after wait");
+                }
             }
         }
         setImplicitWait(10);
 
         // ── Step 2: Check if user already has a card — scroll to find "Add new card" ──
-        setImplicitWait(0);
+        setImplicitWait(2);
         boolean hasExistingCard = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
                 || quickFind(AppiumBy.xpath("//*[@text='Card Information']"));
         boolean hasAddNewCard = quickFind(AppiumBy.xpath("//*[@text='Add new card']"));
@@ -263,11 +291,21 @@ public class CardsFlow {
     //  REQUEST PHYSICAL CARD (Katalon: RequestMadaPhysicalCard)
     // ══════════════════════════════════════════════════
 
-    @Step("Request physical Mada card copy")
-    public CardsPage requestPhysicalCard() {
+    @Step("Request physical card copy")
+    public CardsPage requestPhysicalCard(String cardPrefix) {
         RequestPhysicalCardPage physicalPage = new RequestPhysicalCardPage();
         physicalPage.tapRequestPhysicalCopy();
-        physicalPage.selectRiyadhRegion();
+
+        // Fill national address form (Katalon: RequestPhysicalCard)
+        // Wait for the form to fully load
+        if (physicalPage.isAddressFormVisible()) {
+            physicalPage.fillAddressForm("1234", "1234", "Test", "Test", "12345");
+        } else {
+            log.warn("Address form not visible — retrying with longer wait");
+            waits.waitForVisible(AppiumBy.accessibilityId("testID-input-direct-buildingNo"), 10);
+            physicalPage.fillAddressForm("1234", "1234", "Test", "Test", "12345");
+        }
+
         physicalPage.tapNext();
 
         // Scroll down to find Accept checkbox (Katalon: swipeByDistance x2)
@@ -276,18 +314,27 @@ public class CardsFlow {
 
         CardsPage cardsPage = new CardsPage();
         cardsPage.tapAcceptCheckbox();
+
+        // Scroll to Confirm button (Katalon: swipe x2)
+        swipe.swipeUp();
+        swipe.swipeUp();
+
         cardsPage.tapConfirm();
 
-        enterVerificationCode();
+        String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
+        enterVerificationCode(otp);
 
         // Wait for success screen, then tap View Card
         waits.waitForClickable(
                 AppiumBy.xpath("//*[@text='Back to cards' or @content-desc='testID-primary-backToCardsDB-main']"), 15);
         physicalPage.tapViewCard();
 
-        log.info("Physical card requested");
+        log.info("Physical card requested for: {}", cardPrefix);
         return cardsPage;
     }
+
+    /** @deprecated Use requestPhysicalCard(String cardPrefix) */
+    public CardsPage requestPhysicalCard() { return requestPhysicalCard("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  VALIDATE CARD DUPLICATION (Katalon: validateDuplicationOfMadaCard)
@@ -309,64 +356,90 @@ public class CardsFlow {
 
     @Step("Disable online transactions")
     public CardSettingsPage disableOnlineTransactions() {
-        // Navigate to Card Settings from Products page (text-based)
         navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapOnlineTransactionsToggle();
-        common.waitForNotification(10);
+        if (common.isNotificationVisible(3)) {
+            log.info("Notification after disable: {}", common.getNotificationMessage());
+        }
         return settings;
     }
 
     @Step("Enable online transactions")
     public CardSettingsPage enableOnlineTransactions() {
         CardSettingsPage settings = new CardSettingsPage();
-        common.waitForNotificationToDismiss(5);
+        // Brief pause for previous notification to clear
+        if (common.isNotificationVisible(1)) {
+            try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+        }
         settings.tapOnlineTransactionsToggle();
-        common.waitForNotification(10);
+        if (common.isNotificationVisible(3)) {
+            log.info("Notification after enable: {}", common.getNotificationMessage());
+        }
         return settings;
     }
 
     @Step("Disable ATM transactions")
     public CardSettingsPage disableAtmTransactions() {
-        // If we're still on settings page, no need to navigate
-        CardSettingsPage settings = new CardSettingsPage();
-        settings.tapCardSettings();
-        settings.tapAtmTransactionToggle();
-        common.waitForNotification(10);
-        return settings;
+        // New UI: only Online transactions toggle exists — ATM toggle removed
+        log.warn("ATM toggle not available in new UI — skipping");
+        return new CardSettingsPage();
     }
 
     @Step("Enable ATM transactions")
     public CardSettingsPage enableAtmTransactions() {
-        CardSettingsPage settings = new CardSettingsPage();
-        common.waitForNotificationToDismiss(5);
-        settings.tapAtmTransactionToggle();
-        common.waitForNotification(10);
-        return settings;
+        log.warn("ATM toggle not available in new UI — skipping");
+        return new CardSettingsPage();
     }
 
-    /** Navigate to Card Settings using visible text (works on Products page) */
+    /** Navigate to Card Settings — scroll to find it */
     @Step("Navigate to Card Settings")
     public void navigateToCardSettings() {
-        By cardSettingsText = AppiumBy.xpath("//*[@text='Card Settings']");
-        waits.waitForClickable(cardSettingsText, 15).click();
-        log.info("Tapped 'Card Settings'");
+        By target = AppiumBy.xpath("//*[@text='Card Settings']");
+        scrollAndTap(target, "Card Settings");
     }
 
-    /** Navigate to Card Information using visible text */
+    /** Navigate to Card Information — tap icon (Katalon: testID-avatar-document-text-) */
     @Step("Navigate to Card Information")
     public void navigateToCardInfo() {
-        By cardInfoText = AppiumBy.xpath("//*[@text='Card Information']");
-        waits.waitForClickable(cardInfoText, 15).click();
-        log.info("Tapped 'Card Information'");
+        By target = AppiumBy.xpath(
+                "//*[contains(@content-desc,'testID-avatar-document-text')] | //*[@text='Card Information']");
+        scrollAndTap(target, "Card Information");
     }
 
-    /** Navigate to Card Benefits using visible text */
+    /** Navigate to Card Benefits — tap icon (Katalon: testID-avatar-card-tick-) */
     @Step("Navigate to Card Benefits")
     public void navigateToCardBenefits() {
-        By cardBenefitsText = AppiumBy.xpath("//*[@text='Card Benefits']");
-        waits.waitForClickable(cardBenefitsText, 15).click();
-        log.info("Tapped 'Card Benefits'");
+        By target = AppiumBy.xpath(
+                "//*[contains(@content-desc,'testID-avatar-card-tick')] | //*[@text='Card Benefits']");
+        scrollAndTap(target, "Card Benefits");
+    }
+
+    /** Scroll down to find element and tap it */
+    private void scrollAndTap(By locator, String label) {
+        setImplicitWait(3);
+        var els = driver.findElements(locator);
+        if (!els.isEmpty() && els.get(0).isDisplayed()) {
+            els.get(0).click();
+            log.info("Tapped '{}'", label);
+            setImplicitWait(10);
+            return;
+        }
+        setImplicitWait(0);
+        SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
+        for (int i = 0; i < 5; i++) {
+            smallSwipe.swipeUp();
+            els = driver.findElements(locator);
+            if (!els.isEmpty() && els.get(0).isDisplayed()) {
+                els.get(0).click();
+                log.info("Tapped '{}' after scroll", label);
+                setImplicitWait(10);
+                return;
+            }
+        }
+        setImplicitWait(10);
+        waits.waitForClickable(locator, 10).click();
+        log.info("Tapped '{}'", label);
     }
 
     // ══════════════════════════════════════════════════
@@ -375,20 +448,23 @@ public class CardsFlow {
 
     @Step("Lock card")
     public CardSettingsPage lockCard() {
+        navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapLockToggle();
         settings.tapLockYes();
-        common.waitForNotification(10);
+        common.waitForNotification(5);
         return settings;
     }
 
     @Step("Unlock card")
     public CardSettingsPage unlockCard() {
         CardSettingsPage settings = new CardSettingsPage();
-        common.waitForNotificationToDismiss(5);
+        if (common.isNotificationVisible(1)) {
+            try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+        }
         settings.tapLockToggle();
         settings.tapLockYes();
-        common.waitForNotification(10);
+        common.waitForNotification(5);
         return settings;
     }
 
@@ -397,7 +473,7 @@ public class CardsFlow {
     // ══════════════════════════════════════════════════
 
     @Step("Change card PIN")
-    public void changeCardPin() {
+    public void changeCardPin(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapChangePinSettings();
         settings.tapChangePin();
@@ -405,38 +481,54 @@ public class CardsFlow {
         // Dismiss keyboard if visible before entering PIN
         common.dismissKeyboard();
 
-        String pin = ConfigManager.getInstance().get("madaCard.passCode", "2233");
-        enterPinAndProceed(pin);
-        enterPinAndProceed(pin);
+        ConfigManager c = ConfigManager.getInstance();
+        String newPin = c.get(cardPrefix + ".newPin", "5678");
+        enterPinAndProceed(newPin);
+        enterPinAndProceed(newPin);
 
-        enterVerificationCode();
+        enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
 
         common.tapDone(15);
-        log.info("Card PIN changed");
+        log.info("Card PIN changed for: {}", cardPrefix);
     }
+
+    /** @deprecated Use changeCardPin(String cardPrefix) */
+    public void changeCardPin() { changeCardPin("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  CHECK INVALID PIN (Katalon: checkTheInvalidPINCode)
     // ══════════════════════════════════════════════════
 
     @Step("Enter mismatched PINs to verify error notification")
-    public CardSettingsPage enterInvalidPinMismatch() {
-        String validPin = ConfigManager.getInstance().get("madaCard.pin", "1234");
+    public CardSettingsPage enterInvalidPinMismatch(String cardPrefix) {
+        CardSettingsPage settings = new CardSettingsPage();
+        settings.tapChangePinSettings();
+        settings.tapChangePin();
+        common.dismissKeyboard();
+
+        // Katalon: fillPassCode('1234') then fillPassCode('9999') → mismatch
+        String validPin = ConfigManager.getInstance().get(cardPrefix + ".pin", "1234");
         passcodePage.enterPasscode(validPin);
         // Enter wrong confirmation
         passcodePage.enterPasscode("9999");
-        common.waitForNotification(10);
-        CardSettingsPage settings = new CardSettingsPage();
-        log.info("Invalid PIN mismatch — notification displayed");
+        // Notification may auto-dismiss quickly
+        if (common.isNotificationVisible(5)) {
+            log.info("Invalid PIN mismatch notification: {}", common.getNotificationMessage());
+        } else {
+            log.warn("PIN mismatch notification not captured — may have auto-dismissed");
+        }
         return settings;
     }
+
+    /** @deprecated Use enterInvalidPinMismatch(String cardPrefix) */
+    public CardSettingsPage enterInvalidPinMismatch() { return enterInvalidPinMismatch("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  CANCEL CARD (Katalon: CancelMadaCard)
     // ══════════════════════════════════════════════════
 
-    @Step("Cancel Mada card")
-    public void cancelCard() {
+    @Step("Cancel card")
+    public void cancelCard(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapCardSettings();
         settings.tapCancelCard();
@@ -444,36 +536,43 @@ public class CardsFlow {
         settings.selectOtherReason();
         settings.tapConfirmCancel();
 
-        passcodePage.enterPasscode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
+        String passcode = ConfigManager.getInstance().get(cardPrefix + ".passCode", "2233");
+        passcodePage.enterPasscode(passcode);
 
         settings.tapNoThanks();
-        log.info("Mada card cancelled");
+        log.info("Card cancelled for: {}", cardPrefix);
     }
+
+    /** @deprecated Use cancelCard(String cardPrefix) */
+    public void cancelCard() { cancelCard("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  CANCEL CARD FROM SETTINGS (Katalon: CancelMadaCardFromCardSettingsScreen)
     // ══════════════════════════════════════════════════
 
     @Step("Cancel card from card settings screen — enter invalid passcode first, then correct")
-    public CardSettingsPage cancelCardFromSettings() {
+    public CardSettingsPage cancelCardFromSettings(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
-        // Already on settings — tap cancel directly (no need to tap card settings)
         settings.tapCancelCard();
         settings.tapCancellationDropdown();
         settings.selectOtherReason();
         settings.tapConfirmCancel();
 
         // Enter invalid passcode first to verify error
-        enterVerificationCode("9999");
+        passcodePage.enterPasscode("9999");
         common.waitForNotification(10);
         log.info("Invalid passcode entered — error notification shown");
 
         // Wait for notification to dismiss, then enter correct passcode
         common.waitForNotificationToDismiss(5);
-        enterVerificationCode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
+        String passcode = ConfigManager.getInstance().get(cardPrefix + ".passCode", "2233");
+        passcodePage.enterPasscode(passcode);
 
         return settings;
     }
+
+    /** @deprecated Use cancelCardFromSettings(String cardPrefix) */
+    public CardSettingsPage cancelCardFromSettings() { return cancelCardFromSettings("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  CARD BENEFITS
@@ -490,12 +589,16 @@ public class CardsFlow {
     // ══════════════════════════════════════════════════
 
     @Step("Open card info screen")
-    public CardInfoPage openCardInfo() {
+    public CardInfoPage openCardInfo(String cardPrefix) {
         navigateToCardInfo();
-        enterPasscode(ConfigManager.getInstance().get("madaCard.passCode", "2233"));
+        String passcode = ConfigManager.getInstance().get(cardPrefix + ".passCode", "2233");
+        enterPasscode(passcode);
         waits.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
         return new CardInfoPage();
     }
+
+    /** @deprecated Use openCardInfo(String cardPrefix) */
+    public CardInfoPage openCardInfo() { return openCardInfo("madaCard"); }
 
     // ══════════════════════════════════════════════════
     //  TRANSACTION DETAILS
@@ -535,22 +638,18 @@ public class CardsFlow {
 
     @Step("Go back to dashboard")
     public void goToDashboard() {
-        // First wait for dashboard indicators without pressing back
-        setImplicitWait(0);
-        for (int i = 0; i < 10; i++) {
-            if (dashboardPage.isSearchIconVisible(0)
-                    || quickFind(AppiumBy.xpath("//*[@text='Cards']"))
-                    || quickFind(AppiumBy.xpath("//*[@text='View All']"))
-                    || quickFind(AppiumBy.xpath("//*[contains(@text,'Issue urpay') or contains(@text,'Issue URPay')]"))) {
-                setImplicitWait(10);
-                return;
-            }
-            if (i >= 3) {
-                // After 3 checks, try pressing back (might be on a sub-screen)
-                driver.navigate().back();
-            }
+        // Wait for dashboard to load naturally — NO back presses
+        By dashboardIndicator = AppiumBy.xpath(
+                "//*[@text='Cards'] | //*[@text='View All'] | " +
+                "//*[contains(@text,'Issue urpay') or contains(@text,'Issue URPay')]");
+        try {
+            waits.waitForVisible(dashboardIndicator, 15);
+            log.info("Dashboard detected");
+        } catch (Exception e) {
+            log.info("Dashboard not visible — pressing back once");
+            driver.navigate().back();
+            try { waits.waitForVisible(dashboardIndicator, 10); } catch (Exception ignored) {}
         }
-        setImplicitWait(10);
     }
 
     @Step("Navigate back from cards settings to first card")

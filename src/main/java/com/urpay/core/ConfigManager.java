@@ -90,8 +90,22 @@ public class ConfigManager {
         String envVal = System.getenv(envKey);
         if (envVal != null && !envVal.isEmpty()) return envVal;
 
-        // 3. Properties file
-        return properties.getProperty(key, defaultValue);
+        // 3. Properties file (resolve ${ENV_VAR} placeholders)
+        String raw = properties.getProperty(key, defaultValue);
+        return resolveEnvPlaceholders(raw);
+    }
+
+    private String resolveEnvPlaceholders(String value) {
+        if (value == null || !value.contains("${")) return value;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\$\\{([^}]+)\\}").matcher(value);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String envName = m.group(1);
+            String resolved = System.getenv(envName);
+            m.appendReplacement(sb, resolved != null ? java.util.regex.Matcher.quoteReplacement(resolved) : "");
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
     public int getInt(String key, int defaultValue) {

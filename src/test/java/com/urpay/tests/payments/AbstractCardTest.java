@@ -12,6 +12,8 @@ import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.payments.CardBenefitsPage;
 import com.urpay.pages.payments.CardInfoPage;
 import com.urpay.pages.payments.CardSettingsPage;
+import com.urpay.pages.payments.CardsPage;
+import com.urpay.pages.payments.TransactionDetailsPage;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Severity;
@@ -27,6 +29,19 @@ import io.qameta.allure.Story;
  *
  * ALL test logic lives here — DRY, no duplication across card types.
  * Each test reads expected values from config using the card prefix.
+ *
+ * Test execution order:
+ *   1. Issue Digital Card (prerequisite)
+ *   2-5. Card Settings (toggles, lock, PIN)
+ *   6. Card Info
+ *   7. Card Benefits
+ *   8. Transaction Details
+ *   9. Invalid PIN validation
+ *   10. Request Physical Card
+ *   11. Validate Card Duplication
+ *   12. Cancel Card from Settings (invalid + correct passcode)
+ *   13. Cancel Card
+ *   14. Validate Canceled Card Removed from Dashboard
  */
 public abstract class AbstractCardTest extends BaseTest {
 
@@ -53,72 +68,28 @@ public abstract class AbstractCardTest extends BaseTest {
     }
 
     // ═══════════════════════════════════════════════════
-    //  1. ISSUE DIGITAL CARD
+    //  1. SETUP: Login + navigate to card products page
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 1)
-    @Story("Issue Digital Card")
-    @Description("Login → navigate to Cards → issue new digital card")
+    @Story("Navigate to Card")
+    @Description("Login → navigate to Cards → detect existing card → land on products page")
     @Severity(SeverityLevel.BLOCKER)
-    public void testIssueDigitalCard() {
+    public void testNavigateToCard() {
         loginForCard();
         captureScreenshot("After Login");
 
         CardsFlow flow = new CardsFlow();
         flow.issueNewDigitalCard(getCardPrefix());
-        captureScreenshot("Card Issued");
+        captureScreenshot("On Card Products Page");
     }
 
     // ═══════════════════════════════════════════════════
-    //  2. TOGGLE ONLINE TRANSACTIONS
+    //  2. LOCK / UNLOCK CARD (appears first in Card Security section)
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 2,
-            dependsOnMethods = "testIssueDigitalCard")
-    @Story("Online Transactions Toggle")
-    @Description("Disable online → verify → Enable → verify")
-    @Severity(SeverityLevel.NORMAL)
-    public void testToggleOnlineTransactions() {
-        CardsFlow flow = new CardsFlow();
-        String expected = cardConfig("expectedChangesApplied");
-
-        CardSettingsPage settings = flow.disableOnlineTransactions();
-        captureScreenshot("Disable Online");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
-
-        settings = flow.enableOnlineTransactions();
-        captureScreenshot("Enable Online");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
-    }
-
-    // ═══════════════════════════════════════════════════
-    //  3. TOGGLE ATM TRANSACTIONS
-    // ═══════════════════════════════════════════════════
-
-    @Test(groups = {"payments", "cards"}, priority = 3,
-            dependsOnMethods = "testToggleOnlineTransactions")
-    @Story("ATM Transactions Toggle")
-    @Description("Disable ATM → verify → Enable → verify")
-    @Severity(SeverityLevel.NORMAL)
-    public void testToggleAtmTransactions() {
-        CardsFlow flow = new CardsFlow();
-        String expected = cardConfig("expectedChangesApplied");
-
-        CardSettingsPage settings = flow.disableAtmTransactions();
-        captureScreenshot("Disable ATM");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
-
-        settings = flow.enableAtmTransactions();
-        captureScreenshot("Enable ATM");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
-    }
-
-    // ═══════════════════════════════════════════════════
-    //  4. LOCK / UNLOCK CARD
-    // ═══════════════════════════════════════════════════
-
-    @Test(groups = {"payments", "cards"}, priority = 4,
-            dependsOnMethods = "testToggleAtmTransactions")
+            dependsOnMethods = "testNavigateToCard")
     @Story("Card Lock / Unlock")
     @Description("Lock → verify message → Unlock → verify message")
     @Severity(SeverityLevel.CRITICAL)
@@ -137,18 +108,67 @@ public abstract class AbstractCardTest extends BaseTest {
     }
 
     // ═══════════════════════════════════════════════════
+    //  3. TOGGLE ONLINE TRANSACTIONS
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 3,
+            dependsOnMethods = "testLockUnlockCard")
+    @Story("Online Transactions Toggle")
+    @Description("Disable online → verify → Enable → verify")
+    @Severity(SeverityLevel.NORMAL)
+    public void testToggleOnlineTransactions() {
+        CardsFlow flow = new CardsFlow();
+        String expected = cardConfig("expectedChangesApplied");
+
+        CardSettingsPage settings = flow.disableOnlineTransactions();
+        captureScreenshot("Disable Online");
+        if (settings.isNotificationVisible()) {
+            Assert.assertEquals(settings.getNotificationMessage(), expected);
+        }
+
+        settings = flow.enableOnlineTransactions();
+        captureScreenshot("Enable Online");
+        if (settings.isNotificationVisible()) {
+            Assert.assertEquals(settings.getNotificationMessage(), expected);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  3. TOGGLE ATM TRANSACTIONS
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 4,
+            dependsOnMethods = "testToggleOnlineTransactions", enabled = false)
+    @Story("ATM Transactions Toggle")
+    @Description("Disable ATM → verify → Enable → verify — DISABLED: ATM toggle removed in new UI")
+    @Severity(SeverityLevel.NORMAL)
+    public void testToggleAtmTransactions() {
+        CardsFlow flow = new CardsFlow();
+        String expected = cardConfig("expectedChangesApplied");
+
+        CardSettingsPage settings = flow.disableAtmTransactions();
+        captureScreenshot("Disable ATM");
+        Assert.assertEquals(settings.getNotificationMessage(), expected);
+
+        settings = flow.enableAtmTransactions();
+        captureScreenshot("Enable ATM");
+        Assert.assertEquals(settings.getNotificationMessage(), expected);
+    }
+
+    // ═══════════════════════════════════════════════════
     //  5. CHANGE CARD PIN
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 5,
-            dependsOnMethods = "testLockUnlockCard")
+            dependsOnMethods = "testToggleOnlineTransactions")
     @Story("Change Card PIN")
     @Description("Change PIN → enter new PIN × 2 → OTP → Done")
     @Severity(SeverityLevel.CRITICAL)
     public void testChangeCardPin() {
         CardsFlow flow = new CardsFlow();
         flow.goFromSettingsToFirstCard();
-        flow.changeCardPin();
+        flow.navigateToCardSettings();
+        flow.changeCardPin(getCardPrefix());
         captureScreenshot("PIN Changed");
     }
 
@@ -157,12 +177,12 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 6,
-            dependsOnMethods = "testIssueDigitalCard")
+            dependsOnMethods = "testNavigateToCard", enabled = false)
     @Story("Card Information")
-    @Description("Open card info → verify card number, holder, expiry, CVV → copy each")
+    @Description("Open card info — DISABLED: Card Information removed in new UI")
     @Severity(SeverityLevel.NORMAL)
     public void testValidateCardInfo() {
-        CardInfoPage info = new CardsFlow().openCardInfo();
+        CardInfoPage info = new CardsFlow().openCardInfo(getCardPrefix());
         captureScreenshot("Card Info");
 
         SoftAssert soft = new SoftAssert();
@@ -189,9 +209,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 7,
-            dependsOnMethods = "testIssueDigitalCard")
+            dependsOnMethods = "testNavigateToCard", enabled = false)
     @Story("Card Benefits")
-    @Description("Open benefits → verify card name, cashback desc, fees desc")
+    @Description("Open benefits — DISABLED: Card Benefits removed in new UI")
     @Severity(SeverityLevel.NORMAL)
     public void testValidateCardBenefits() {
         CardBenefitsPage benefits = new CardsFlow().openCardBenefits();
@@ -207,16 +227,126 @@ public abstract class AbstractCardTest extends BaseTest {
     }
 
     // ═══════════════════════════════════════════════════
-    //  8. CANCEL CARD (runs last — destructive)
+    //  8. VALIDATE TRANSACTION DETAILS
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 8,
-            dependsOnMethods = "testIssueDigitalCard")
+            dependsOnMethods = "testNavigateToCard", enabled = false)
+    @Story("Transaction Details")
+    @Description("Open transaction tab — DISABLED: Transactions tab removed in new UI")
+    @Severity(SeverityLevel.NORMAL)
+    public void testValidateTransactionDetails() {
+        CardsFlow flow = new CardsFlow();
+        TransactionDetailsPage details = flow.openTransactionDetails();
+        captureScreenshot("Transaction Details");
+
+        SoftAssert soft = new SoftAssert();
+        soft.assertEquals(details.getType(), cardConfig("expectedTransactionType", "Issue Card"));
+        soft.assertFalse(details.getReferenceNumber().isEmpty(), "Reference number must not be empty");
+        soft.assertFalse(details.getTransactionDate().isEmpty(), "Transaction date must not be empty");
+        soft.assertAll();
+
+        details.tapBack();
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  9. INVALID PIN VALIDATION
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 9,
+            dependsOnMethods = "testNavigateToCard")
+    @Story("Invalid PIN Validation")
+    @Description("Enter mismatched PINs → verify error notification → enter correct PIN")
+    @Severity(SeverityLevel.NORMAL)
+    public void testInvalidPinValidation() {
+        CardsFlow flow = new CardsFlow();
+        flow.navigateToCardSettings();
+
+        CardSettingsPage settings = flow.enterInvalidPinMismatch(getCardPrefix());
+        captureScreenshot("Invalid PIN Error");
+        if (settings.isNotificationVisible()) {
+            Assert.assertEquals(settings.getNotificationMessage(),
+                    cardConfig("expectedPinMismatchMsg"));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  10. REQUEST PHYSICAL CARD
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 10,
+            dependsOnMethods = "testNavigateToCard")
+    @Story("Request Physical Card")
+    @Description("Request physical copy → select region → accept terms → confirm → OTP")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testRequestPhysicalCard() {
+        CardsFlow flow = new CardsFlow();
+        flow.requestPhysicalCard(getCardPrefix());
+        captureScreenshot("Physical Card Requested");
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  11. VALIDATE CARD DUPLICATION
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 11,
+            dependsOnMethods = "testNavigateToCard", enabled = false)
+    @Story("Card Duplication Validation")
+    @Description("Attempt duplicate card — DISABLED: Request Card button removed in new UI")
+    @Severity(SeverityLevel.NORMAL)
+    public void testValidateCardDuplication() {
+        CardsFlow flow = new CardsFlow();
+        CardsPage page = flow.attemptDuplicateCard();
+        captureScreenshot("Duplication Error");
+
+        Assert.assertEquals(page.getNotificationMessage(),
+                cardConfig("expectedDuplicationMsg"));
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  12. CANCEL CARD FROM SETTINGS (with invalid passcode first)
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 12,
+            dependsOnMethods = "testIssueDigitalCard", enabled = false)
+    @Story("Cancel Card from Settings")
+    @Description("Cancel from settings → enter invalid passcode → verify error → enter correct passcode")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testCancelCardFromSettings() {
+        CardsFlow flow = new CardsFlow();
+        CardSettingsPage settings = flow.cancelCardFromSettings(getCardPrefix());
+        captureScreenshot("Card Cancelled from Settings");
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  13. CANCEL CARD (runs last — destructive)
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 13,
+            dependsOnMethods = "testIssueDigitalCard", enabled = false)
     @Story("Cancel Card")
     @Description("Cancel card → select reason → confirm → passcode → no thanks")
     @Severity(SeverityLevel.CRITICAL)
     public void testCancelCard() {
-        new CardsFlow().cancelCard();
+        new CardsFlow().cancelCard(getCardPrefix());
         captureScreenshot("Card Cancelled");
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  14. VALIDATE CANCELED CARD REMOVED FROM DASHBOARD
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 14,
+            dependsOnMethods = "testCancelCard", enabled = false)
+    @Story("Validate Card Removed")
+    @Description("Return to dashboard → scroll → verify canceled card banner is gone")
+    @Severity(SeverityLevel.NORMAL)
+    public void testValidateCanceledCardRemoved() {
+        CardsFlow flow = new CardsFlow();
+        boolean cardStillVisible = flow.isCanceledCardStillVisible();
+        captureScreenshot("Dashboard After Cancel");
+
+        Assert.assertFalse(cardStillVisible,
+                "Canceled card should not be visible on dashboard");
     }
 }

@@ -22,8 +22,8 @@ public class CardsPage extends BasePage {
     @AndroidFindBy(accessibility = "testID-bankCard.data.0")
     private WebElement firstCard;
 
-    // ValidationOfCardDuplication/addNewCard.rs → testID-View.78046008-9e20-4ea7-86e2-755bae57e6a2
-    @AndroidFindBy(accessibility = "testID-View.78046008-9e20-4ea7-86e2-755bae57e6a2")
+    // ValidationOfCardDuplication/addNewCard.rs — Katalon: text="Request Card"
+    @AndroidFindBy(xpath = "//*[@text='Request Card' or @text='Add new card' or @text='Add New Card']")
     private WebElement addNewCardButton;
 
     // CreateNewCard/ViewAllButton-HomePage.rs → testID-secondary-navigateToCardsNavigation-main
@@ -57,8 +57,8 @@ public class CardsPage extends BasePage {
     private WebElement backToCardsButton;
 
     // ── Transactions Tab ──
-    // CreateNewCard/TransactionsTab.rs
-    @AndroidFindBy(accessibility = "testID-dashboard#Transactions-Transactions")
+    // CreateNewCard/TransactionsTab.rs — Katalon: testID-dashboard#Transactions-Transactions
+    @AndroidFindBy(xpath = "//*[contains(@content-desc,'Transactions-Transactions') or @text='Transactions']")
     private WebElement transactionsTab;
 
     // CreateNewCard/LatestTransactionTitle.rs
