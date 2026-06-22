@@ -148,10 +148,23 @@ public class TravelEsimPage extends BasePage {
         return isDisplayed(countryRegionValue, 30);
     }
 
+    // ── Post-Purchase Result ──────────────────────────
+
+    /** Success: Done button on result screen (accessibility ID — reliable) */
+    private static final org.openqa.selenium.By PURCHASE_SUCCESS =
+            AppiumBy.accessibilityId("testID-primary-action-main");
+
+    /** Error: text-based fallback for service errors */
+    private static final org.openqa.selenium.By PURCHASE_ERROR = AppiumBy.xpath(
+            "//*[contains(@text,'error') or contains(@label,'error')"
+            + " or contains(@text,'declined') or contains(@label,'declined')"
+            + " or contains(@text,'unavailable') or contains(@label,'unavailable')"
+            + " or contains(@text,'try again') or contains(@label,'try again')]");
+
     public boolean isPurchaseSuccessful(long timeoutSec) {
-        return isPresent(
-                AppiumBy.xpath("//*[@content-desc='testID-primary-action-main' or @name='testID-primary-action-main'] | "
-                        + "//*[contains(@text,'Success') or contains(@label,'Success')]"),
-                timeoutSec);
+        if (isPresent(PURCHASE_ERROR, 1)) {
+            return false;
+        }
+        return isPresent(PURCHASE_SUCCESS, timeoutSec);
     }
 }
