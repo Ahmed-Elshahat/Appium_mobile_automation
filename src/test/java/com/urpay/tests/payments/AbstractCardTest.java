@@ -81,6 +81,8 @@ public abstract class AbstractCardTest extends BaseTest {
 
         CardsFlow flow = new CardsFlow();
         flow.issueNewDigitalCard(getCardPrefix());
+        // Ensure card is unlocked (may have been left locked by previous run)
+        flow.ensureCardUnlocked();
         captureScreenshot("On Card Products Page");
     }
 
@@ -116,9 +118,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 3,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Online Transactions Toggle")
-    @Description("Disable online → verify → Enable → verify — DISABLED: card is locked, Card Settings not accessible")
+    @Description("Disable online → verify → Enable → verify")
     @Severity(SeverityLevel.NORMAL)
     public void testToggleOnlineTransactions() {
         CardsFlow flow = new CardsFlow();
@@ -164,9 +166,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 5,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Change Card PIN")
-    @Description("Change PIN — DISABLED: card is locked")
+    @Description("Change PIN → enter new PIN × 2 → OTP → Done")
     @Severity(SeverityLevel.CRITICAL)
     public void testChangeCardPin() {
         CardsFlow flow = new CardsFlow();
@@ -258,9 +260,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 9,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Invalid PIN Validation")
-    @Description("Enter mismatched PINs — DISABLED: card is locked")
+    @Description("Enter mismatched PINs → verify error notification → enter correct PIN")
     @Severity(SeverityLevel.NORMAL)
     public void testInvalidPinValidation() {
         CardsFlow flow = new CardsFlow();
@@ -279,9 +281,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 10,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Request Physical Card")
-    @Description("Request physical copy — DISABLED: card is locked")
+    @Description("Request physical copy → fill address → accept terms → confirm → OTP")
     @Severity(SeverityLevel.CRITICAL)
     public void testRequestPhysicalCard() {
         CardsFlow flow = new CardsFlow();

@@ -447,38 +447,109 @@ public class CardsFlow {
     //  CARD LOCK / UNLOCK
     // ══════════════════════════════════════════════════
 
-    @Step("Lock card")
-    public CardSettingsPage lockCard() {
-        // Lock toggle is on card products page — scroll down to find it
-        CardSettingsPage settings = new CardSettingsPage();
-        swipe.swipeUp(); // Scroll to reveal Lock/Unlock toggle
+    @Step("Ensure card is unlocked")
+    public void ensureCardUnlocked() {
+        // Scroll to reveal Lock/Unlock area
+        swipe.swipeUp();
 
-        // Check if card is already locked (text says "Unlock Card")
+        // Dump page source for debugging lock toggle element
+        try {
+            String ps = driver.getPageSource();
+            java.nio.file.Files.writeString(
+                    java.nio.file.Path.of("target/page_source_card_products.xml"), ps);
+            log.info("Card products page source saved ({} chars)", ps.length());
+        } catch (Exception e) { log.warn("Failed to save page source: {}", e.getMessage()); }
+
         By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
-        By lockText = AppiumBy.xpath("//*[@text='Lock Card']");
         setImplicitWait(3);
         var unlockEls = driver.findElements(unlockText);
+        setImplicitWait(10);
         if (!unlockEls.isEmpty()) {
-            log.info("Card already locked — tapping Unlock Card");
-            unlockEls.get(0).click();
-            // New UI may not have confirmation popup — check for Yes button softly
+            log.info("Card is LOCKED — attempting unlock");
+            // The toggle circle is a sibling/nearby element. Try multiple approaches:
+            boolean tapped = false;
+
+            // Approach 1: Tap preceding sibling (toggle circle to the left of text)
+            try {
+                var toggle = driver.findElement(AppiumBy.xpath(
+                        "//*[@text='Unlock Card']/preceding-sibling::*[1]"));
+                toggle.click();
+                tapped = true;
+                log.info("Tapped preceding sibling of Unlock Card");
+            } catch (Exception e) {
+                log.warn("Preceding sibling approach failed: {}", e.getMessage());
+            }
+
+            // Approach 2: If above didn't work, try tap by offset (toggle is left of text)
+            if (!tapped) {
+                try {
+                    var textEl = unlockEls.get(0);
+                    int x = textEl.getLocation().getX() - 80;
+                    int y = textEl.getLocation().getY() + textEl.getSize().getHeight() / 2;
+                    org.openqa.selenium.interactions.Sequence tap = new org.openqa.selenium.interactions.Sequence(
+                            new org.openqa.selenium.interactions.PointerInput(
+                                    org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1"), 0);
+                    tap.addAction(new org.openqa.selenium.interactions.PointerInput(
+                            org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1")
+                            .createPointerMove(java.time.Duration.ZERO,
+                                    org.openqa.selenium.interactions.PointerInput.Origin.viewport(), x, y));
+                    tap.addAction(new org.openqa.selenium.interactions.PointerInput(
+                            org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1")
+                            .createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+                    tap.addAction(new org.openqa.selenium.interactions.Pause(
+                            new org.openqa.selenium.interactions.PointerInput(
+                                    org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1"),
+                            java.time.Duration.ofMillis(100)));
+                    tap.addAction(new org.openqa.selenium.interactions.PointerInput(
+                            org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1")
+                            .createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+                    driver.perform(java.util.Collections.singletonList(tap));
+                    tapped = true;
+                    log.info("Tapped toggle by coordinate offset: ({}, {})", x, y);
+                } catch (Exception e) {
+                    log.warn("Coordinate tap failed: {}", e.getMessage());
+                }
+            }
+
+            // Check for confirmation popup
+            setImplicitWait(3);
             By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
             var yesBtns = driver.findElements(yesBtn);
             if (!yesBtns.isEmpty()) {
                 yesBtns.get(0).click();
+                log.info("Tapped Yes on unlock confirmation");
             }
-            if (common.isNotificationVisible(3)) {
+            setImplicitWait(10);
+            if (common.isNotificationVisible(5)) {
                 log.info("Unlock notification: {}", common.getNotificationMessage());
             }
             if (common.isNotificationVisible(1)) {
                 try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
             }
+        } else {
+            log.info("Card is already unlocked");
         }
-        setImplicitWait(10);
+        // Scroll back up
+        swipe.swipeDown();
+    }
 
-        // Now lock the card — tap "Lock Card" text
-        waits.waitForClickable(lockText, 10).click();
-        // Check for confirmation popup (may or may not exist)
+    @Step("Lock card")
+    public CardSettingsPage lockCard() {
+        CardSettingsPage settings = new CardSettingsPage();
+        ensureCardUnlocked();
+        swipe.swipeUp();
+
+        // Now lock the card — tap parent ViewGroup of "Lock Card"
+        By lockText = AppiumBy.xpath("//*[@text='Lock Card']");
+        waits.waitForClickable(lockText, 10);
+        try {
+            var parent = driver.findElement(AppiumBy.xpath(
+                    "//*[@text='Lock Card']/parent::android.view.ViewGroup"));
+            parent.click();
+        } catch (Exception e) {
+            driver.findElement(lockText).click();
+        }
+        // Check for confirmation popup
         setImplicitWait(3);
         By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
         var yesBtns = driver.findElements(yesBtn);
