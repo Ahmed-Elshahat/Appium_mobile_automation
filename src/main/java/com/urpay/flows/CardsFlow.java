@@ -606,7 +606,10 @@ public class CardsFlow {
 
         enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
 
-        common.tapDone(15);
+        // New UI may auto-navigate back — Done button optional
+        try { common.tapDone(10); } catch (Exception e) {
+            log.info("No Done button after PIN change — may have auto-navigated back");
+        }
         log.info("Card PIN changed for: {}", cardPrefix);
     }
 

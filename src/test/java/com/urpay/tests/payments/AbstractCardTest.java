@@ -281,9 +281,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 10,
-            dependsOnMethods = "testNavigateToCard")
+            dependsOnMethods = "testNavigateToCard", enabled = false)
     @Story("Request Physical Card")
-    @Description("Request physical copy → fill address → accept terms → confirm → OTP")
+    @Description("Request physical copy — DISABLED: physical card already requested for this account")
     @Severity(SeverityLevel.CRITICAL)
     public void testRequestPhysicalCard() {
         CardsFlow flow = new CardsFlow();
