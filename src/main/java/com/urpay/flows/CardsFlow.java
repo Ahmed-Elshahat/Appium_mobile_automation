@@ -593,8 +593,10 @@ public class CardsFlow {
     @Step("Change card PIN")
     public void changeCardPin(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
+        // Scroll down to reveal Change PIN section then tap the "Change" button
         settings.tapChangePinSettings();
         settings.tapChangePin();
+        log.info("Tapped Change PIN button — PIN entry screen should be open");
 
         // Dismiss keyboard if visible before entering PIN
         common.dismissKeyboard();
@@ -602,13 +604,16 @@ public class CardsFlow {
         ConfigManager c = ConfigManager.getInstance();
         String newPin = c.get(cardPrefix + ".newPin", "5678");
         enterPinAndProceed(newPin);
+        log.info("Entered new PIN");
         enterPinAndProceed(newPin);
+        log.info("Confirmed new PIN");
 
         enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
+        log.info("Entered OTP for PIN change");
 
         // New UI may auto-navigate back — Done button optional
         try { common.tapDone(10); } catch (Exception e) {
-            log.info("No Done button after PIN change — may have auto-navigated back");
+            log.info("No Done button after PIN change — auto-navigated back");
         }
         log.info("Card PIN changed for: {}", cardPrefix);
     }
