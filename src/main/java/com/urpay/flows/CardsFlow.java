@@ -593,29 +593,62 @@ public class CardsFlow {
     @Step("Change card PIN")
     public void changeCardPin(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
-        // Scroll down to reveal Change PIN section then tap the "Change" button
+        // Step 1: Scroll to reveal Change PIN section
         settings.tapChangePinSettings();
+        // Step 2: Tap "Change" button to open PIN entry screen
         settings.tapChangePin();
-        log.info("Tapped Change PIN button — PIN entry screen should be open");
+        log.info("Tapped Change PIN button — PIN entry screen opened");
 
-        // Dismiss keyboard if visible before entering PIN
-        common.dismissKeyboard();
+        // Step 3: Dismiss keyboard (Katalon: Mobile.pressBack())
+        driver.navigate().back();
+        log.info("Dismissed keyboard via pressBack");
 
+        // Step 4: Enter new PIN char by char using Actions + tap Next
+        // (Katalon: enterTextAndProceed with Actions.sendKeys)
         ConfigManager c = ConfigManager.getInstance();
         String newPin = c.get(cardPrefix + ".newPin", "5678");
-        enterPinAndProceed(newPin);
-        log.info("Entered new PIN");
-        enterPinAndProceed(newPin);
+        enterPinViaActions(newPin);
+        tapNextButton();
+        log.info("Entered new PIN: {}", newPin);
+
+        // Step 5: Enter confirmation PIN + tap Next
+        enterPinViaActions(newPin);
+        tapNextButton();
         log.info("Confirmed new PIN");
 
+        // Step 6: Enter OTP verification code
         enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
         log.info("Entered OTP for PIN change");
 
-        // New UI may auto-navigate back — Done button optional
-        try { common.tapDone(10); } catch (Exception e) {
-            log.info("No Done button after PIN change — auto-navigated back");
+        // Step 7: Tap Done on thank you page (Katalon: DoneButtonThankYOu)
+        By doneBtn = AppiumBy.xpath(
+                "//*[@class='android.view.ViewGroup' and ./*[@text='Done']] | //*[@text='Done']");
+        try {
+            waits.waitForClickable(doneBtn, 10).click();
+            log.info("Tapped Done button");
+        } catch (Exception e) {
+            log.info("No Done button — may have auto-navigated back");
         }
         log.info("Card PIN changed for: {}", cardPrefix);
+    }
+
+    /** Enter PIN digits char by char using W3C Actions (matches Katalon enterTextAndProceed) */
+    private void enterPinViaActions(String pin) {
+        org.openqa.selenium.interactions.Actions actions = new org.openqa.selenium.interactions.Actions(driver);
+        for (char c : pin.toCharArray()) {
+            actions.sendKeys(String.valueOf(c)).perform();
+        }
+    }
+
+    /** Tap "Next" button after PIN entry (Katalon: NextButton → //*[@text="Next"]) */
+    private void tapNextButton() {
+        By nextBtn = AppiumBy.xpath("//*[@text='Next']");
+        try {
+            waits.waitForClickable(nextBtn, 5).click();
+        } catch (Exception e) {
+            // Next button may not exist — PIN auto-submits after 4 digits
+            log.debug("Next button not found — PIN may have auto-submitted");
+        }
     }
 
     /** @deprecated Use changeCardPin(String cardPrefix) */
