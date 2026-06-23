@@ -47,9 +47,8 @@ public class CardsPage extends BasePage {
     @AndroidFindBy(accessibility = "testID-check-box-main")
     private WebElement acceptCheckBox;
 
-    // CreateNewCard/ConfirmBTN.rs → testID-primary-nextStep-main (same as requestCard)
-    // Using xpath to disambiguate when both are on different screens
-    @AndroidFindBy(accessibility = "testID-primary-nextStep-main")
+    // CreateNewCard/ConfirmBTN.rs — text-based for new UI
+    @AndroidFindBy(xpath = "//*[@text='Confirm'] | //*[@content-desc='testID-primary-nextStep-main']")
     private WebElement confirmButton;
 
     // CreateNewCard/Back.rs → testID-primary-backToCardsDB-main

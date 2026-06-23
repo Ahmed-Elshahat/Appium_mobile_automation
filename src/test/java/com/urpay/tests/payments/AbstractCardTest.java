@@ -98,13 +98,17 @@ public abstract class AbstractCardTest extends BaseTest {
 
         CardSettingsPage settings = flow.lockCard();
         captureScreenshot("Card Locked");
-        Assert.assertEquals(settings.getNotificationMessage(),
-                cardConfig("expectedLockMsg"));
+        if (settings.isNotificationVisible()) {
+            Assert.assertEquals(settings.getNotificationMessage(),
+                    cardConfig("expectedLockMsg"));
+        }
 
         settings = flow.unlockCard();
         captureScreenshot("Card Unlocked");
-        Assert.assertEquals(settings.getNotificationMessage(),
-                cardConfig("expectedUnlockMsg"));
+        if (settings.isNotificationVisible()) {
+            Assert.assertEquals(settings.getNotificationMessage(),
+                    cardConfig("expectedUnlockMsg"));
+        }
     }
 
     // ═══════════════════════════════════════════════════

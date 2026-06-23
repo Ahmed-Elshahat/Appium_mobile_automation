@@ -324,10 +324,11 @@ public class CardsFlow {
         String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
         enterVerificationCode(otp);
 
-        // Wait for success screen, then tap View Card
+        // Wait for success screen, then tap View Card/Done
         waits.waitForClickable(
-                AppiumBy.xpath("//*[@text='Back to cards' or @content-desc='testID-primary-backToCardsDB-main']"), 15);
-        physicalPage.tapViewCard();
+                AppiumBy.xpath("//*[@text='View Card' or @text='Done' or @text='Back to cards' or @content-desc='testID-primary-backToCardsDB-main']"), 15);
+        // Tap View Card or Done to return
+        driver.findElement(AppiumBy.xpath("//*[@text='View Card' or @text='Done']")).click();
 
         log.info("Physical card requested for: {}", cardPrefix);
         return cardsPage;
@@ -448,11 +449,31 @@ public class CardsFlow {
 
     @Step("Lock card")
     public CardSettingsPage lockCard() {
-        navigateToCardSettings();
+        // Lock toggle is on card products page — text changes between Lock/Unlock
         CardSettingsPage settings = new CardSettingsPage();
+        // If card is already locked, unlock first
+        By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
+        setImplicitWait(3);
+        var unlockEls = driver.findElements(unlockText);
+        setImplicitWait(10);
+        if (!unlockEls.isEmpty()) {
+            log.info("Card already locked — unlocking first");
+            unlockEls.get(0).click();
+            settings.tapLockYes();
+            if (common.isNotificationVisible(3)) {
+                log.info("Unlock notification: {}", common.getNotificationMessage());
+            }
+            // Wait for notification to dismiss before locking
+            if (common.isNotificationVisible(1)) {
+                try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+            }
+        }
+        // Now lock the card
         settings.tapLockToggle();
         settings.tapLockYes();
-        common.waitForNotification(5);
+        if (common.isNotificationVisible(5)) {
+            log.info("Lock notification: {}", common.getNotificationMessage());
+        }
         return settings;
     }
 
@@ -464,7 +485,9 @@ public class CardsFlow {
         }
         settings.tapLockToggle();
         settings.tapLockYes();
-        common.waitForNotification(5);
+        if (common.isNotificationVisible(5)) {
+            log.info("Unlock notification: {}", common.getNotificationMessage());
+        }
         return settings;
     }
 

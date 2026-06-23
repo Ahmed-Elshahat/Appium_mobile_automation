@@ -32,8 +32,9 @@ public class RequestPhysicalCardPage extends BasePage {
     private static final By SELECT_CITY = AppiumBy.accessibilityId("testID-search-item-0");
     private static final By POSTAL_CODE = AppiumBy.accessibilityId("testID-input-direct-postalCode");
 
-    // RequestPhysicalCard/NextButton.rs → testID-primary-onSubmit-main
-    private static final By NEXT_BTN = AppiumBy.accessibilityId("testID-primary-onSubmit-main");
+    // RequestPhysicalCard/NextButton.rs — text fallback for new UI
+    private static final By NEXT_BTN = AppiumBy.xpath(
+            "//*[@text='Next'] | //*[@content-desc='testID-primary-onSubmit-main']");
 
     // RequestPhysicalCard/ViewCardButton.rs
     @AndroidFindBy(accessibility = "testID-primary-backToCardsDB-main")
