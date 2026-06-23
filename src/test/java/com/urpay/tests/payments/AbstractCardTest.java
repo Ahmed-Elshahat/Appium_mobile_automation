@@ -172,7 +172,6 @@ public abstract class AbstractCardTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testChangeCardPin() {
         CardsFlow flow = new CardsFlow();
-        flow.goFromSettingsToFirstCard();
         flow.navigateToCardSettings();
         flow.changeCardPin(getCardPrefix());
         captureScreenshot("PIN Changed");
