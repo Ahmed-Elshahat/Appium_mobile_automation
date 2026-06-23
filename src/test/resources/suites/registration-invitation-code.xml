@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Registration Using Invitation Code" verbose="1">
+    <test name="InvitationCodeFlow">
+        <classes>
+            <class name="com.urpay.tests.wallet.RegistrationUsingInvitationCodeTest"/>
+        </classes>
+    </test>
+</suite>

@@ -121,7 +121,7 @@ public class LoginFlow {
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main' "
                 + "or @content-desc='testID-master-amount-main']");
-        waits.waitForVisible(anyFirst, 15);
+        waits.waitForVisible(anyFirst, 30);
 
         // ALL skippable elements in ONE xpath
         By skipAll = AppiumBy.xpath(
