@@ -156,8 +156,28 @@ public class CardsFlow {
         // ── Step 2: Check if user already has a card — scroll to find "Add new card" ──
         setImplicitWait(2);
         boolean hasExistingCard = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
-                || quickFind(AppiumBy.xpath("//*[@text='Card Information']"));
+                || quickFind(AppiumBy.xpath("//*[@text='Card Information']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Online Transactions']"));
         boolean hasAddNewCard = quickFind(AppiumBy.xpath("//*[@text='Add new card']"));
+
+        // Fallback: if neither detected (e.g. tablet layout), scroll to find indicators
+        if (!hasExistingCard && !hasAddNewCard) {
+            SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
+            for (int i = 0; i < 4; i++) {
+                smallSwipe.swipeUp();
+                if (quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
+                        || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
+                        || quickFind(AppiumBy.xpath("//*[@text='Online Transactions']"))) {
+                    hasExistingCard = true;
+                    break;
+                }
+                if (quickFind(AppiumBy.xpath("//*[@text='Add new card']"))) {
+                    hasAddNewCard = true;
+                    break;
+                }
+            }
+        }
 
         if (hasExistingCard && !hasAddNewCard) {
             // Existing card visible but "Add new card" not yet — scroll down to find it
@@ -171,6 +191,15 @@ public class CardsFlow {
             }
             if (!hasAddNewCard) {
                 // No "Add new card" after scrolling — user truly has max cards
+                // Scroll back up so card management elements are visible
+                SwipeUtils backSwipe = new SwipeUtils(driver, 0.30);
+                for (int i = 0; i < 4; i++) {
+                    backSwipe.swipeDown();
+                    if (quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
+                            || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
+                        break;
+                    }
+                }
                 setImplicitWait(10);
                 log.info("User already has card — no 'Add new card' found, card ready for management");
                 return page;
@@ -338,6 +367,76 @@ public class CardsFlow {
     public CardsPage requestPhysicalCard() { return requestPhysicalCard("madaCard"); }
 
     // ══════════════════════════════════════════════════
+    //  CARD REPLACEMENT (Katalon: RequestReplacementCardFromCardsSettingsScreen)
+    // ══════════════════════════════════════════════════
+
+    /**
+     * Request card replacement from Card Settings.
+     * Flow: Card Settings → Replace → reason (Damage) → Next → city → Next → Confirm → Thank You → Done
+     */
+    @Step("Request card replacement")
+    public void replaceCard() {
+        navigateToCardSettings();
+        com.urpay.pages.payments.CardReplacementPage replacementPage =
+                new com.urpay.pages.payments.CardReplacementPage();
+
+        // Step 1: Tap Replace button in Card Settings
+        replacementPage.tapReplace();
+        log.info("Tapped Replace — replacement flow started");
+
+        // Step 2: Select replacement reason (Damage)
+        replacementPage.selectDamageReason();
+        log.info("Selected damage reason");
+
+        // Step 3: Tap Next
+        replacementPage.tapNext();
+        log.info("Tapped Next after reason selection");
+
+        // Step 4: Select city
+        replacementPage.selectCity();
+        log.info("Selected replacement city");
+
+        // Step 5: Tap Next
+        replacementPage.tapNext();
+        log.info("Tapped Next after city selection");
+
+        // Step 6: Confirm replacement
+        replacementPage.tapConfirm();
+        log.info("Tapped Confirm — awaiting Thank You screen");
+
+        // Step 7: Verify success and tap Done
+        if (replacementPage.isThankYouVisible()) {
+            log.info("Card replacement Thank You screen confirmed");
+        }
+        replacementPage.tapDone();
+        log.info("Card replacement completed");
+    }
+
+    /**
+     * Activate a replacement card.
+     * Flow: Tap Activate → enter verification code → Back to Cards
+     */
+    @Step("Activate replacement card")
+    public void activateReplacementCard(String cardPrefix) {
+        com.urpay.pages.payments.CardReplacementPage replacementPage =
+                new com.urpay.pages.payments.CardReplacementPage();
+        ConfigManager c = ConfigManager.getInstance();
+
+        // Step 1: Tap Activate
+        replacementPage.tapActivate();
+        log.info("Tapped Activate replacement card");
+
+        // Step 2: Enter verification code via keypad
+        String verificationCode = c.get(cardPrefix + ".verificationCode", "1234");
+        passcodePage.enterPasscode(verificationCode);
+        log.info("Entered activation verification code");
+
+        // Step 3: Back to cards
+        replacementPage.tapBackToCards();
+        log.info("Replacement card activated — back to cards");
+    }
+
+    // ══════════════════════════════════════════════════
     //  VALIDATE CARD DUPLICATION (Katalon: validateDuplicationOfMadaCard)
     // ══════════════════════════════════════════════════
 
@@ -360,9 +459,6 @@ public class CardsFlow {
         navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapOnlineTransactionsToggle();
-        if (common.isNotificationVisible(3)) {
-            log.info("Notification after disable: {}", common.getNotificationMessage());
-        }
         return settings;
     }
 
@@ -374,46 +470,54 @@ public class CardsFlow {
             try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
         }
         settings.tapOnlineTransactionsToggle();
-        if (common.isNotificationVisible(3)) {
-            log.info("Notification after enable: {}", common.getNotificationMessage());
-        }
         return settings;
     }
 
     @Step("Disable ATM transactions")
     public CardSettingsPage disableAtmTransactions() {
-        // New UI: only Online transactions toggle exists — ATM toggle removed
-        log.warn("ATM toggle not available in new UI — skipping");
-        return new CardSettingsPage();
+        CardSettingsPage settings = new CardSettingsPage();
+        settings.tapAtmTransactionToggle();
+        return settings;
     }
 
     @Step("Enable ATM transactions")
     public CardSettingsPage enableAtmTransactions() {
-        log.warn("ATM toggle not available in new UI — skipping");
-        return new CardSettingsPage();
+        CardSettingsPage settings = new CardSettingsPage();
+        // Brief pause for previous notification to clear
+        if (common.isNotificationVisible(1)) {
+            try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+        }
+        settings.tapAtmTransactionToggle();
+        return settings;
     }
 
-    /** Navigate to Card Settings — scroll to find it */
+    /** Navigate to Card Settings — directly visible on Products page */
     @Step("Navigate to Card Settings")
     public void navigateToCardSettings() {
+        ensureCardUnlocked();
         By target = AppiumBy.xpath("//*[@text='Card Settings']");
-        scrollAndTap(target, "Card Settings");
+        waits.waitForClickable(target, 10).click();
+        log.info("Tapped 'Card Settings'");
     }
 
-    /** Navigate to Card Information — tap icon (Katalon: testID-avatar-document-text-) */
+    /** Navigate to Card Information — directly visible on Products page */
     @Step("Navigate to Card Information")
     public void navigateToCardInfo() {
-        By target = AppiumBy.xpath(
-                "//*[contains(@content-desc,'testID-avatar-document-text')] | //*[@text='Card Information']");
-        scrollAndTap(target, "Card Information");
+        ensureCardUnlocked();
+        By target = AppiumBy.xpath("//*[@text='Card Information']");
+        waits.waitForVisible(target, 10);
+        driver.findElement(target).click();
+        log.info("Tapped 'Card Information'");
     }
 
-    /** Navigate to Card Benefits — tap icon (Katalon: testID-avatar-card-tick-) */
+    /** Navigate to Card Benefits — directly visible on Products page */
     @Step("Navigate to Card Benefits")
     public void navigateToCardBenefits() {
-        By target = AppiumBy.xpath(
-                "//*[contains(@content-desc,'testID-avatar-card-tick')] | //*[@text='Card Benefits']");
-        scrollAndTap(target, "Card Benefits");
+        ensureCardUnlocked();
+        By target = AppiumBy.xpath("//*[@text='Card Benefits']");
+        waits.waitForVisible(target, 10);
+        driver.findElement(target).click();
+        log.info("Tapped 'Card Benefits'");
     }
 
     /** Scroll down to find element and tap it */
@@ -449,8 +553,33 @@ public class CardsFlow {
 
     @Step("Ensure card is unlocked")
     public void ensureCardUnlocked() {
-        // Scroll to reveal Lock/Unlock area
-        swipe.swipeUp();
+        // First: ensure we're on the card products page (not stuck on another page)
+        setImplicitWait(2);
+        boolean onProductsPage = quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"));
+        if (!onProductsPage) {
+            // Check if we're inside Card Settings detail page or another sub-page
+            boolean inSubPage = quickFind(AppiumBy.xpath("//*[@text='Change PIN Code']"))
+                    || quickFind(AppiumBy.xpath("//*[@text='Thank You!']"))
+                    || quickFind(AppiumBy.xpath("//*[@text='Cancel Card']"));
+            if (inSubPage) {
+                log.info("Inside sub-page — navigating back to card products");
+                driver.navigate().back();
+                // Check if we need another back press
+                if (!quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
+                    driver.navigate().back();
+                    log.info("Second back press to reach card products page");
+                }
+            } else if (!quickFind(AppiumBy.xpath("//*[@text='Card Information']"))) {
+                // Not on products page at all — try back
+                log.info("Not on card products page — pressing back");
+                driver.navigate().back();
+                if (!quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
+                    driver.navigate().back();
+                    log.info("Second back press to reach card products page");
+                }
+            }
+        }
+        setImplicitWait(10);
 
         // Dump page source for debugging lock toggle element
         try {
@@ -529,36 +658,23 @@ public class CardsFlow {
         } else {
             log.info("Card is already unlocked");
         }
-        // Scroll back up
-        swipe.swipeDown();
     }
 
     @Step("Lock card")
     public CardSettingsPage lockCard() {
         CardSettingsPage settings = new CardSettingsPage();
         ensureCardUnlocked();
-        swipe.swipeUp();
 
-        // Now lock the card — tap parent ViewGroup of "Lock Card"
-        By lockText = AppiumBy.xpath("//*[@text='Lock Card']");
-        waits.waitForClickable(lockText, 10);
-        try {
-            var parent = driver.findElement(AppiumBy.xpath(
-                    "//*[@text='Lock Card']/parent::android.view.ViewGroup"));
-            parent.click();
-        } catch (Exception e) {
-            driver.findElement(lockText).click();
-        }
-        // Check for confirmation popup
+        // Tap lock toggle via preceding sibling
+        tapCardToggle("Lock Card");
+        // Verify state changed — "Unlock Card" should now be visible
         setImplicitWait(3);
-        By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
-        var yesBtns = driver.findElements(yesBtn);
-        if (!yesBtns.isEmpty()) {
-            yesBtns.get(0).click();
-        }
+        boolean locked = quickFind(AppiumBy.xpath("//*[@text='Unlock Card']"));
         setImplicitWait(10);
-        if (common.isNotificationVisible(5)) {
-            log.info("Lock notification: {}", common.getNotificationMessage());
+        if (locked) {
+            log.info("Card locked — verified 'Unlock Card' visible");
+        } else {
+            log.warn("Lock state change not confirmed — 'Unlock Card' not found");
         }
         return settings;
     }
@@ -569,21 +685,40 @@ public class CardsFlow {
         if (common.isNotificationVisible(1)) {
             try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
         }
-        // Tap "Unlock Card" text
-        By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
-        waits.waitForClickable(unlockText, 10).click();
-        // Check for confirmation popup
+        tapCardToggle("Unlock Card");
+        // Verify state changed — "Lock Card" should now be visible
         setImplicitWait(3);
-        By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
-        var yesBtns = driver.findElements(yesBtn);
-        if (!yesBtns.isEmpty()) {
-            yesBtns.get(0).click();
-        }
+        boolean unlocked = quickFind(AppiumBy.xpath("//*[@text='Lock Card']"));
         setImplicitWait(10);
-        if (common.isNotificationVisible(5)) {
-            log.info("Unlock notification: {}", common.getNotificationMessage());
+        if (unlocked) {
+            log.info("Card unlocked — verified 'Lock Card' visible");
+        } else {
+            log.warn("Unlock state change not confirmed — 'Lock Card' not found");
         }
         return settings;
+    }
+
+    /** Tap lock/unlock toggle by finding the preceding sibling of the text label and confirming popup */
+    private void tapCardToggle(String label) {
+        By textLocator = AppiumBy.xpath("//*[@text='" + label + "']");
+        waits.waitForVisible(textLocator, 10);
+        // Tap preceding sibling (the toggle circle element)
+        try {
+            driver.findElement(AppiumBy.xpath(
+                    "//*[@text='" + label + "']/preceding-sibling::*[1]")).click();
+            log.info("Tapped toggle via preceding sibling of '{}'", label);
+        } catch (Exception e) {
+            driver.findElement(textLocator).click();
+            log.info("Tapped '{}' text directly", label);
+        }
+        // Confirm popup if present
+        setImplicitWait(3);
+        var yesBtns = driver.findElements(AppiumBy.accessibilityId("testID-primary-callAPI-main"));
+        if (!yesBtns.isEmpty()) {
+            yesBtns.get(0).click();
+            log.info("Tapped Yes on confirmation popup");
+        }
+        setImplicitWait(10);
     }
 
     // ══════════════════════════════════════════════════
@@ -593,42 +728,67 @@ public class CardsFlow {
     @Step("Change card PIN")
     public void changeCardPin(String cardPrefix) {
         CardSettingsPage settings = new CardSettingsPage();
-        // Step 1: Scroll to reveal Change PIN section
+        // Step 1: No scroll needed — Change PIN is visible on Card Settings
         settings.tapChangePinSettings();
-        // Step 2: Tap "Change" button to open PIN entry screen
+        // Step 2: Tap "Change" button (text="Change", NOT "Change PIN Code")
         settings.tapChangePin();
         log.info("Tapped Change PIN button — PIN entry screen opened");
 
-        // Step 3: Dismiss keyboard (Katalon: Mobile.pressBack())
-        driver.navigate().back();
-        log.info("Dismissed keyboard via pressBack");
+        // Step 3: Wait for PIN entry screen to load
+        // This MUST succeed — if PIN screen didn't open, test fails here
+        waits.waitForVisible(AppiumBy.xpath(
+                "//*[@text='Next'] | //*[contains(@content-desc,'passcode')]"), 10);
+        log.info("PIN entry screen confirmed visible (Next button found)");
 
-        // Step 4: Enter new PIN char by char using Actions + tap Next
-        // (Katalon: enterTextAndProceed with Actions.sendKeys)
+        // Step 4: Enter new PIN using passcode keypad (NOT Actions.sendKeys — keyboard focus is unreliable)
         ConfigManager c = ConfigManager.getInstance();
         String newPin = c.get(cardPrefix + ".newPin", "5678");
-        enterPinViaActions(newPin);
+        passcodePage.enterPasscode(newPin);
+        log.info("Entered new PIN via keypad: {}", newPin);
         tapNextButton();
-        log.info("Entered new PIN: {}", newPin);
 
         // Step 5: Enter confirmation PIN + tap Next
-        enterPinViaActions(newPin);
+        passcodePage.enterPasscode(newPin);
+        log.info("Confirmed new PIN via keypad");
         tapNextButton();
-        log.info("Confirmed new PIN");
 
         // Step 6: Enter OTP verification code
         enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
         log.info("Entered OTP for PIN change");
 
-        // Step 7: Tap Done on thank you page (Katalon: DoneButtonThankYOu)
-        By doneBtn = AppiumBy.xpath(
-                "//*[@class='android.view.ViewGroup' and ./*[@text='Done']] | //*[@text='Done']");
-        try {
-            waits.waitForClickable(doneBtn, 10).click();
-            log.info("Tapped Done button");
-        } catch (Exception e) {
-            log.info("No Done button — may have auto-navigated back");
+        // Step 7: Dismiss keyboard (covers Done button on Thank You page) then tap Done
+        common.dismissKeyboard();
+        // Double-dismiss: pressBack as fallback if hideKeyboard didn't work
+        try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
+        By thankYouOrDone = AppiumBy.xpath(
+                "//*[@text='Thank You!'] | //*[@text='Done'] | " +
+                "//*[@text='Card Settings'] | //*[@text='Change PIN Code']");
+        waits.waitForVisible(thankYouOrDone, 15);
+        log.info("Thank You / Done page visible — PIN change confirmed");
+        // Tap Done button (use waitForClickable to ensure it's interactable)
+        By doneBtnLocator = AppiumBy.xpath("//*[@text='Done']");
+        setImplicitWait(3);
+        var doneBtns = driver.findElements(doneBtnLocator);
+        if (!doneBtns.isEmpty()) {
+            try {
+                waits.waitForClickable(doneBtnLocator, 5).click();
+                log.info("Tapped Done button");
+            } catch (Exception e) {
+                // Fallback: tap directly
+                doneBtns.get(0).click();
+                log.info("Tapped Done button (direct)");
+            }
         }
+        setImplicitWait(10);
+        // Ensure we're back on card products page (not still on Thank You)
+        setImplicitWait(3);
+        boolean onProducts = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"));
+        if (!onProducts) {
+            driver.navigate().back();
+            log.info("Navigated back from Thank You page");
+        }
+        setImplicitWait(10);
         log.info("Card PIN changed for: {}", cardPrefix);
     }
 
@@ -643,12 +803,8 @@ public class CardsFlow {
     /** Tap "Next" button after PIN entry (Katalon: NextButton → //*[@text="Next"]) */
     private void tapNextButton() {
         By nextBtn = AppiumBy.xpath("//*[@text='Next']");
-        try {
-            waits.waitForClickable(nextBtn, 5).click();
-        } catch (Exception e) {
-            // Next button may not exist — PIN auto-submits after 4 digits
-            log.debug("Next button not found — PIN may have auto-submitted");
-        }
+        waits.waitForClickable(nextBtn, 10).click();
+        log.info("Tapped Next button");
     }
 
     /** @deprecated Use changeCardPin(String cardPrefix) */
@@ -750,8 +906,10 @@ public class CardsFlow {
     @Step("Open card info screen")
     public CardInfoPage openCardInfo(String cardPrefix) {
         navigateToCardInfo();
+        // Katalon: fillPassCode('2233') — enter passcode to view card info
         String passcode = ConfigManager.getInstance().get(cardPrefix + ".passCode", "2233");
-        enterPasscode(passcode);
+        passcodePage.enterPasscode(passcode);
+        log.info("Entered passcode to view card info");
         waits.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
         return new CardInfoPage();
     }

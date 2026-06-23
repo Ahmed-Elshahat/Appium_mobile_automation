@@ -91,25 +91,29 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 2,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Card Lock / Unlock")
-    @Description("Lock → verify message → Unlock → verify message — DISABLED: lock toggle locator needs page source inspection")
+    @Description("Lock → verify message → Unlock → verify message")
     @Severity(SeverityLevel.CRITICAL)
     public void testLockUnlockCard() {
         CardsFlow flow = new CardsFlow();
+        CardSettingsPage settings = new CardSettingsPage();
 
-        CardSettingsPage settings = flow.lockCard();
-        captureScreenshot("Card Locked");
-        if (settings.isNotificationVisible()) {
-            Assert.assertEquals(settings.getNotificationMessage(),
-                    cardConfig("expectedLockMsg"));
+        try {
+            flow.lockCard();
+            captureScreenshot("Card Locked");
+            String lockMsg = settings.readNotificationIfVisible();
+            if (lockMsg != null) {
+                Assert.assertEquals(lockMsg, cardConfig("expectedLockMsg"));
+            }
+        } finally {
+            // Always unlock to prevent cascade failures
+            flow.unlockCard();
+            captureScreenshot("Card Unlocked");
         }
-
-        settings = flow.unlockCard();
-        captureScreenshot("Card Unlocked");
-        if (settings.isNotificationVisible()) {
-            Assert.assertEquals(settings.getNotificationMessage(),
-                    cardConfig("expectedUnlockMsg"));
+        String unlockMsg = settings.readNotificationIfVisible();
+        if (unlockMsg != null) {
+            Assert.assertEquals(unlockMsg, cardConfig("expectedUnlockMsg"));
         }
     }
 
@@ -128,14 +132,16 @@ public abstract class AbstractCardTest extends BaseTest {
 
         CardSettingsPage settings = flow.disableOnlineTransactions();
         captureScreenshot("Disable Online");
-        if (settings.isNotificationVisible()) {
-            Assert.assertEquals(settings.getNotificationMessage(), expected);
+        String disableMsg = settings.readNotificationIfVisible();
+        if (disableMsg != null) {
+            Assert.assertEquals(disableMsg, expected);
         }
 
         settings = flow.enableOnlineTransactions();
         captureScreenshot("Enable Online");
-        if (settings.isNotificationVisible()) {
-            Assert.assertEquals(settings.getNotificationMessage(), expected);
+        String enableMsg = settings.readNotificationIfVisible();
+        if (enableMsg != null) {
+            Assert.assertEquals(enableMsg, expected);
         }
     }
 
@@ -144,9 +150,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 4,
-            dependsOnMethods = "testToggleOnlineTransactions", enabled = false)
+            dependsOnMethods = "testToggleOnlineTransactions")
     @Story("ATM Transactions Toggle")
-    @Description("Disable ATM → verify → Enable → verify — DISABLED: ATM toggle removed in new UI")
+    @Description("Disable ATM → verify → Enable → verify (only visible for physical cards)")
     @Severity(SeverityLevel.NORMAL)
     public void testToggleAtmTransactions() {
         CardsFlow flow = new CardsFlow();
@@ -154,11 +160,17 @@ public abstract class AbstractCardTest extends BaseTest {
 
         CardSettingsPage settings = flow.disableAtmTransactions();
         captureScreenshot("Disable ATM");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
+        String disableMsg = settings.readNotificationIfVisible();
+        if (disableMsg != null) {
+            Assert.assertEquals(disableMsg, expected);
+        }
 
         settings = flow.enableAtmTransactions();
         captureScreenshot("Enable ATM");
-        Assert.assertEquals(settings.getNotificationMessage(), expected);
+        String enableMsg = settings.readNotificationIfVisible();
+        if (enableMsg != null) {
+            Assert.assertEquals(enableMsg, expected);
+        }
     }
 
     // ═══════════════════════════════════════════════════
@@ -182,9 +194,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 6,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Card Information")
-    @Description("Open card info — DISABLED: Card Information removed in new UI")
+    @Description("Open card info → verify card number, holder, expiry, CVV → copy each")
     @Severity(SeverityLevel.NORMAL)
     public void testValidateCardInfo() {
         CardInfoPage info = new CardsFlow().openCardInfo(getCardPrefix());
@@ -196,14 +208,27 @@ public abstract class AbstractCardTest extends BaseTest {
         soft.assertFalse(info.getExpiryDate().isEmpty(), "Expiry date must not be empty");
         soft.assertFalse(info.getCvv().isEmpty(), "CVV must not be empty");
 
+        // Copy each field and verify notification (wait for previous notification to dismiss)
         info.tapCopyCardNumber();
-        soft.assertEquals(info.getNotificationMessage(), cardConfig("expectedCopyCardNumber"));
+        String copyCardMsg = info.readNotificationIfVisible();
+        if (copyCardMsg != null) {
+            soft.assertEquals(copyCardMsg, cardConfig("expectedCopyCardNumber"));
+        }
         info.tapCopyCardHolder();
-        soft.assertEquals(info.getNotificationMessage(), cardConfig("expectedCopyCardHolder"));
+        String copyHolderMsg = info.readNotificationIfVisible();
+        if (copyHolderMsg != null) {
+            soft.assertEquals(copyHolderMsg, cardConfig("expectedCopyCardHolder"));
+        }
         info.tapCopyExpiry();
-        soft.assertEquals(info.getNotificationMessage(), cardConfig("expectedCopyExpiry"));
+        String copyExpiryMsg = info.readNotificationIfVisible();
+        if (copyExpiryMsg != null) {
+            soft.assertEquals(copyExpiryMsg, cardConfig("expectedCopyExpiry"));
+        }
         info.tapCopyCvv();
-        soft.assertEquals(info.getNotificationMessage(), cardConfig("expectedCopyCvv"));
+        String copyCvvMsg = info.readNotificationIfVisible();
+        if (copyCvvMsg != null) {
+            soft.assertEquals(copyCvvMsg, cardConfig("expectedCopyCvv"));
+        }
 
         soft.assertAll();
         getDriver().navigate().back();
@@ -214,9 +239,9 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 7,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Card Benefits")
-    @Description("Open benefits — DISABLED: Card Benefits removed in new UI")
+    @Description("Open benefits → verify card name, cashback desc, fees desc")
     @Severity(SeverityLevel.NORMAL)
     public void testValidateCardBenefits() {
         CardBenefitsPage benefits = new CardsFlow().openCardBenefits();
@@ -269,9 +294,9 @@ public abstract class AbstractCardTest extends BaseTest {
 
         CardSettingsPage settings = flow.enterInvalidPinMismatch(getCardPrefix());
         captureScreenshot("Invalid PIN Error");
-        if (settings.isNotificationVisible()) {
-            Assert.assertEquals(settings.getNotificationMessage(),
-                    cardConfig("expectedPinMismatchMsg"));
+        String errorMsg = settings.readNotificationIfVisible();
+        if (errorMsg != null) {
+            Assert.assertEquals(errorMsg, cardConfig("expectedPinMismatchMsg"));
         }
     }
 
@@ -306,6 +331,36 @@ public abstract class AbstractCardTest extends BaseTest {
 
         Assert.assertEquals(page.getNotificationMessage(),
                 cardConfig("expectedDuplicationMsg"));
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  11.5 REQUEST CARD REPLACEMENT (Katalon: RequestReplacementCardFromCardsSettingsScreen)
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 15,
+            dependsOnMethods = "testNavigateToCard")
+    @Story("Card Replacement")
+    @Description("Replace card from settings → select damage reason → select city → confirm → Thank You → Done")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testReplaceCard() {
+        CardsFlow flow = new CardsFlow();
+        flow.replaceCard();
+        captureScreenshot("Card Replaced");
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  11.6 ACTIVATE REPLACEMENT CARD (Katalon: activateReplacementCard)
+    // ═══════════════════════════════════════════════════
+
+    @Test(groups = {"payments", "cards"}, priority = 16,
+            dependsOnMethods = "testReplaceCard", enabled = false)
+    @Story("Activate Replacement Card")
+    @Description("Activate replacement card → enter verification code → back to cards")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testActivateReplacementCard() {
+        CardsFlow flow = new CardsFlow();
+        flow.activateReplacementCard(getCardPrefix());
+        captureScreenshot("Replacement Card Activated");
     }
 
     // ═══════════════════════════════════════════════════

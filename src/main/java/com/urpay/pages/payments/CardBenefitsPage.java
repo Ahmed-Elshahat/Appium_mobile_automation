@@ -15,21 +15,9 @@ import io.qameta.allure.Step;
  */
 public class CardBenefitsPage extends BasePage {
 
-    // cardBenifits/cardBenifitsBtn.rs
-    @AndroidFindBy(accessibility = "testID-TouchableWithoutFeedback.af5035ae-a8e2-4fd4-9452-40564ccbb18f.2")
-    private WebElement benefitsButton;
-
-    // cardBenifits/cardName.rs
-    @AndroidFindBy(accessibility = "testID-Text.dbe54475-2d8b-46a7-93be-4ecf10d0363b")
-    private WebElement cardName;
-
-    // cardBenifits/cashBackOffersDescribtion.rs (index 0 = cashback/multipay)
-    @AndroidFindBy(accessibility = "testID-Text.aa9f0f2e-ade4-4dd3-9ebb-f94a9a72d808.0")
-    private WebElement cashbackDescription;
-
-    // cardBenifits/cardFeesDescribtion.rs (index 1 = fees)
-    @AndroidFindBy(accessibility = "testID-Text.aa9f0f2e-ade4-4dd3-9ebb-f94a9a72d808.1")
-    private WebElement feesDescription;
+    // Navigate via icon on card products page
+    private static final org.openqa.selenium.By BENEFITS_ICON = io.appium.java_client.AppiumBy.xpath(
+            "//*[contains(@content-desc,'testID-avatar-card-tick')] | //*[@text='Card Benefits']");
 
     // ══════════════════════════════════════════════════
     //  ACTIONS
@@ -37,7 +25,7 @@ public class CardBenefitsPage extends BasePage {
 
     @Step("Tap Card Benefits button")
     public void tapBenefits() {
-        tap(benefitsButton);
+        tap(BENEFITS_ICON);
     }
 
     @Step("Navigate back from benefits")
@@ -46,18 +34,24 @@ public class CardBenefitsPage extends BasePage {
     }
 
     // ══════════════════════════════════════════════════
-    //  QUERY METHODS
+    //  QUERY METHODS — find text by index on benefits page
     // ══════════════════════════════════════════════════
 
     public String getCardName() {
-        return getText(cardName);
+        // First prominent text AFTER page title = card name (skip "Card Benefits" header)
+        return getText(io.appium.java_client.AppiumBy.xpath(
+                "(//*[@class='android.widget.TextView' and string-length(@text) > 3 and @text!='Card Benefits'])[1]"));
     }
 
     public String getCashbackDescription() {
-        return getText(cashbackDescription);
+        // Second description text
+        return getText(io.appium.java_client.AppiumBy.xpath(
+                "(//*[@class='android.widget.TextView' and string-length(@text) > 20])[1]"));
     }
 
     public String getFeesDescription() {
-        return getText(feesDescription);
+        // Third description text
+        return getText(io.appium.java_client.AppiumBy.xpath(
+                "(//*[@class='android.widget.TextView' and string-length(@text) > 20])[2]"));
     }
 }

@@ -115,7 +115,22 @@ public class CardInfoPage extends BasePage {
         return getText(notificationMessage);
     }
 
+    /** Read notification text if visible; returns null if not present or auto-dismissed */
+    public String readNotificationIfVisible() {
+        try {
+            org.openqa.selenium.WebElement el = waitUtils.waitForVisible(
+                    AppiumBy.accessibilityId("testID-notification-message"), 5);
+            return el.getText();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public boolean isCardInfoLoaded() {
         return isPresent(AppiumBy.accessibilityId("testID-label-value-0"), 10);
+    }
+
+    public boolean isNotificationVisible() {
+        return isPresent(AppiumBy.accessibilityId("testID-notification-message"), 5);
     }
 }

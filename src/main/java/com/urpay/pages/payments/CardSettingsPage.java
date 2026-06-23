@@ -24,8 +24,9 @@ public class CardSettingsPage extends BasePage {
     private static final By LOCK_TOGGLE = AppiumBy.xpath(
             "(//*[contains(@content-desc,'Switch') or contains(@content-desc,'switcher')])[1]");
     private static final By CHANGE_PIN_TEXT = AppiumBy.xpath("//*[@text='Change PIN Code' or @text='Change card PIN']");
+    // Katalon: ChangeCardPinBtn has text="Change" — must NOT match "Change PIN Code" label
     private static final By CHANGE_PIN_BTN = AppiumBy.xpath(
-            "//*[@text='Change' and @class='android.widget.TextView'] | //*[@text='Change PIN Code'] | //*[@text='Change card PIN']");
+            "//*[@text='Change' and @class='android.widget.TextView']");
     private static final By CANCEL_CARD_TEXT = AppiumBy.xpath("//*[@text='Cancel Card' or @text='Cancel card']");
     private static final By CANCEL_CARD_BTN = AppiumBy.xpath(
             "//*[@text='Cancel Card']/parent::*//*[@text='Cancel'] | //*[@text='Cancel card']");
@@ -69,8 +70,7 @@ public class CardSettingsPage extends BasePage {
 
     @Step("Scroll to Change PIN section")
     public void tapChangePinSettings() {
-        // Scroll to make Change PIN visible — do NOT tap yet (tapChangePin does that)
-        swipeUp();
+        // No scroll needed — Change PIN is visible on Card Settings page
     }
 
     @Step("Tap Change Card PIN button")
@@ -100,6 +100,17 @@ public class CardSettingsPage extends BasePage {
         waitUtils.waitForVisible(
                 AppiumBy.accessibilityId("testID-notification-message"), 10);
         return getText(notificationMessage);
+    }
+
+    /** Read notification text if visible; returns null if not present or auto-dismissed */
+    public String readNotificationIfVisible() {
+        try {
+            org.openqa.selenium.WebElement el = waitUtils.waitForVisible(
+                    AppiumBy.accessibilityId("testID-notification-message"), 5);
+            return el.getText();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public boolean isNotificationVisible() {
