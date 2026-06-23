@@ -22,7 +22,7 @@ public class CardSettingsPage extends BasePage {
     private static final By ATM_TOGGLE = AppiumBy.xpath(
             "(//*[contains(@content-desc,'Switch') or contains(@content-desc,'switcher')])[2]");
     private static final By LOCK_TOGGLE = AppiumBy.xpath(
-            "//*[@text='Lock Card' or @text='Unlock Card']");
+            "(//*[contains(@content-desc,'Switch') or contains(@content-desc,'switcher')])[1]");
     private static final By CHANGE_PIN_TEXT = AppiumBy.xpath("//*[@text='Change PIN Code' or @text='Change card PIN']");
     private static final By CHANGE_PIN_BTN = AppiumBy.xpath(
             "//*[@text='Change' and @class='android.widget.TextView'] | //*[@text='Change PIN Code'] | //*[@text='Change card PIN']");

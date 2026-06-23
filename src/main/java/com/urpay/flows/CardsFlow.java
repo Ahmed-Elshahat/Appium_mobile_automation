@@ -449,28 +449,43 @@ public class CardsFlow {
 
     @Step("Lock card")
     public CardSettingsPage lockCard() {
-        // Lock toggle is on card products page — text changes between Lock/Unlock
+        // Lock toggle is on card products page — scroll down to find it
         CardSettingsPage settings = new CardSettingsPage();
-        // If card is already locked, unlock first
+        swipe.swipeUp(); // Scroll to reveal Lock/Unlock toggle
+
+        // Check if card is already locked (text says "Unlock Card")
         By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
+        By lockText = AppiumBy.xpath("//*[@text='Lock Card']");
         setImplicitWait(3);
         var unlockEls = driver.findElements(unlockText);
-        setImplicitWait(10);
         if (!unlockEls.isEmpty()) {
-            log.info("Card already locked — unlocking first");
+            log.info("Card already locked — tapping Unlock Card");
             unlockEls.get(0).click();
-            settings.tapLockYes();
+            // New UI may not have confirmation popup — check for Yes button softly
+            By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
+            var yesBtns = driver.findElements(yesBtn);
+            if (!yesBtns.isEmpty()) {
+                yesBtns.get(0).click();
+            }
             if (common.isNotificationVisible(3)) {
                 log.info("Unlock notification: {}", common.getNotificationMessage());
             }
-            // Wait for notification to dismiss before locking
             if (common.isNotificationVisible(1)) {
                 try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
             }
         }
-        // Now lock the card
-        settings.tapLockToggle();
-        settings.tapLockYes();
+        setImplicitWait(10);
+
+        // Now lock the card — tap "Lock Card" text
+        waits.waitForClickable(lockText, 10).click();
+        // Check for confirmation popup (may or may not exist)
+        setImplicitWait(3);
+        By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
+        var yesBtns = driver.findElements(yesBtn);
+        if (!yesBtns.isEmpty()) {
+            yesBtns.get(0).click();
+        }
+        setImplicitWait(10);
         if (common.isNotificationVisible(5)) {
             log.info("Lock notification: {}", common.getNotificationMessage());
         }
@@ -483,8 +498,17 @@ public class CardsFlow {
         if (common.isNotificationVisible(1)) {
             try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
         }
-        settings.tapLockToggle();
-        settings.tapLockYes();
+        // Tap "Unlock Card" text
+        By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
+        waits.waitForClickable(unlockText, 10).click();
+        // Check for confirmation popup
+        setImplicitWait(3);
+        By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
+        var yesBtns = driver.findElements(yesBtn);
+        if (!yesBtns.isEmpty()) {
+            yesBtns.get(0).click();
+        }
+        setImplicitWait(10);
         if (common.isNotificationVisible(5)) {
             log.info("Unlock notification: {}", common.getNotificationMessage());
         }
