@@ -27,6 +27,7 @@
         <poi.version>5.3.0</poi.version>
         <suite>suites/smoke.xml</suite>
         <profile>default</profile>
+        <env>SIT</env>
     </properties>
 
     <dependencyManagement>
@@ -168,6 +169,7 @@
                     </suiteXmlFiles>
                     <systemPropertyVariables>
                         <profile>${profile}</profile>
+                        <env>${env}</env>
                     </systemPropertyVariables>
                     <argLine>
                         -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"

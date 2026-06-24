@@ -1,15 +1,20 @@
 package com.urpay.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterSuite;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.Listeners;
+
 import com.urpay.platform.health.AppHealthChecker;
 import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
+
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.InteractsWithApps;
 import io.qameta.allure.Allure;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.*;
 
 /**
  * Base test class — all test classes extend this.
@@ -41,6 +46,7 @@ public abstract class BaseTest {
 
         log.info("═══════════════════════════════════════════");
         log.info("  URPay Test Suite Starting");
+        log.info("  Environment: {}", config.getEnv());
         log.info("  Profile: {}", profileName);
         log.info("  Platform: {}", config.get("platform", "android"));
         log.info("  Remote: {}", config.getBoolean("remote", false));

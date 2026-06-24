@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
+import com.urpay.pages.auth.LoginPage;
 import com.urpay.pages.auth.OtpPage;
 import com.urpay.pages.auth.PasscodePage;
 import com.urpay.pages.common.CommonComponentsPage;
@@ -46,6 +47,7 @@ public class LoginFlow {
     private final WaitUtils waits;
     private final MobilePlatformActions platformActions;
     private final CommonComponentsPage common;
+    private final LoginPage loginPage;
     private final OtpPage otpPage;
     private final PasscodePage passcodePage;
 
@@ -61,6 +63,7 @@ public class LoginFlow {
         this.waits = new WaitUtils(driver, 10);
         this.platformActions = PlatformActionsFactory.create(driver);
         this.common = new CommonComponentsPage();
+        this.loginPage = new LoginPage();
         this.otpPage = new OtpPage();
         this.passcodePage = new PasscodePage();
     }
@@ -86,7 +89,7 @@ public class LoginFlow {
      * Login with specific credentials.
      * @return DashboardPage for the test to assert on
      */
-    @Step("Full login: skip → credentials → OTP → passcode → dashboard")
+    @Step("Full login: skip → env → credentials → OTP → passcode → dashboard")
     public DashboardPage loginWith(String mobile, String id, String otp, String passcode) {
         skipOnboarding();
 
@@ -102,6 +105,9 @@ public class LoginFlow {
             return new DashboardPage();
         }
 
+        // Select environment (SIT/UAT) from dropdown before entering credentials
+        selectEnvironment();
+
         enterCredentials(mobile, id);
         enterOtp(otp);
         passcodePage.enterPasscode(passcode);
@@ -109,6 +115,13 @@ public class LoginFlow {
     }
 
     // ── Private Steps ──────────────────────────────────
+
+    @Step("Select environment from login dropdown")
+    private void selectEnvironment() {
+        String env = ConfigManager.getInstance().getEnv();
+        log.info("Selecting environment: {}", env);
+        loginPage.selectEnvironment(env);
+    }
 
     @Step("Skip onboarding screens")
     private void skipOnboarding() {

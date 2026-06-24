@@ -164,4 +164,13 @@ public class ConfigManager {
     public String getProfileName() {
         return profileName;
     }
+
+    /**
+     * Get the target environment (SIT, UAT).
+     * Set via: -Denv=uat  or  env property in default.properties.
+     */
+    public String getEnv() {
+        String env = resolveWithPrecedence("env", "SIT");
+        return env.toUpperCase();
+    }
 }

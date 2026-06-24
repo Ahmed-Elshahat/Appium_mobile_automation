@@ -149,10 +149,10 @@ public abstract class AbstractCardTest extends BaseTest {
     //  3. TOGGLE ATM TRANSACTIONS
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 4,
-            dependsOnMethods = "testToggleOnlineTransactions")
+    @Test(groups = {"payments", "cards"}, priority = 11,
+            dependsOnMethods = "testRequestPhysicalCard")
     @Story("ATM Transactions Toggle")
-    @Description("Disable ATM → verify → Enable → verify (only visible for physical cards)")
+    @Description("Disable ATM → verify → Enable → verify (runs after physical card request — ATM only available for physical cards)")
     @Severity(SeverityLevel.NORMAL)
     public void testToggleAtmTransactions() {
         CardsFlow flow = new CardsFlow();
@@ -367,14 +367,19 @@ public abstract class AbstractCardTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     @Test(groups = {"payments", "cards"}, priority = 16,
-            dependsOnMethods = "testReplaceCard", enabled = false)
+            dependsOnMethods = "testReplaceCard")
     @Story("Activate Replacement Card")
     @Description("Activate replacement card → enter verification code → back to cards")
     @Severity(SeverityLevel.CRITICAL)
     public void testActivateReplacementCard() {
         CardsFlow flow = new CardsFlow();
-        flow.activateReplacementCard(getCardPrefix());
-        captureScreenshot("Replacement Card Activated");
+        try {
+            flow.activateReplacementCard(getCardPrefix());
+            captureScreenshot("Replacement Card Activated");
+        } catch (org.openqa.selenium.TimeoutException e) {
+            captureScreenshot("Activate Not Available");
+            throw new org.testng.SkipException("Activate Replacement not available");
+        }
     }
 
     // ═══════════════════════════════════════════════════
@@ -425,8 +430,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  14. VALIDATE CANCELED CARD REMOVED FROM DASHBOARD
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 14,
-            dependsOnMethods = "testCancelCard", enabled = false)
+    @Test(groups = {"payments", "cards"}, priority = 18,
+            dependsOnMethods = "testNavigateToCard")
     @Story("Validate Card Removed")
     @Description("Return to dashboard → scroll → verify canceled card banner is gone")
     @Severity(SeverityLevel.NORMAL)

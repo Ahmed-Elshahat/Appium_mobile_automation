@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Physical Card Request" verbose="1">
+    <test name="Request Physical Card">
+        <classes>
+            <class name="com.urpay.tests.payments.SignatureCardTest">
+                <methods>
+                    <include name="testNavigateToCard"/>
+                    <include name="testRequestPhysicalCard"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
