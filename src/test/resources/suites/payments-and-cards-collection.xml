@@ -1,0 +1,42 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  P&C Squad Collection — ALL migrated Katalon test cases running in PARALLEL.
+  Each child suite runs in its own thread on a separate device.
+
+  Katalon P&C Squad coverage:
+    ✅ Cards             → all-cards.xml        (Mada, Al-Ahli, Platinum, Signature — 4 parallel tests)
+    ✅ GovernmentServices → government-services.xml (Single + Multi violation — 2 parallel tests)
+    ✅ SadadBills         → sadad-bills.xml      (CRUD operations)
+    ✅ SadadBills/Payment → sadad-payment.xml    (Bill payment + transaction verification)
+    ✅ Telecom Recharge   → telecom-recharge.xml (Zain, Mobily, STC — 3 parallel tests)
+    ✅ TOPUpUsingBankCard → topup-bankcard.xml   (Full top-up lifecycle)
+    ✅ Travel Esim        → travel-esim.xml      (E-SIM purchase)
+    ❌ Premium            → not yet migrated
+    ❌ Takaful            → not yet migrated
+
+  Ensure each suite uses a UNIQUE user account to avoid session conflicts.
+-->
+<suite name="P&C Squad Collection" verbose="1" parallel="suites" thread-count="7">
+
+    <suite-files>
+        <!-- Cards (4 card types run in parallel internally) -->
+        <suite-file path="all-cards.xml"/>
+
+        <!-- Government Services (single + multi violation in parallel internally) -->
+        <suite-file path="government-services.xml"/>
+
+        <!-- Sadad -->
+        <suite-file path="sadad-bills.xml"/>
+        <suite-file path="sadad-payment.xml"/>
+
+        <!-- Telecom Recharge (3 providers run in parallel internally) -->
+        <suite-file path="telecom-recharge.xml"/>
+
+        <!-- Top Up -->
+        <suite-file path="topup-bankcard.xml"/>
+
+        <!-- Travel E-SIM -->
+        <suite-file path="travel-esim.xml"/>
+    </suite-files>
+
+</suite>
