@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Pay Group Qatta Suite" verbose="1">
+    <test name="PayGroupQatta">
+        <classes>
+            <class name="com.urpay.tests.wallet.PayGroupQattaTest"/>
+        </classes>
+    </test>
+</suite>

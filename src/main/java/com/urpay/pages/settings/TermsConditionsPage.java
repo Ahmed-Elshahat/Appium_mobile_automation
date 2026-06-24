@@ -17,20 +17,20 @@ public class TermsConditionsPage extends BasePage {
 
     // ── Page title ───────────────────────────────────
     private static final By TERMS_TITLE =
-            AppiumBy.xpath("//android.widget.TextView[@content-desc='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']");
+            AppiumBy.xpath("//*[@content-desc='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']");
 
     // ── Tab buttons (resource-id based) ──────────────
     private static final By CARD_TERMS_TAB =
-            AppiumBy.xpath("//android.view.View[@resource-id='w-tabs-0-data-w-tab-1']");
+            AppiumBy.xpath("//*[@resource-id='w-tabs-0-data-w-tab-1']");
 
     private static final By MONEYGRAM_TAB =
-            AppiumBy.xpath("//android.view.View[@resource-id='w-tabs-0-data-w-tab-2']");
+            AppiumBy.xpath("//*[@resource-id='w-tabs-0-data-w-tab-2']");
 
     private static final By MOKAFAA_TAB =
-            AppiumBy.xpath("//android.view.View[@resource-id='w-tabs-0-data-w-tab-3']");
+            AppiumBy.xpath("//*[@resource-id='w-tabs-0-data-w-tab-3']");
 
     private static final By COMPLAINTS_TAB =
-            AppiumBy.xpath("//android.view.View[@resource-id='w-tabs-0-data-w-tab-4']");
+            AppiumBy.xpath("//*[@resource-id='w-tabs-0-data-w-tab-4']");
 
     // ── Card terms sub-tabs ──────────────────────────
     private static final By DIGITAL_CARD_TAB =
@@ -44,7 +44,7 @@ public class TermsConditionsPage extends BasePage {
             AppiumBy.xpath("//*[contains(@text,'General Terms') and contains(@text,'Conditions')]");
 
     private static final By CARD_TERMS_SUBTITLE =
-            AppiumBy.xpath("//android.widget.TextView[@text='Urpay Cards Terms And Conditions']");
+            AppiumBy.xpath("//*[@text='Urpay Cards Terms And Conditions']");
 
     private static final By MONEYGRAM_SUBTITLE =
             AppiumBy.xpath("//*[@text='Moneygram Terms And Conditions For Sending Money']");
@@ -59,7 +59,7 @@ public class TermsConditionsPage extends BasePage {
             AppiumBy.xpath("//*[@text='These Terms']");
 
     private static final By ACKNOWLEDGEMENT_TEXT =
-            AppiumBy.xpath("//android.widget.TextView[@text='Acknowledgement']");
+            AppiumBy.xpath("//*[@text='Acknowledgement']");
 
     // ── Toggle and reject ────────────────────────────
     private static final By TOGGLE_BTN =

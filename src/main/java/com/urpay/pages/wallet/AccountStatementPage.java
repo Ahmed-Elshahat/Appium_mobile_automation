@@ -29,7 +29,7 @@ import io.qameta.allure.Step;
 public class AccountStatementPage extends BasePage {
 
     // ── Account Statement Header ──────────────────────
-    @AndroidFindBy(xpath = "//android.widget.TextView[@text='Account Statement']")
+    @AndroidFindBy(xpath = "//*[@text='Account Statement']")
     @iOSXCUITFindBy(accessibility = "Account Statement")
     private WebElement accountStatementHeader;
 
@@ -44,16 +44,16 @@ public class AccountStatementPage extends BasePage {
     private WebElement toDatePicker;
 
     // ── Date Dialog - Previous Month Button ───────────
-    @AndroidFindBy(xpath = "//android.widget.LinearLayout[@resource-id='android:id/pickers']"
+    @AndroidFindBy(xpath = "//*[@resource-id='android:id/pickers']"
             + "/android.widget.NumberPicker[1]/android.widget.Button[1]")
     private WebElement previousMonthButton;
 
     // ── Date Dialog - OK Button ───────────────────────
-    @AndroidFindBy(xpath = "//android.widget.Button[@resource-id='android:id/button1']")
+    @AndroidFindBy(xpath = "//*[@resource-id='android:id/button1']")
     private WebElement dateDialogOkButton;
 
     // ── Date Dialog - Year Header ─────────────────────
-    @AndroidFindBy(xpath = "//android.widget.TextView[@resource-id='android:id/date_picker_header_year']")
+    @AndroidFindBy(xpath = "//*[@resource-id='android:id/date_picker_header_year']")
     private WebElement yearHeaderText;
 
     // ── View Account Statement Button ─────────────────
