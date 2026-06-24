@@ -29,13 +29,15 @@ public class CardSettingsPage extends BasePage {
             "//*[@text='Change' and @class='android.widget.TextView']");
     private static final By CANCEL_CARD_TEXT = AppiumBy.xpath("//*[@text='Cancel Card' or @text='Cancel card']");
     private static final By CANCEL_CARD_BTN = AppiumBy.xpath(
-            "//*[@text='Cancel Card']/parent::*//*[@text='Cancel'] | //*[@text='Cancel card']");
+            "//*[@text='Cancel' and @class='android.widget.TextView']");
     private static final By CANCELLATION_DROPDOWN = AppiumBy.xpath(
             "//*[contains(@content-desc,'DownArrow')] | //*[@text='Select reason']");
     private static final By OTHER_REASON = AppiumBy.xpath(
-            "//*[@text='Other'] | //*[contains(@content-desc,'data-picker-item-3')]");
+            "//*[@text='Other reasons' or @text='Other'] | //*[contains(@content-desc,'data-picker-item-3')]");
     private static final By CONFIRM_CANCEL_BTN = AppiumBy.xpath(
-            "//*[contains(@content-desc,'testID-cancel--main')]");
+            "//*[contains(@content-desc,'testID-cancel--main')] | " +
+            "//*[contains(@content-desc,'testID-primary')] | " +
+            "(//*[@text='Cancel Card'])[last()]");
     private static final By NO_THANKS_BTN = AppiumBy.xpath(
             "//*[@text='No thanks'] | //*[contains(@content-desc,'noThankButton')]");
 

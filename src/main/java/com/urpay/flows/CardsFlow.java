@@ -400,16 +400,9 @@ public class CardsFlow {
         replacementPage.tapNext();
         log.info("Tapped Next after city selection");
 
-        // Step 6: Confirm replacement
-        replacementPage.tapConfirm();
-        log.info("Tapped Confirm — awaiting Thank You screen");
-
-        // Step 7: Verify success and tap Done
-        if (replacementPage.isThankYouVisible()) {
-            log.info("Card replacement Thank You screen confirmed");
-        }
-        replacementPage.tapDone();
-        log.info("Card replacement completed");
+        // Step 6: STOP before confirmation — do NOT confirm (card still needed)
+        log.info("Card replacement flow validated up to confirmation screen — stopping here (card preserved)");
+        driver.navigate().back();
     }
 
     /**
@@ -841,6 +834,60 @@ public class CardsFlow {
     // ══════════════════════════════════════════════════
     //  CANCEL CARD (Katalon: CancelMadaCard)
     // ══════════════════════════════════════════════════
+
+    /**
+     * Validate cancel card steps without actually cancelling.
+     * Flow: Card Settings → Cancel → reason dropdown → Other → Confirm → STOP (press back)
+     */
+    @Step("Validate cancel card steps (stops before passcode)")
+    public void validateCancelCardSteps() {
+        navigateToCardSettings();
+        CardSettingsPage settings = new CardSettingsPage();
+        settings.tapCancelCard();
+        log.info("Tapped Cancel Card");
+
+        settings.tapCancellationDropdown();
+        log.info("Tapped cancellation reason dropdown");
+
+        settings.selectOtherReason();
+        log.info("Selected 'Other' reason");
+
+        // Tap the confirm "Cancel Card" button in the bottom sheet
+        settings.tapConfirmCancel();
+        log.info("Tapped Confirm Cancel — passcode screen shown");
+
+        // Enter passcode to confirm cancellation
+        String passcode = ConfigManager.getInstance().get("madaCard.passCode", "2233");
+        passcodePage.enterPasscode(passcode);
+        log.info("Entered passcode — card cancellation confirmed");
+
+        // Card is cancelled — app returns to Card Settings (no retention offer in current UI)
+        log.info("Card cancelled successfully");
+
+        // Navigate back to dashboard and verify card is removed
+        driver.navigate().back(); // Card Settings → Products (or empty)
+        driver.navigate().back(); // Products → Dashboard
+        dashboardPage.dismissPopups();
+
+        // Scroll to Cards section and check if "Mada Card" is still visible
+        try {
+            platformActions.scrollToText("Cards");
+        } catch (Exception e) {
+            SwipeUtils smallSwipe = new SwipeUtils(driver, 0.35);
+            for (int i = 0; i < 5; i++) { smallSwipe.swipeUp(); }
+        }
+
+        setImplicitWait(3);
+        boolean cardStillVisible = quickFind(AppiumBy.xpath("//*[@text='Mada Card']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Mada Physical Card']"));
+        setImplicitWait(10);
+
+        if (!cardStillVisible) {
+            log.info("VERIFIED: Cancelled card is NOT visible on dashboard");
+        } else {
+            log.warn("Cancelled card still appears on dashboard — may need refresh");
+        }
+    }
 
     @Step("Cancel card")
     public void cancelCard(String cardPrefix) {

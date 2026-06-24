@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Card Replacement" verbose="1">
+    <test name="Replace Card">
+        <classes>
+            <class name="com.urpay.tests.payments.MadaCardTest">
+                <methods>
+                    <include name="testNavigateToCard"/>
+                    <include name="testReplaceCard"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

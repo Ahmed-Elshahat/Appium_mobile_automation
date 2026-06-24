@@ -1,0 +1,13 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Cancel Card Steps" verbose="1">
+    <test name="Cancel Card Validation">
+        <classes>
+            <class name="com.urpay.tests.payments.MadaCardTest">
+                <methods>
+                    <include name="testNavigateToCard"/>
+                    <include name="testValidateCancelCardSteps"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
