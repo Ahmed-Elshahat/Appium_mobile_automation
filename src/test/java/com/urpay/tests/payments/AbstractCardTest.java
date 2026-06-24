@@ -388,7 +388,7 @@ public abstract class AbstractCardTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testValidateCancelCardSteps() {
         CardsFlow flow = new CardsFlow();
-        flow.validateCancelCardSteps();
+        flow.validateCancelCardSteps(getCardPrefix());
         captureScreenshot("Cancel Card Steps Validated");
     }
 

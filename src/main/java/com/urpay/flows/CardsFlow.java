@@ -107,14 +107,6 @@ public class CardsFlow {
         String cardType = c.get(cardPrefix + ".expectedCardName", "Mada Card");
         CardsPage page = navigateToCards();
 
-        // DEBUG: dump page source to see what's on screen
-        try {
-            String ps = driver.getPageSource();
-            java.nio.file.Files.writeString(
-                java.nio.file.Path.of("target/page_source_after_cards_scroll.xml"), ps);
-            log.info("Page source saved to target/page_source_after_cards_scroll.xml ({} chars)", ps.length());
-        } catch (Exception ex) { log.warn("Could not save page source: {}", ex.getMessage()); }
-
         // ── Step 1: Enter cards section ──
         // Try banner first, then "View All" — with scrolling if needed
         By viewAllBtn = AppiumBy.xpath("//*[@text='View All']");
@@ -153,22 +145,27 @@ public class CardsFlow {
         }
         setImplicitWait(10);
 
-        // ── Step 2: Check if user already has a card — scroll to find "Add new card" ──
+        // ── Step 2: Check if user already has a card ──
         setImplicitWait(2);
-        boolean hasExistingCard = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
-                || quickFind(AppiumBy.xpath("//*[@text='Card Information']"))
-                || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
-                || quickFind(AppiumBy.xpath("//*[@text='Online Transactions']"));
+        boolean hasExistingCard = quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
+                || quickFind(AppiumBy.xpath("//*[@text='Card Information']"));
         boolean hasAddNewCard = quickFind(AppiumBy.xpath("//*[@text='Add new card']"));
+
+        // If existing card detected, return immediately
+        if (hasExistingCard && !hasAddNewCard) {
+            setImplicitWait(10);
+            log.info("User already has card — no 'Add new card' found, card ready for management");
+            return page;
+        }
 
         // Fallback: if neither detected (e.g. tablet layout), scroll to find indicators
         if (!hasExistingCard && !hasAddNewCard) {
             SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
             for (int i = 0; i < 4; i++) {
                 smallSwipe.swipeUp();
-                if (quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
-                        || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
-                        || quickFind(AppiumBy.xpath("//*[@text='Online Transactions']"))) {
+                if (quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
+                        || quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))) {
                     hasExistingCard = true;
                     break;
                 }
@@ -177,29 +174,7 @@ public class CardsFlow {
                     break;
                 }
             }
-        }
-
-        if (hasExistingCard && !hasAddNewCard) {
-            // Existing card visible but "Add new card" not yet — scroll down to find it
-            SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
-            for (int i = 0; i < 4; i++) {
-                smallSwipe.swipeUp();
-                if (quickFind(AppiumBy.xpath("//*[@text='Add new card']"))) {
-                    hasAddNewCard = true;
-                    break;
-                }
-            }
-            if (!hasAddNewCard) {
-                // No "Add new card" after scrolling — user truly has max cards
-                // Scroll back up so card management elements are visible
-                SwipeUtils backSwipe = new SwipeUtils(driver, 0.30);
-                for (int i = 0; i < 4; i++) {
-                    backSwipe.swipeDown();
-                    if (quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
-                            || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
-                        break;
-                    }
-                }
+            if (hasExistingCard) {
                 setImplicitWait(10);
                 log.info("User already has card — no 'Add new card' found, card ready for management");
                 return page;
@@ -574,14 +549,6 @@ public class CardsFlow {
         }
         setImplicitWait(10);
 
-        // Dump page source for debugging lock toggle element
-        try {
-            String ps = driver.getPageSource();
-            java.nio.file.Files.writeString(
-                    java.nio.file.Path.of("target/page_source_card_products.xml"), ps);
-            log.info("Card products page source saved ({} chars)", ps.length());
-        } catch (Exception e) { log.warn("Failed to save page source: {}", e.getMessage()); }
-
         By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
         setImplicitWait(3);
         var unlockEls = driver.findElements(unlockText);
@@ -840,7 +807,8 @@ public class CardsFlow {
      * Flow: Card Settings → Cancel → reason dropdown → Other → Confirm → STOP (press back)
      */
     @Step("Validate cancel card steps (stops before passcode)")
-    public void validateCancelCardSteps() {
+    public void validateCancelCardSteps(String cardPrefix) {
+        ConfigManager c = ConfigManager.getInstance();
         navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
         settings.tapCancelCard();
@@ -857,7 +825,7 @@ public class CardsFlow {
         log.info("Tapped Confirm Cancel — passcode screen shown");
 
         // Enter passcode to confirm cancellation
-        String passcode = ConfigManager.getInstance().get("madaCard.passCode", "2233");
+        String passcode = c.get(cardPrefix + ".passCode", "2233");
         passcodePage.enterPasscode(passcode);
         log.info("Entered passcode — card cancellation confirmed");
 
@@ -869,7 +837,7 @@ public class CardsFlow {
         driver.navigate().back(); // Products → Dashboard
         dashboardPage.dismissPopups();
 
-        // Scroll to Cards section and check if "Mada Card" is still visible
+        // Scroll to Cards section and check if the card is still visible
         try {
             platformActions.scrollToText("Cards");
         } catch (Exception e) {
@@ -877,17 +845,23 @@ public class CardsFlow {
             for (int i = 0; i < 5; i++) { smallSwipe.swipeUp(); }
         }
 
+        String cardName = c.get(cardPrefix + ".expectedCardName", "Mada Card");
+        String physicalCardName = c.get(cardPrefix + ".expectedPhysicalCardName", cardName);
         setImplicitWait(3);
-        boolean cardStillVisible = quickFind(AppiumBy.xpath("//*[@text='Mada Card']"))
-                || quickFind(AppiumBy.xpath("//*[@text='Mada Physical Card']"));
+        boolean cardStillVisible = quickFind(AppiumBy.xpath("//*[@text='" + cardName + "']"))
+                || quickFind(AppiumBy.xpath("//*[@text='" + physicalCardName + "']"));
         setImplicitWait(10);
 
         if (!cardStillVisible) {
-            log.info("VERIFIED: Cancelled card is NOT visible on dashboard");
+            log.info("VERIFIED: Cancelled card '{}' is NOT visible on dashboard", cardName);
         } else {
-            log.warn("Cancelled card still appears on dashboard — may need refresh");
+            log.warn("Cancelled card '{}' still appears on dashboard", cardName);
+            throw new AssertionError("Cancelled card should not be visible on dashboard: " + cardName);
         }
     }
+
+    /** @deprecated */
+    public void validateCancelCardSteps() { validateCancelCardSteps("madaCard"); }
 
     @Step("Cancel card")
     public void cancelCard(String cardPrefix) {
