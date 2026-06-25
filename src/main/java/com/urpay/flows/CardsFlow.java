@@ -807,7 +807,7 @@ public class CardsFlow {
      * Flow: Card Settings → Cancel → reason dropdown → Other → Confirm → STOP (press back)
      */
     @Step("Validate cancel card steps (stops before passcode)")
-    public void validateCancelCardSteps(String cardPrefix) {
+    public boolean validateCancelCardSteps(String cardPrefix) {
         ConfigManager c = ConfigManager.getInstance();
         navigateToCardSettings();
         CardSettingsPage settings = new CardSettingsPage();
@@ -852,16 +852,17 @@ public class CardsFlow {
                 || quickFind(AppiumBy.xpath("//*[@text='" + physicalCardName + "']"));
         setImplicitWait(10);
 
-        if (!cardStillVisible) {
-            log.info("VERIFIED: Cancelled card '{}' is NOT visible on dashboard", cardName);
-        } else {
+        if (cardStillVisible) {
             log.warn("Cancelled card '{}' still appears on dashboard", cardName);
-            throw new AssertionError("Cancelled card should not be visible on dashboard: " + cardName);
+        } else {
+            log.info("VERIFIED: Cancelled card '{}' is NOT visible on dashboard", cardName);
         }
+        // Report the OBSERVED state; the test layer decides pass/fail (no assertions in flows).
+        return cardStillVisible;
     }
 
     /** @deprecated */
-    public void validateCancelCardSteps() { validateCancelCardSteps("madaCard"); }
+    public boolean validateCancelCardSteps() { return validateCancelCardSteps("madaCard"); }
 
     @Step("Cancel card")
     public void cancelCard(String cardPrefix) {

@@ -1,9 +1,11 @@
 package com.urpay.pages.payments;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
 
+import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
 import io.qameta.allure.Step;
@@ -55,9 +57,9 @@ public class SadadBillsPage extends BasePage {
     //  ADD NEW BILL WIZARD
     // ══════════════════════════════════════════════════
 
-    // Service Type Dropdown (Telecom & Internet, Government, etc.)
-    @AndroidFindBy(xpath = "//*[@text='All Services' or @content-desc='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']")
-    @iOSXCUITFindBy(accessibility = "testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42")
+    // Service Type Dropdown (Katalon AllServicesDropDownList = testID-multi-select-serviceType)
+    @AndroidFindBy(accessibility = "testID-multi-select-serviceType")
+    @iOSXCUITFindBy(accessibility = "testID-multi-select-serviceType")
     private WebElement allServicesDropDown;
 
     // Provider Dropdown
@@ -98,9 +100,9 @@ public class SadadBillsPage extends BasePage {
     @iOSXCUITFindBy(accessibility = "testID-input-direct-alias")
     private WebElement billNameField;
 
-    // Next Button (Bill Amount Screen)
-    @AndroidFindBy(accessibility = "testID-primary-onPressNext-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onPressNext-main")
+    // Next Button (Katalon NextButton = testID-primary--main)
+    @AndroidFindBy(accessibility = "testID-primary--main")
+    @iOSXCUITFindBy(accessibility = "testID-primary--main")
     private WebElement nextButton;
 
     // Save Bill Switcher
@@ -257,9 +259,20 @@ public class SadadBillsPage extends BasePage {
         tap(searchItem0);
     }
 
-    @Step("Select Mobily 005 provider (search-item-4)")
+    @Step("Select 'Mobily 005' provider from filtered results")
     public void selectMobilyProvider() {
-        tap(searchItem4);
+        // After typing "Mobily", select by NAME (robust to result count) — the fixed
+        // index item-4 only holds when the filter yields exactly 5 Mobily providers.
+        By byName = AppiumBy.xpath(
+                "//*[contains(@text,'Mobily 005') or contains(@content-desc,'Mobily 005')]"
+                + "/ancestor-or-self::*[@clickable='true'][1]");
+        try {
+            waitUtils.waitForClickable(byName, 8).click();
+            log.info("Selected Mobily 005 by name");
+        } catch (Exception e) {
+            waitUtils.waitForClickable(AppiumBy.accessibilityId("testID-search-item-4"), 6).click();
+            log.info("Selected Mobily 005 via item-4 fallback");
+        }
     }
 
     @Step("Tap Bill Type dropdown")
@@ -308,9 +321,29 @@ public class SadadBillsPage extends BasePage {
         type(billNameField, name);
     }
 
-    @Step("Tap Save Bill Confirm button")
+    @Step("Tap 'Save & Add Bill' button")
     public void tapSaveBillConfirm() {
-        tap(saveBillConfirmButton);
+        By confirm = AppiumBy.accessibilityId("testID-primary-onConfirmSave-main");
+        try {
+            waitUtils.waitForClickable(confirm, 6).click();
+        } catch (Exception e) {
+            swipeUtils.swipeUp();
+            waitUtils.waitForClickable(confirm, 8).click();
+        }
+        log.info("Tapped 'Save & Add Bill'");
+    }
+
+    @Step("Tap 'Pay Later' button")
+    public void tapPayLater() {
+        By payLater = AppiumBy.xpath(
+                "//*[@content-desc='testID-secondary-action-main' or @text='Pay Later']");
+        try {
+            waitUtils.waitForClickable(payLater, 6).click();
+        } catch (Exception e) {
+            swipeUtils.swipeUp();
+            waitUtils.waitForClickable(payLater, 8).click();
+        }
+        log.info("Tapped 'Pay Later'");
     }
 
     @Step("Tap Done button")
@@ -330,6 +363,45 @@ public class SadadBillsPage extends BasePage {
     @Step("Tap 'Confirm Pay' button")
     public void tapConfirmPay() {
         tap(confirmPayButton);
+    }
+
+    @Step("Tap Next on the bill-amount screen")
+    public void tapNextBillAmount() {
+        // Pay flow's Next (Katalon NextButtonBillAmountScreen) is a DIFFERENT button than
+        // the add-bill Next (testID-primary--main).
+        tap(AppiumBy.accessibilityId("testID-primary-onPressNext-main"));
+    }
+
+    @Step("Tap the final 'Pay Bill' step")
+    public void tapPayBillFinalStep() {
+        By finalStep = AppiumBy.xpath(
+                "//*[@content-desc='testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6']");
+        try {
+            waitUtils.waitForClickable(finalStep, 6).click();
+        } catch (Exception e) {
+            swipeUtils.swipeUp();
+            waitUtils.waitForClickable(finalStep, 8).click();
+        }
+        log.info("Tapped final Pay Bill step");
+    }
+
+    @Step("Tap 'Done' (scroll into view)")
+    public void tapDoneWithScroll() {
+        // Result screen: the Done button is below the fold and needs scrolling — Katalon
+        // swiped twice before tapping. Retry with a swipe between attempts; match testID OR text.
+        By done = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onPressDone-main' or @text='Done']");
+        for (int i = 0; i < 4; i++) {
+            try {
+                waitUtils.waitForClickable(done, 3).click();
+                log.info("Tapped Done");
+                return;
+            } catch (Exception e) {
+                swipeUtils.swipeUp();
+            }
+        }
+        waitUtils.waitForClickable(done, 6).click();
+        log.info("Tapped Done (final attempt)");
     }
 
     // ══════════════════════════════════════════════════
@@ -388,7 +460,22 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Tap Apply Edit button")
     public void tapApplyEdit() {
-        tap(applyEditButton);
+        // The Apply button can sit below the keyboard/fold after editing the name —
+        // scroll it into view and retry, matching testID OR the "Apply"/"Save" label.
+        By apply = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onPressEdit-main' "
+                + "or @text='Apply' or @text='Save']");
+        for (int i = 0; i < 3; i++) {
+            try {
+                waitUtils.waitForClickable(apply, 4).click();
+                log.info("Tapped Apply Edit");
+                return;
+            } catch (Exception e) {
+                swipeUtils.swipeUp();
+            }
+        }
+        waitUtils.waitForClickable(apply, 6).click();
+        log.info("Tapped Apply Edit (final attempt)");
     }
 
     @Step("Tap Delete button")
@@ -407,6 +494,13 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Search bills for: {query}")
     public void searchBills(String query) {
+        type(sadadSearchField, query);
+    }
+
+    @Step("Search provider/service list for: {query}")
+    public void searchProviderName(String query) {
+        // Provider dropdown reuses the generic search input (testID-Search-Input,
+        // placeholder "Search by name or provider"). Katalon: setText 'Mobily'.
         type(sadadSearchField, query);
     }
 
@@ -437,6 +531,13 @@ public class SadadBillsPage extends BasePage {
 
     public boolean isFirstBillVisible() {
         return isDisplayed(firstBillButton, 10);
+    }
+
+    /** True when on the bills list OR on a bill's detail/pay screen (multi-select opens details). */
+    public boolean isBillDetailsOrListVisible() {
+        return isBillsListLoaded()
+                || isPresent(io.appium.java_client.AppiumBy.xpath(
+                        "//*[@text='Pay Bill' or @text='Bill Details' or @text='Bill details']"), 5);
     }
 
     public boolean isDoneButtonVisible() {

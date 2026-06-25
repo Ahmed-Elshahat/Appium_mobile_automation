@@ -28,6 +28,10 @@
         <suite>suites/smoke.xml</suite>
         <profile>default</profile>
         <env>SIT</env>
+        <!-- Let the suite ALWAYS finish so the Allure HTML report is generated even when
+             some tests fail (the P&C collection has known SIT backend failures). The report
+             itself shows pass/fail. Override in CI with -Dmaven.test.failure.ignore=false. -->
+        <maven.test.failure.ignore>true</maven.test.failure.ignore>
     </properties>
 
     <dependencyManagement>
@@ -147,6 +151,21 @@
     <build>
         <plugins>
             <!-- Compiler -->
+            <!-- Clean wipes the (out-of-target) allure-results so each run's report is fresh -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}/allure-results</directory>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -184,7 +203,8 @@
                 </dependencies>
             </plugin>
 
-            <!-- Allure Maven Plugin -->
+            <!-- Allure Maven Plugin — auto-generates the HTML report in the test phase
+                 (right after Surefire), so every `mvn clean test` produces target/allure-report -->
             <plugin>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-maven</artifactId>
@@ -194,6 +214,15 @@
                     <resultsDirectory>${project.basedir}/allure-results</resultsDirectory>
                     <reportDirectory>${project.basedir}/target/allure-report</reportDirectory>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>allure-html-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -55,8 +55,22 @@ public class SearchPage extends BasePage {
     public void searchAndSelect(String query) {
         dismissPopups();
         openSearch();
+        // Right after login a popup/banner can intercept the search-icon tap, so the
+        // search input never appears. Retry once after re-dismissing popups.
+        if (!isSearchFieldVisible()) {
+            dismissPopups();
+            openSearch();
+        }
         typeQuery(query);
-        tapFirstResult();
+        // Search results can be slow, or the field may not have registered the text on
+        // a re-navigation. If the first result hasn't rendered, re-type once, then wait
+        // longer before tapping.
+        org.openqa.selenium.By firstResult = io.appium.java_client.AppiumBy.accessibilityId(
+                "testID-View.ee7d7dc2-b367-4dd4-91b4-d66c95fec306.0");
+        if (!waitUtils.isPresent(firstResult, 6)) {
+            typeQuery(query);
+        }
+        waitUtils.waitForClickable(firstResult, 15).click();
     }
 
     /** Dismiss Notifications or other popups that may block search icon */

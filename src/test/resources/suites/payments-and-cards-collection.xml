@@ -1,42 +1,96 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
-  P&C Squad Collection — ALL migrated Katalon test cases running in PARALLEL.
-  Each child suite runs in its own thread on a separate device.
+  P&C Squad Collection — FLAT parallel suite (ALL migrated Katalon test cases).
 
-  Katalon P&C Squad coverage:
-    ✅ Cards             → all-cards.xml        (Mada, Al-Ahli, Platinum, Signature — 4 parallel tests)
-    ✅ GovernmentServices → government-services.xml (Single + Multi violation — 2 parallel tests)
-    ✅ SadadBills         → sadad-bills.xml      (CRUD operations)
-    ✅ SadadBills/Payment → sadad-payment.xml    (Bill payment + transaction verification)
-    ✅ Telecom Recharge   → telecom-recharge.xml (Zain, Mobily, STC — 3 parallel tests)
-    ✅ TOPUpUsingBankCard → topup-bankcard.xml   (Full top-up lifecycle)
-    ✅ Travel Esim        → travel-esim.xml      (E-SIM purchase)
-    ❌ Premium            → not yet migrated
-    ❌ Takaful            → not yet migrated
+  WHY FLAT (not the old suite-of-suites):
+    The previous design used parallel="suites" thread-count="7", but every child
+    suite ALSO ran parallel internally (cards=4, telecom=3, gov=2, ...). The parent
+    pool does NOT cap children, so it multiplied into ~13 simultaneous LambdaTest
+    sessions — far above the plan limit — and every session cascade-failed.
 
-  Ensure each suite uses a UNIQUE user account to avoid session conflicts.
+    Here ONE thread pool caps total concurrency. Each <test> = 1 thread = 1
+    LambdaTest session = 1 unique account. TestNG QUEUES any <test> beyond
+    thread-count and starts it as soon as a slot frees.
+
+  CONCURRENCY: thread-count="10"  → never more than 10 live sessions.
+               12 <test> blocks → 10 start immediately, 2 queue.
+
+  group-by-instances="true": guarantees all methods of one test class finish
+               before the next class in the SAME <test> block runs (needed for
+               the merged Sadad block so the two flows don't interleave).
+
+  UNIQUE ACCOUNTS (two sessions on one account = the later login kicks the first).
+  Numbers mirror src/test/resources/config/sit-cards.properties (local format, no +966):
+    Mada       0520872276  | Al-Ahli   0520202572
+    Platinum   0520221183  | Signature 0520830383
+    Gov Single 0520352101  | Gov Multi 0520906923
+    Zain 0520835167 | Mobily 0520080284 | STC 0520897136
+    Travel eSIM 0520778001 | TopUp     0520228810
+    Sadad Bills + Sadad Payment 0520504744 (SAME account+prefix → merged into
+                                            ONE sequential block, not parallel)
 -->
-<suite name="P&C Squad Collection" verbose="1" parallel="suites" thread-count="7">
+<suite name="P and C Squad Collection" verbose="1"
+       parallel="tests" thread-count="10" group-by-instances="true">
 
-    <suite-files>
-        <!-- Cards (4 card types run in parallel internally) -->
-        <suite-file path="all-cards.xml"/>
+    <!-- ── Cards (4 unique accounts) ── -->
+    <test name="Mada Card">
+        <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
+    </test>
+    <test name="Al-Ahli Card">
+        <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
+    </test>
+    <test name="Platinum Card">
+        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
+    </test>
+    <test name="Signature Card">
+        <classes><class name="com.urpay.tests.payments.SignatureCardTest"/></classes>
+    </test>
 
-        <!-- Government Services (single + multi violation in parallel internally) -->
-        <suite-file path="government-services.xml"/>
+    <!-- ── Government Services (2) ── -->
+    <test name="Gov - Single Violation">
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesTest"/></classes>
+    </test>
+    <test name="Gov - Multi Violation">
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesMultiTest"/></classes>
+    </test>
 
-        <!-- Sadad -->
-        <suite-file path="sadad-bills.xml"/>
-        <suite-file path="sadad-payment.xml"/>
+    <!-- ── Telecom Recharge (3 providers, one group each) ── -->
+    <test name="Zain Recharge">
+        <groups><run><include name="zain"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Mobily Recharge">
+        <groups><run><include name="mobily"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="STC Recharge">
+        <groups><run><include name="stc"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
 
-        <!-- Telecom Recharge (3 providers run in parallel internally) -->
-        <suite-file path="telecom-recharge.xml"/>
+    <!-- ── Travel E-SIM (1) ── -->
+    <test name="Travel E-SIM">
+        <groups><run><include name="travel-esim"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TravelEsimTest"/></classes>
+    </test>
 
-        <!-- Top Up -->
-        <suite-file path="topup-bankcard.xml"/>
+    <!-- ── Top Up Bank Card (1) ── -->
+    <test name="Top Up Bank Card">
+        <groups><run><include name="topup-bankcard"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TopUpBankCardTest"/></classes>
+    </test>
 
-        <!-- Travel E-SIM -->
-        <suite-file path="travel-esim.xml"/>
-    </suite-files>
+    <!-- ── Sadad Bills + Payment (SAME account 0520504744 → run sequentially
+            in ONE session/thread to avoid a self-collision) ── -->
+    <test name="Sadad Bills and Payment">
+        <groups><run>
+            <include name="sadad-bills"/>
+            <include name="sadad-payment"/>
+        </run></groups>
+        <classes>
+            <class name="com.urpay.tests.payments.SadadBillsTest"/>
+            <class name="com.urpay.tests.payments.SadadBillPaymentTest"/>
+        </classes>
+    </test>
 
 </suite>

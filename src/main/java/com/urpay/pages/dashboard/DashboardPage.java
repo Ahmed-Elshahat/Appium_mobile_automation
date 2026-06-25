@@ -1,5 +1,6 @@
 package com.urpay.pages.dashboard;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.openqa.selenium.By;
@@ -7,6 +8,7 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.core.ConfigManager;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
@@ -91,19 +93,30 @@ public class DashboardPage extends BasePage {
 
     @Step("Dismiss any popups (Later, close buttons)")
     public void dismissPopups() {
+        // Instant check: with the global implicit wait (timeout=20s), findQuick on an
+        // ABSENT popup blocks ~20s per locator (implicit+explicit wait mixing) — ~40s
+        // wasted on every call when there is no popup. Drop implicit wait to 0 so
+        // findElements returns immediately, then restore it.
+        long implicit = ConfigManager.getInstance().getInt("timeout", 10);
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
         try {
-            List<WebElement> laterBtns = waitUtils.findQuick(LATER_BTN, 3);
-            if (!laterBtns.isEmpty()) {
-                laterBtns.get(0).click();
-                log.info("Dismissed popup via 'Later'");
+            clickIfPresentNow(LATER_BTN, "Later");
+            clickIfPresentNow(CLOSE_BTN, "close button");
+        } finally {
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(implicit));
+        }
+    }
+
+    /** Click the first matching element only if it is already on screen (no waiting). */
+    private void clickIfPresentNow(By locator, String label) {
+        try {
+            List<WebElement> els = driver.findElements(locator);
+            if (!els.isEmpty() && els.get(0).isDisplayed()) {
+                els.get(0).click();
+                log.info("Dismissed popup via '{}'", label);
             }
-            List<WebElement> closeBtns = waitUtils.findQuick(CLOSE_BTN, 1);
-            if (!closeBtns.isEmpty()) {
-                closeBtns.get(0).click();
-                log.info("Dismissed popup via close button");
-            }
-        } catch (Exception e) {
-            log.debug("No popups to dismiss");
+        } catch (Exception ignored) {
+            // not present or went stale — nothing to dismiss
         }
     }
 

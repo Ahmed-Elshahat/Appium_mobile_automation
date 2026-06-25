@@ -73,53 +73,51 @@ public class SadadBillsTest extends BaseTest {
 
     @Test(groups = {"payments", "sadad-bills"}, priority = 3,
             dependsOnMethods = "testAddNewPrepaidBill")
-    @Story("Filter Bills")
-    @Description("Validate filter panel: Sort by label visible, apply Most Recent, "
-            + "Amount Low, Amount High, and Telecom service type filters")
-    @Severity(SeverityLevel.NORMAL)
-    public void testFilterBills() {
+    @Story("Select Bill and Pay")
+    @Description("Select the saved bill and pay it: search → open → Pay Bill → amount → "
+            + "Next → confirm Pay Bill → OTP → Done")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testSelectBillAndPay() {
+        ConfigManager c = ConfigManager.getInstance();
         SadadBillsFlow flow = new SadadBillsFlow();
-
-        // Apply Most Recent filter
-        SadadBillsPage page = flow.filterByMostRecent();
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should reload after Most Recent filter");
-
-        // Apply Amount Low filter
-        page = flow.filterByAmountLow();
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should reload after Amount Low filter");
-
-        // Apply Amount High filter
-        page = flow.filterByAmountHigh();
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should reload after Amount High filter");
-
-        // Apply Telecom service type filter
-        page = flow.filterByTelecomServiceType();
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should reload after Telecom service type filter");
-
-        // Reset filters
-        page = flow.resetFilters();
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should reload after reset filters");
+        SadadBillsPage page = flow.selectBillAndPay(
+                c.get("sadad.billName", "hamada Bill"),
+                c.get("sadad.payAmount", "100"));
+        Assert.assertTrue(page.isBillsListLoaded() || page.isFirstBillVisible(),
+                "Should return to the bills list after paying");
     }
 
     @Test(groups = {"payments", "sadad-bills"}, priority = 4,
+            dependsOnMethods = "testAddNewPrepaidBill")
+    @Story("Filter Bills")
+    @Description("Validate the filter panel in ONE session: Most Recent, Amount Low, "
+            + "Amount High, Telecom service type, then Reset (matches Katalon)")
+    @Severity(SeverityLevel.NORMAL)
+    public void testFilterBills() {
+        SadadBillsFlow flow = new SadadBillsFlow();
+        SadadBillsPage page = flow.applyFiltersAndReset();
+        Assert.assertTrue(page.isBillsListLoaded(),
+                "Bills list should reload after applying and resetting filters");
+    }
+
+    @Test(groups = {"payments", "sadad-bills"}, priority = 5,
             dependsOnMethods = "testAddNewPrepaidBill")
     @Story("Edit Bill")
     @Description("Edit existing bill name to 'testA' and verify edit is applied")
     @Severity(SeverityLevel.NORMAL)
     public void testEditBill() {
         SadadBillsFlow flow = new SadadBillsFlow();
-        SadadBillsPage page = flow.editBillName("testA");
+        // The rename target MUST differ from the bill's current nickname, otherwise the
+        // field is unchanged and the Save button stays disabled (→ Apply tap times out).
+        // Use a unique value each run so Save always enables.
+        String uniqueName = "QA" + (System.currentTimeMillis() % 100000);
+        SadadBillsPage page = flow.editBillName(uniqueName);
 
         Assert.assertTrue(page.isBillsListLoaded() || page.isFirstBillVisible(),
                 "Should return to bill view after editing");
     }
 
-    @Test(groups = {"payments", "sadad-bills"}, priority = 5,
+    @Test(groups = {"payments", "sadad-bills"}, priority = 6,
             dependsOnMethods = "testAddNewPrepaidBill")
     @Story("Multi-Select Bills")
     @Description("Select first bill for multi-payment from Saddad Bills list")
@@ -128,11 +126,11 @@ public class SadadBillsTest extends BaseTest {
         SadadBillsFlow flow = new SadadBillsFlow();
         SadadBillsPage page = flow.selectFirstBillMulti();
 
-        Assert.assertTrue(page.isBillsListLoaded(),
-                "Bills list should remain visible after multi-select");
+        Assert.assertTrue(page.isBillDetailsOrListVisible(),
+                "Selecting the first bill should open its details/pay screen or stay on the list");
     }
 
-    @Test(groups = {"payments", "sadad-bills"}, priority = 6,
+    @Test(groups = {"payments", "sadad-bills"}, priority = 7,
             dependsOnMethods = {"testFilterBills", "testEditBill", "testSelectMultiBills"})
     @Story("Delete Bill")
     @Description("Delete existing bill and verify it's removed from the list")

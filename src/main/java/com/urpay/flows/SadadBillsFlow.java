@@ -78,11 +78,40 @@ public class SadadBillsFlow {
 
     @Step("Navigate to Saddad Bills via search")
     public SadadBillsPage navigateToSadadBills() {
-        for (int i = 0; i < 3; i++) {
+        long implicit = ConfigManager.getInstance().getInt("timeout", 10);
+        driver.manage().timeouts().implicitlyWait(java.time.Duration.ZERO);
+        try {
+            // Fast path: if the Saddad bills list is already on screen, skip the whole
+            // back-out + dashboard + re-search round-trip (big time saver across the
+            // sub-tests, and avoids the flaky dashboard re-search).
+            if (!driver.findElements(SADAD_PAGE_LOADED).isEmpty()) {
+                log.info("Already on Saddad Bills page — skipping re-navigation");
+                driver.manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicit));
+                return new SadadBillsPage();
+            }
+            // testID-right-icon-0 is AMBIGUOUS (search on the dashboard, filter on the Sadad
+            // page). If a prior step left us inside Sadad / its wizard, back out FIRST using
+            // Sadad-only markers. Detecting the dashboard directly is unreliable.
+            org.openqa.selenium.By sadadMarker = AppiumBy.xpath(
+                    "//*[@content-desc='testID-tags-menu-0' or @name='testID-tags-menu-0' "
+                    + "or @text='My bills' or @text='New Bill' "
+                    + "or @content-desc='testID-multi-select-serviceType']");
+            for (int i = 0; i < 6 && !driver.findElements(sadadMarker).isEmpty(); i++) {
+                driver.navigate().back();
+            }
+        } finally {
+            driver.manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicit));
+        }
+
+        // Land on the dashboard reliably via the bottom-nav Home button (works from any
+        // tab screen once Sadad's modals are exited above), then verify the search icon.
+        dashboardPage.navigateToHome();
+        for (int i = 0; i < 2; i++) {
             if (dashboardPage.isSearchIconVisible(2)) {
                 break;
             }
             driver.navigate().back();
+            dashboardPage.navigateToHome();
         }
 
         // Dismiss any dashboard popups/banners before searching
@@ -103,7 +132,7 @@ public class SadadBillsFlow {
     //  ADD NEW BILL
     // ══════════════════════════════════════════════════
 
-    @Step("Add new Prepaid bill: provider={providerIndex}, number={billNumber}, amount={amount}")
+    @Step("Add new Prepaid bill (Katalon ValidateAddNewBill flow)")
     public SadadBillsPage addNewPrepaidBill(String billNumber, String amount, String billName) {
         SadadBillsPage page = navigateToSadadBills();
         page.tapAddNewBill();
@@ -112,7 +141,7 @@ public class SadadBillsFlow {
         waits.waitForVisible(
                 AppiumBy.xpath("//*[@text='All Services' or @text='Bill details']"), 15);
 
-        // Select service type: Telecom & Internet
+        // Service type dropdown (testID-multi-select-serviceType) → Telecom & Internet (item-1)
         page.tapServiceTypeDropdown();
         // Check if dropdown items loaded (Saddad service might be down)
         if (!waits.isPresent(AppiumBy.accessibilityId("testID-search-item-1"), 15)) {
@@ -122,44 +151,36 @@ public class SadadBillsFlow {
         }
         page.selectTelecomAndInternet();
 
-        // Select provider: Mobily
+        // Provider dropdown → type "Mobily" to filter → select Mobily 005 by name
         waits.waitForClickable(AppiumBy.accessibilityId("testID-multi-select-provider"), 10);
         page.tapProviderDropdown();
-        waits.waitForClickable(AppiumBy.accessibilityId("testID-search-item-4"), 10);
+        page.searchProviderName(ConfigManager.getInstance().get("sadad.providerSearch", "Mobily"));
         page.selectMobilyProvider();
 
-        // Select bill type: Prepaid
+        // Bill type dropdown → Prepaid (item-1)
         waits.waitForClickable(AppiumBy.accessibilityId("testID-multi-select-billType"), 10);
         page.tapBillTypeDropdown();
         waits.waitForClickable(AppiumBy.accessibilityId("testID-search-item-1"), 10);
         page.selectPrepaid();
 
-        // Enter bill number
+        // Bill number (Katalon enters NO amount in the add-bill flow)
         waits.waitForClickable(AppiumBy.accessibilityId("testID-input-direct-number"), 10);
         page.enterBillNumber(billNumber);
         platformActions.dismissKeyboard();
 
-        // Enter bill amount
-        waits.waitForClickable(
-                AppiumBy.xpath("//*[@content-desc='testID-TextInput.6ebddf51-6774-41c1-956f-5e9e51bc5847']"), 10);
-        page.enterBillAmount(amount);
-        platformActions.dismissKeyboard();
-
-        // Tap Next
-        page.tapNext();
-
-        // Toggle save bill and enter name
+        // Toggle Save switcher + bill name — BEFORE Next (matches Katalon)
         waits.waitForClickable(AppiumBy.accessibilityId("testID-switcher-isSaveFlag"), 10);
         page.toggleSaveBill();
-
         waits.waitForClickable(AppiumBy.accessibilityId("testID-input-direct-alias"), 10);
         page.enterBillName(billName);
         platformActions.dismissKeyboard();
 
-        // Confirm save
-        page.tapSaveBillConfirm();
+        // Next (testID-primary--main) → Save & Add Bill → Pay Later
+        page.tapNext();
+        page.tapSaveBillConfirm();   // SaveBill-AddBillButton (testID-primary-onConfirmSave-main)
+        page.tapPayLater();          // PayLaterButton (testID-secondary-action-main / "Pay Later")
 
-        log.info("New Prepaid bill added: number={}, amount={}, name={}", billNumber, amount, billName);
+        log.info("New Prepaid bill added (Katalon flow): number={}, name={}", billNumber, billName);
         return page;
     }
 
@@ -302,6 +323,25 @@ public class SadadBillsFlow {
         return payBill(page);
     }
 
+    @Step("Select the first saved bill and pay it (Katalon ValidatePayBill flow)")
+    public SadadBillsPage selectBillAndPay(String billName, String amount) {
+        SadadBillsPage page = navigateToSadadBills();
+        // Do NOT search by a fixed name: the shared SIT account already holds a leftover
+        // bill (e.g. "testA"/966503745901), so add-bill can't create a duplicate "hamada
+        // Bill" and the name search returns "No Results" (→ empty list → tapFirstBill
+        // times out). Operate on the FIRST bill in the list, which is always present.
+        page.tapFirstBill();                 // open the first saved bill (FirstBillButton)
+        page.tapPayBill();                   // Pay Bill (testID-primary-onPressCustomize-main)
+        page.enterBillAmount(amount);        // amount (BillAmountTextField), e.g. "100"
+        platformActions.dismissKeyboard();
+        page.tapNextBillAmount();            // Next (testID-primary-onPressNext-main)
+        page.tapPayBillFinalStep();          // final Pay Bill (testID-View.b8ce712a..., swipe)
+        enterVerificationCode();             // OTP
+        page.tapDoneWithScroll();            // Done (testID-primary-onPressDone-main, swipe)
+        log.info("First saved bill paid (configured name '{}', amount={})", billName, amount);
+        return page;
+    }
+
     // ══════════════════════════════════════════════════
     //  EDIT BILL
     // ══════════════════════════════════════════════════
@@ -322,9 +362,9 @@ public class SadadBillsFlow {
 
         page.tapApplyEdit();
 
-        // Wait for edit to be applied (back to bill details)
-        waits.waitForVisible(
-                AppiumBy.accessibilityId("testID-left-icon-back"), 10);
+        // applyEdit returns to the bills list — confirm it (so the next sub-test's
+        // fast-path can skip the dashboard re-search).
+        waits.waitForVisible(SADAD_PAGE_LOADED, 10);
 
         log.info("Bill name edited to: {}", newName);
         return page;
@@ -362,58 +402,22 @@ public class SadadBillsFlow {
     //  FILTER / SORT BILLS
     // ══════════════════════════════════════════════════
 
-    @Step("Open filter panel and apply Most Recent sort")
-    public SadadBillsPage filterByMostRecent() {
+    @Step("Apply all sort filters in ONE panel session, then reset (Katalon validateFilterBills)")
+    public SadadBillsPage applyFiltersAndReset() {
         SadadBillsPage page = navigateToSadadBills();
+        // Katalon opens the filter panel ONCE, taps every sort option, then Applies ONCE.
+        // (The old code re-opened + re-applied for EACH option — that was the duplication.)
         page.tapFilterSort();
         waits.waitForClickable(AppiumBy.xpath("//*[@content-desc='testID-radio-item-0']"), 10);
         page.selectMostRecentFilter();
-        page.tapApplyFilter();
-        waits.waitForVisible(SADAD_PAGE_LOADED, 10);
-        log.info("Filter applied: Most Recent");
-        return page;
-    }
-
-    @Step("Open filter panel and apply Amount Low Price sort")
-    public SadadBillsPage filterByAmountLow() {
-        SadadBillsPage page = new SadadBillsPage();
-        page.tapFilterSort();
-        waits.waitForClickable(AppiumBy.xpath("//*[@content-desc='testID-radio-item-1']"), 10);
         page.selectAmountLowFilter();
-        page.tapApplyFilter();
-        waits.waitForVisible(SADAD_PAGE_LOADED, 10);
-        log.info("Filter applied: Amount Low Price");
-        return page;
-    }
-
-    @Step("Open filter panel and apply Amount High Price sort")
-    public SadadBillsPage filterByAmountHigh() {
-        SadadBillsPage page = new SadadBillsPage();
-        page.tapFilterSort();
-        waits.waitForClickable(AppiumBy.xpath("//*[@content-desc='testID-radio-item-2']"), 10);
         page.selectAmountHighFilter();
-        page.tapApplyFilter();
-        waits.waitForVisible(SADAD_PAGE_LOADED, 10);
-        log.info("Filter applied: Amount High Price");
-        return page;
-    }
-
-    @Step("Open filter panel, select Telecom service type, and apply")
-    public SadadBillsPage filterByTelecomServiceType() {
-        SadadBillsPage page = new SadadBillsPage();
-        page.tapFilterSort();
-        waits.waitForClickable(
-                AppiumBy.xpath("//*[@content-desc='testID-Text.c06eec32-711a-4563-863f-c6157b3485bd.0']"), 10);
         page.selectTelecomServiceTypeFilter();
         page.tapApplyFilter();
         waits.waitForVisible(SADAD_PAGE_LOADED, 10);
-        log.info("Filter applied: Telecom Service Type");
-        return page;
-    }
+        log.info("Filters applied in one session (Most Recent, Amount Low/High, Telecom)");
 
-    @Step("Reset all filters")
-    public SadadBillsPage resetFilters() {
-        SadadBillsPage page = new SadadBillsPage();
+        // Reopen the panel, Reset, Apply
         page.tapFilterSort();
         waits.waitForClickable(
                 AppiumBy.xpath("//*[@content-desc='testID-secondary-onResetFilters-main']"), 10);

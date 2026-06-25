@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Backend service unavailable (SIT)",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(Service Unavailable|currently unavailable|service DOWN|Transaction Declined|Service is down).*"
+  },
+  {
+    "name": "Session / driver allocation",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*(SessionNotCreated|Could not start a new session|Unable to create a new remote session|new session could not be created).*"
+  },
+  {
+    "name": "App crashed / not in foreground",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(APP CRASH|NOT IN FOREGROUND|has crashed|not in foreground).*"
+  },
+  {
+    "name": "Element not found / timeout",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*(TimeoutException|NoSuchElement|waiting for element|Expected condition failed|could not be located|StaleElementReference).*"
+  },
+  {
+    "name": "Product assertion failures",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(but found|expected \\[|AssertionError|should ).*"
+  }
+]

@@ -110,7 +110,17 @@ public class LoginFlow {
 
         enterCredentials(mobile, id);
         enterOtp(otp);
+        // The passcode screen appears a beat AFTER OTP submission — the backend transition
+        // can lag several seconds. Wait for it before firing keypad digits, otherwise the
+        // passcode is typed into the transitional screen and never registers (→ no dashboard).
+        if (!waits.isPresent(PASSCODE_SCREEN, 20)) {
+            log.warn("Passcode screen not detected within 20s after OTP — attempting passcode entry anyway");
+        }
         passcodePage.enterPasscode(passcode);
+        // Let the dashboard render after passcode; backend can be slow on the first load.
+        if (waits.isPresent(AppiumBy.accessibilityId("testID-master-amount-main"), 20)) {
+            log.info("Dashboard rendered after passcode");
+        }
         return new DashboardPage();
     }
 
@@ -118,9 +128,29 @@ public class LoginFlow {
 
     @Step("Select environment from login dropdown")
     private void selectEnvironment() {
-        String env = ConfigManager.getInstance().getEnv();
-        log.info("Selecting environment: {}", env);
-        loginPage.selectEnvironment(env);
+        String env = ConfigManager.getInstance().getEnv(); // e.g. "SIT"
+        // The login screen exposes an "Environment" dropdown (placeholder text "Environment").
+        // Its testID is not stable across builds, so locate by visible text and treat this as
+        // BEST-EFFORT: if the dropdown/option is absent, skip and continue — the SIT build
+        // defaults to the SIT backend, so login still proceeds.
+        By envDropdown = AppiumBy.xpath(
+                "//*[@content-desc='testID-env-dropdown' or @text='Environment' "
+                + "or @content-desc='Environment']");
+        if (!waits.isPresent(envDropdown, 5)) {
+            log.warn("Environment dropdown not found — skipping env selection (defaulting to {})", env);
+            return;
+        }
+        try {
+            driver.findElement(envDropdown).click();
+            log.info("Opened environment dropdown");
+            By option = AppiumBy.xpath(
+                    "//*[@text='" + env + "' or @content-desc='" + env + "' or @label='" + env + "']");
+            waits.waitForClickable(option, 6).click();
+            log.info("Environment selected: {}", env);
+        } catch (Exception e) {
+            log.warn("Environment selection incomplete for '{}' — continuing to credentials: {}",
+                    env, e.getMessage());
+        }
     }
 
     @Step("Skip onboarding screens")

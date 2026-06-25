@@ -393,8 +393,10 @@ public abstract class AbstractCardTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testValidateCancelCardSteps() {
         CardsFlow flow = new CardsFlow();
-        flow.validateCancelCardSteps(getCardPrefix());
+        boolean cardStillVisible = flow.validateCancelCardSteps(getCardPrefix());
         captureScreenshot("Cancel Card Steps Validated");
+        Assert.assertFalse(cardStillVisible,
+                "Cancelled card should not be visible on dashboard after cancellation");
     }
 
     // ═══════════════════════════════════════════════════

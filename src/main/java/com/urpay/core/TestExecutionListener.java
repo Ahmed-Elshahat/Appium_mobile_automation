@@ -18,7 +18,6 @@ import org.testng.ITestResult;
 
 import com.urpay.platform.health.AppHealthChecker;
 import com.urpay.platform.health.AppHealthCheckerFactory;
-import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
 
 import io.appium.java_client.AppiumDriver;
@@ -42,8 +41,9 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     @Override
     public void onTestStart(ITestResult result) {
         String testName = getFullTestName(result);
-        ReportManager.createTest(testName);
-        ReportManager.info("Test started: " + result.getMethod().getMethodName());
+        // Do NOT create Allure steps from listener callbacks — the Allure TestNG adapter
+        // owns the test lifecycle and records start/stop/status automatically. Stepping here
+        // logs "no test case running". Keep to console logging + cloud session naming.
         CloudSessionManager.updateTestName(testName);
         log.info("▶ Starting: {}", testName);
     }
@@ -51,7 +51,6 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     @Override
     public void onTestSuccess(ITestResult result) {
         String testName = result.getMethod().getMethodName();
-        ReportManager.pass("TEST PASSED: " + testName);
         CloudSessionManager.updateStatus("passed");
         log.info("✅ Passed: {}", testName);
     }
@@ -59,68 +58,43 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     @Override
     public void onTestFailure(ITestResult result) {
         String testName = result.getMethod().getMethodName();
+        Throwable throwable = result.getThrowable();
 
         try {
             AppiumDriver driver = DriverFactory.getInstance().getDriver();
 
-            // Capture app health state before screenshot/recovery
+            // Log app health state — distinguishes crashes from assertion failures during triage
             try {
                 AppHealthChecker healthChecker = AppHealthCheckerFactory.create(driver);
-                String appState = healthChecker.getAppState();
-                boolean inForeground = healthChecker.isAppInForeground();
-                boolean crashed = healthChecker.hasAppCrashed();
-
                 String healthReport = String.format(
                         "App State: %s | Foreground: %s | Crashed: %s",
-                        appState, inForeground, crashed);
-                log.info("Health check for {}: {}", testName, healthReport);
-
-                // Attach health info to Allure
-                Files.createDirectories(ALLURE_DIR);
-                String healthFileName = UUID.randomUUID() + "-health.txt";
-                Files.write(ALLURE_DIR.resolve(healthFileName),
-                        healthReport.getBytes(StandardCharsets.UTF_8));
-
-                if (crashed) {
-                    log.error("⚠ APP CRASHED during {}", testName);
-                    ReportManager.fail("APP CRASH DETECTED: " + healthReport);
-                } else if (!inForeground) {
-                    log.warn("⚠ App not in foreground during {}: {}", testName, appState);
-                    ReportManager.fail("APP NOT IN FOREGROUND: " + healthReport);
+                        healthChecker.getAppState(),
+                        healthChecker.isAppInForeground(),
+                        healthChecker.hasAppCrashed());
+                if (healthChecker.hasAppCrashed()) {
+                    log.error("⚠ APP CRASHED during {} — {}", testName, healthReport);
+                } else if (!healthChecker.isAppInForeground()) {
+                    log.warn("⚠ App not in foreground during {} — {}", testName, healthReport);
+                } else {
+                    log.info("Health check for {}: {}", testName, healthReport);
                 }
             } catch (Exception healthEx) {
                 log.debug("Health check unavailable: {}", healthEx.getMessage());
             }
 
+            // Screenshot → allure-results/ (linked to the failed test via the onFinish JSON patch)
             byte[] screenshotBytes = ScreenshotUtils.takeScreenshotAsBytes(driver);
-
             if (screenshotBytes.length > 0) {
-                // Write screenshot to allure-results/
                 String fileName = UUID.randomUUID() + "-attachment.png";
                 Files.createDirectories(ALLURE_DIR);
                 Files.write(ALLURE_DIR.resolve(fileName), screenshotBytes);
                 failureScreenshots.put(testName, fileName);
                 log.info("Screenshot saved for Allure: {} -> {}", testName, fileName);
             }
-
-            // ExtentReports attachment
-            String base64 = ScreenshotUtils.takeScreenshotAsBase64(driver);
-            if (!base64.isEmpty()) {
-                ReportManager.fail("TEST FAILED: " + testName, base64);
-            } else {
-                ReportManager.fail("TEST FAILED: " + testName + " (screenshot unavailable)");
-            }
-
-            // Save to disk (target/screenshots/)
+            // Keep a copy on disk for quick local inspection
             ScreenshotUtils.takeScreenshot(driver, testName);
         } catch (Exception e) {
             log.warn("Screenshot capture failed for {}: {}", testName, e.getMessage());
-            ReportManager.fail("TEST FAILED: " + testName + " (driver unavailable)");
-        }
-
-        Throwable throwable = result.getThrowable();
-        if (throwable != null) {
-            ReportManager.fail("Error: " + throwable.getMessage());
         }
 
         CloudSessionManager.updateStatus("failed");
@@ -131,7 +105,6 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     @Override
     public void onTestSkipped(ITestResult result) {
         String testName = result.getMethod().getMethodName();
-        ReportManager.skip("TEST SKIPPED: " + testName);
         log.warn("⏭ Skipped: {}", testName);
     }
 

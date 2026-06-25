@@ -139,8 +139,20 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Tap Confirm button")
     public void tapConfirm() {
-        platformActions.scrollToText("Confirm");
-        tap(confirmButton);
+        // The confirmation CTA sits below the fold; scroll it into view first.
+        try {
+            platformActions.scrollToText("Confirm");
+        } catch (Exception ignored) {
+            // label may differ or already be visible — continue
+        }
+        // Prefer the testID, but fall back to the clickable element bearing the
+        // Confirm/Pay label — the confirm button's testID is not stable on the
+        // current build (testID-primary-onConfirm-main was never clickable in the run).
+        org.openqa.selenium.By confirm = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onConfirm-main']"
+                + " | //*[@text='Confirm' or @text='Confirm Purchase' or @text='Pay' or @text='Pay Now']"
+                + "/ancestor-or-self::*[@clickable='true'][1]");
+        waitUtils.waitForClickable(confirm, 15).click();
         log.info("Tapped Confirm button");
     }
 

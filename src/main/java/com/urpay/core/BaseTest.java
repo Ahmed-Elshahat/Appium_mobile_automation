@@ -43,6 +43,7 @@ public abstract class BaseTest {
 
         String profileName = config.getProfileName();
         ReportManager.initReports("URPay-" + profileName);
+        ReportManager.writeAllureMetadata();
 
         log.info("═══════════════════════════════════════════");
         log.info("  URPay Test Suite Starting");
