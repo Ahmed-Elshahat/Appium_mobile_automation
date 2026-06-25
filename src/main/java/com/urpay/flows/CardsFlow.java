@@ -19,6 +19,7 @@ import com.urpay.pages.payments.TransactionDetailsPage;
 import com.urpay.platform.MobilePlatformActions;
 import com.urpay.platform.Platform;
 import com.urpay.platform.PlatformActionsFactory;
+import com.urpay.utils.AppGuard;
 import com.urpay.utils.SwipeUtils;
 import com.urpay.utils.WaitUtils;
 
@@ -377,7 +378,7 @@ public class CardsFlow {
 
         // Step 6: STOP before confirmation — do NOT confirm (card still needed)
         log.info("Card replacement flow validated up to confirmation screen — stopping here (card preserved)");
-        driver.navigate().back();
+        AppGuard.safeBack(driver);
     }
 
     /**
@@ -531,18 +532,18 @@ public class CardsFlow {
                     || quickFind(AppiumBy.xpath("//*[@text='Cancel Card']"));
             if (inSubPage) {
                 log.info("Inside sub-page — navigating back to card products");
-                driver.navigate().back();
+                AppGuard.safeBack(driver);
                 // Check if we need another back press
                 if (!quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
-                    driver.navigate().back();
+                    AppGuard.safeBack(driver);
                     log.info("Second back press to reach card products page");
                 }
             } else if (!quickFind(AppiumBy.xpath("//*[@text='Card Information']"))) {
                 // Not on products page at all — try back
                 log.info("Not on card products page — pressing back");
-                driver.navigate().back();
+                AppGuard.safeBack(driver);
                 if (!quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))) {
-                    driver.navigate().back();
+                    AppGuard.safeBack(driver);
                     log.info("Second back press to reach card products page");
                 }
             }
@@ -745,7 +746,7 @@ public class CardsFlow {
         boolean onProducts = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
                 || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"));
         if (!onProducts) {
-            driver.navigate().back();
+            AppGuard.safeBack(driver);
             log.info("Navigated back from Thank You page");
         }
         setImplicitWait(10);
@@ -832,9 +833,10 @@ public class CardsFlow {
         // Card is cancelled — app returns to Card Settings (no retention offer in current UI)
         log.info("Card cancelled successfully");
 
-        // Navigate back to dashboard and verify card is removed
-        driver.navigate().back(); // Card Settings → Products (or empty)
-        driver.navigate().back(); // Products → Dashboard
+        // Navigate back to dashboard and verify card is removed (exit-safe: never Back
+        // from the dashboard, and re-activate the app if a Back overshoots under load).
+        AppGuard.safeBack(driver); // Card Settings → Products
+        AppGuard.safeBack(driver); // Products → Dashboard (no-op if already there)
         dashboardPage.dismissPopups();
 
         // Scroll to Cards section and check if the card is still visible
@@ -986,14 +988,14 @@ public class CardsFlow {
             log.info("Dashboard detected");
         } catch (Exception e) {
             log.info("Dashboard not visible — pressing back once");
-            driver.navigate().back();
+            AppGuard.safeBack(driver);
             try { waits.waitForVisible(dashboardIndicator, 10); } catch (Exception ignored) {}
         }
     }
 
     @Step("Navigate back from cards settings to first card")
     public void goFromSettingsToFirstCard() {
-        driver.navigate().back();
+        AppGuard.safeBack(driver);
         CardsPage cardsPage = new CardsPage();
         waits.waitForVisible(
                 AppiumBy.accessibilityId("testID-bankCard.data.0"), 10);

@@ -1,0 +1,25 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Wallet Transfer Collection" verbose="1">
+<!--
+        Remittance squad — Wallet Transfer (peer-to-peer URPay wallet → wallet).
+
+        One LambdaTest session (single device, single login):
+          - testSearchWalletBeneficiary  logs in and validates navigation + search.
+          - testWalletTransferToUnsavedNumber reuses the session (dependsOnMethods)
+            and runs the full transfer end-to-end.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/wallet-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Wallet Transfer">
+        <groups>
+            <run><include name="wallet-transfer"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.WalletTransferTest"/>
+        </classes>
+    </test>
+
+</suite>

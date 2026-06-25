@@ -96,8 +96,17 @@ public class SadadBillsFlow {
                     "//*[@content-desc='testID-tags-menu-0' or @name='testID-tags-menu-0' "
                     + "or @text='My bills' or @text='New Bill' "
                     + "or @content-desc='testID-multi-select-serviceType']");
+            org.openqa.selenium.By dashboardMarker =
+                    AppiumBy.accessibilityId("testID-master-amount-main");
             for (int i = 0; i < 6 && !driver.findElements(sadadMarker).isEmpty(); i++) {
+                // Exit-safe: the moment we reach the dashboard, STOP — a Back there exits the
+                // app (implicit wait is 0 here, so this check is instant). Recover the app if a
+                // prior Back overshot and backgrounded it under parallel load.
+                if (!driver.findElements(dashboardMarker).isEmpty()) {
+                    break;
+                }
                 driver.navigate().back();
+                com.urpay.utils.AppGuard.ensureForeground(driver);
             }
         } finally {
             driver.manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(implicit));
@@ -110,7 +119,7 @@ public class SadadBillsFlow {
             if (dashboardPage.isSearchIconVisible(2)) {
                 break;
             }
-            driver.navigate().back();
+            com.urpay.utils.AppGuard.safeBack(driver);
             dashboardPage.navigateToHome();
         }
 

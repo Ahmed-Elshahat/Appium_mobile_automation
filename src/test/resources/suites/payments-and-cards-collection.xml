@@ -32,6 +32,13 @@
 <suite name="P and C Squad Collection" verbose="1"
        parallel="tests" thread-count="10" group-by-instances="true">
 
+    <!-- Retry flaky failures inline (RetryAnalyzer = 2 retries) so a transient login/
+         element-timeout failure recovers and its dependent tests RUN instead of
+         cascade-skipping. -->
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
     <!-- ── Cards (4 unique accounts) ── -->
     <test name="Mada Card">
         <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
