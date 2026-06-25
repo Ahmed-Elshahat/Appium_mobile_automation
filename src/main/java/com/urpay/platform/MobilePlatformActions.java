@@ -25,6 +25,13 @@ public interface MobilePlatformActions {
     void enterDigits(String digits);
 
     /**
+     * Delete the given number of previously entered digits from a custom keypad.
+     * Used to clear partial/stale entries before re-entering (e.g. a focus-safe retry).
+     * Android: native key events (AndroidKey.DEL). iOS: backspace on the active element.
+     */
+    void clearDigits(int count);
+
+    /**
      * Dismiss the software keyboard.
      * Android: pressKey(ENTER) or hideKeyboard().
      * iOS: tap done/return or hideKeyboard().

@@ -26,7 +26,9 @@ public class QuickQattaPage extends BasePage {
     // ── Create single qatta wizard ───────────────────
     // "Add new …" label is state-dependent ("Add new Qatta"); match the common "Add new" prefix.
     private static final By ADD_NEW_QATTA_BTN = AppiumBy.xpath(
-            "//android.widget.TextView[starts-with(@text,'Add new')]");
+            "//android.widget.TextView[starts-with(@text,'Add new')]"
+            + " | //XCUIElementTypeStaticText[starts-with(@label,'Add new')"
+            + " or starts-with(@value,'Add new') or starts-with(@name,'Add new')]");
 
     private static final By QATTA_NAME_INPUT =
             AppiumBy.accessibilityId("testID-input-direct-QattaN.NewGroup");
@@ -39,7 +41,7 @@ public class QuickQattaPage extends BasePage {
 
     // Member mobile-number field — no stable testID, mirrors the group flow.
     private static final By MEMBER_MOBILE_INPUT =
-            AppiumBy.xpath("//android.widget.EditText");
+            AppiumBy.xpath("//android.widget.EditText | //XCUIElementTypeTextField");
 
     private static final By NEXT_CONTACT_BTN =
             AppiumBy.accessibilityId("testID-primary-onCheckContactNumber-main");
@@ -55,7 +57,10 @@ public class QuickQattaPage extends BasePage {
             AppiumBy.accessibilityId("testID-primary-onAddContacts-main");
 
     private static final By AMOUNT_100 = AppiumBy.xpath(
-            "//*[@content-desc='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd' and @text='100']");
+            "//*[@content-desc='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd' and @text='100']"
+            + " | //*[(@name='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd'"
+            + " or @label='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd')"
+            + " and (@label='100' or @value='100' or @name='100')]");
 
     private static final By NEXT_AMOUNT_BTN =
             AppiumBy.accessibilityId("testID-primary-action-main");
@@ -68,21 +73,32 @@ public class QuickQattaPage extends BasePage {
 
     private static final By SUCCESS_MSG = AppiumBy.xpath(
             "//*[@content-desc='testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5'"
-            + " or contains(@text,'Success')]");
+            + " or contains(@text,'Success')]"
+            + " | //*[@name='testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5'"
+            + " or @label='testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5'"
+            + " or contains(@label,'Success') or contains(@value,'Success')]");
 
     private static final By DONE_BTN = AppiumBy.xpath(
             "//android.widget.TextView[@content-desc="
-            + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42' and @text='Done']");
+            + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42' and @text='Done']"
+            + " | //XCUIElementTypeStaticText[(@name='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42'"
+            + " or @label='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42')"
+            + " and (@label='Done' or @value='Done' or @name='Done')]");
 
     // ── Pay received single qatta ────────────────────
     private static final By RECEIVED_TAB = AppiumBy.xpath(
             "//*[@content-desc='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42'"
-            + " and @text='Total qatta to pay']");
+            + " and @text='Total qatta to pay']"
+            + " | //*[(@name='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42'"
+            + " or @label='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42')"
+            + " and (@label='Total qatta to pay' or @value='Total qatta to pay')]");
 
     // Latest unpaid qatta row. Rows carry no dedicated testID, so locate the topmost row by its
     // "Unpaid" status label and tap its nearest clickable ancestor (the row container itself).
     private static final By LATEST_RECEIVED_QATTA = AppiumBy.xpath(
-            "(//android.widget.TextView[@text='Unpaid'])[1]/ancestor::*[@clickable='true'][1]");
+            "(//android.widget.TextView[@text='Unpaid'])[1]/ancestor::*[@clickable='true'][1]"
+            + " | (//XCUIElementTypeStaticText[@label='Unpaid' or @value='Unpaid'])[1]"
+            + "/ancestor::XCUIElementTypeCell[1]");
 
     // The "Pay Qatta" TextView is not clickable; its clickable parent button carries this testID.
     private static final By PAY_QATTA_BTN =
@@ -106,9 +122,14 @@ public class QuickQattaPage extends BasePage {
     private static final By CONFIRM_REJECT_BTN =
             AppiumBy.accessibilityId("testID-primary-action-main");
 
+    // After confirming, the app lands on the qatta detail screen where the
+    // participant's status persists as "Rejected" (the success toast is transient).
     private static final By REJECT_SUCCESS_MSG = AppiumBy.xpath(
-            "//*[@content-desc='testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5'"
-            + " or contains(@text,'rejected')]");
+            "//*[@text='Rejected' or contains(@text,'Rejected')"
+            + " or contains(@text,'rejected')]"
+            + " | //*[@label='Rejected' or @value='Rejected'"
+            + " or contains(@label,'Rejected') or contains(@label,'rejected')"
+            + " or contains(@value,'Rejected') or contains(@value,'rejected')]");
 
     // Dashboard-UNIQUE presence marker (wallet info icon only exists on the home screen).
     private static final By DASHBOARD_MARKER =

@@ -42,6 +42,18 @@ public class IOSPlatformActions implements MobilePlatformActions {
     }
 
     @Override
+    public void clearDigits(int count) {
+        for (int i = 0; i < count; i++) {
+            try {
+                WebElement active = driver.switchTo().activeElement();
+                active.sendKeys("\b");
+            } catch (Exception ignored) {
+                // No focused input / nothing to delete — safe to ignore.
+            }
+        }
+    }
+
+    @Override
     public void dismissKeyboard() {
         try {
             // Try tapping "Done" or "Return" key

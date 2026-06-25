@@ -33,6 +33,17 @@ public class AndroidPlatformActions implements MobilePlatformActions {
     }
 
     @Override
+    public void clearDigits(int count) {
+        for (int i = 0; i < count; i++) {
+            try {
+                driver.pressKey(new KeyEvent(AndroidKey.DEL));
+            } catch (Exception ignored) {
+                // No focused input / nothing to delete — safe to ignore.
+            }
+        }
+    }
+
+    @Override
     public void dismissKeyboard() {
         try {
             driver.pressKey(new KeyEvent(AndroidKey.ENTER));

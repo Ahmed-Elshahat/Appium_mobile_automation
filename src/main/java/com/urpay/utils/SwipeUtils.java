@@ -170,18 +170,31 @@ public class SwipeUtils {
      * @param endY   end y-coordinate
      */
     public void performSwipe(int startX, int startY, int endX, int endY) {
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 0);
+        // LambdaTest UiAutomator2 occasionally rejects a valid gesture with
+        // "Unable to perform W3C actions" (InvalidElementStateException). Retry a couple
+        // of times before giving up, as the failure is transient/device-pool dependent.
+        org.openqa.selenium.WebDriverException last = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+                Sequence swipe = new Sequence(finger, 0);
 
-        swipe.addAction(finger.createPointerMove(
-                Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(new Pause(finger, Duration.ofMillis(PRESS_DURATION_MS)));
-        swipe.addAction(finger.createPointerMove(
-                Duration.ofMillis(SWIPE_DURATION_MS), PointerInput.Origin.viewport(), endX, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+                swipe.addAction(finger.createPointerMove(
+                        Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
+                swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+                swipe.addAction(new Pause(finger, Duration.ofMillis(PRESS_DURATION_MS)));
+                swipe.addAction(finger.createPointerMove(
+                        Duration.ofMillis(SWIPE_DURATION_MS), PointerInput.Origin.viewport(), endX, endY));
+                swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
 
-        driver.perform(Collections.singletonList(swipe));
+                driver.perform(Collections.singletonList(swipe));
+                return;
+            } catch (org.openqa.selenium.WebDriverException e) {
+                last = e;
+                log.warn("Swipe attempt {}/3 failed ({}); retrying", attempt, e.getClass().getSimpleName());
+            }
+        }
+        throw last;
     }
 
     private Dimension getScreenSize() {

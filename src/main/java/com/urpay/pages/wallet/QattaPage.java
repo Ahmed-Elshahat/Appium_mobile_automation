@@ -46,8 +46,11 @@ public class QattaPage extends BasePage {
 
     // "Add new …" entry — label is state-dependent: "Add new Qatta" when the group list is
     // empty, "Add new group" once groups exist. Match the common "Add new" prefix.
+    // Platform-aware: Android TextView@text | iOS XCUIElementTypeStaticText@label/value/name.
     private static final By ADD_NEW_GROUP_BTN = AppiumBy.xpath(
-            "//android.widget.TextView[starts-with(@text,'Add new')]");
+            "//android.widget.TextView[starts-with(@text,'Add new')]"
+            + " | //XCUIElementTypeStaticText[starts-with(@label,'Add new')"
+            + " or starts-with(@value,'Add new') or starts-with(@name,'Add new')]");
 
     // ══════════════════════════════════════════════════
     //  NAVIGATION
@@ -64,7 +67,23 @@ public class QattaPage extends BasePage {
      */
     @Step("Open Qatta from dashboard services")
     public void openQatta() {
-        for (int i = 0; i < 6 && !isQattaTileOnScreen(); i++) {
+        // The Services row sits below the fold; on some devices promotional / consent banners push it
+        // much further down (sometimes ~2 screens). React Native virtualizes off-screen tiles, so the
+        // Qatta tile is absent from the view tree until it is scrolled near the viewport — hence we
+        // scroll until it actually renders, then tap. A tap on a tile sitting near the very bottom edge
+        // can silently miss, so after tapping we verify the Qatta landing actually opened and, if not,
+        // nudge the scroll and retry instead of leaving the app stranded on the dashboard.
+        for (int attempt = 0; attempt < 3; attempt++) {
+            for (int i = 0; i < 15 && !isQattaTileOnScreen(); i++) {
+                shortScrollDown();
+            }
+            if (!isQattaTileOnScreen()) {
+                continue;
+            }
+            tap(QATTA_TILE);
+            if (isQattaLandingShown()) {
+                return;
+            }
             shortScrollDown();
         }
         tap(QATTA_TILE);
@@ -79,10 +98,17 @@ public class QattaPage extends BasePage {
         try {
             int y = els.get(0).getRect().getY();
             int screenHeight = driver.manage().window().getSize().getHeight();
-            return y > 0 && y < (int) (screenHeight * 0.9);
+            // Keep the tile comfortably above the bottom gesture area so the tap can't miss.
+            return y > 0 && y < (int) (screenHeight * 0.85);
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** True once the Qatta landing screen (its tabs / "Add new" entry) has opened. */
+    private boolean isQattaLandingShown() {
+        return !waitUtils.findQuick(ADD_NEW_GROUP_BTN, 4).isEmpty()
+                || !waitUtils.findQuick(GROUP_QATTA_OPTION, 1).isEmpty();
     }
 
     /** A short (~15% of screen) upward scroll to reveal the Services row without overshooting. */

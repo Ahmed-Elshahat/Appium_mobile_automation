@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
-import com.urpay.pages.auth.LoginPage;
 import com.urpay.pages.auth.OtpPage;
 import com.urpay.pages.auth.PasscodePage;
 import com.urpay.pages.common.CommonComponentsPage;
@@ -47,7 +46,6 @@ public class LoginFlow {
     private final WaitUtils waits;
     private final MobilePlatformActions platformActions;
     private final CommonComponentsPage common;
-    private final LoginPage loginPage;
     private final OtpPage otpPage;
     private final PasscodePage passcodePage;
 
@@ -55,15 +53,22 @@ public class LoginFlow {
     private static final By MOBILE     = AppiumBy.accessibilityId("testID-input-direct-mobile");
     private static final By NATID      = AppiumBy.accessibilityId("testID-input-direct-id");
     private static final By SUBMIT     = AppiumBy.accessibilityId("testID-primary--main");
+    // Landing screen (fully logged out): the "Login" button that opens the credentials form.
+    private static final By LANDING_LOGIN = AppiumBy.accessibilityId("testID-secondary-login-main");
     private static final By PASSCODE_SCREEN = AppiumBy.xpath(
-            "//*[contains(@content-desc,'testID-passCode.screen')]");
+            "//*[contains(@content-desc,'testID-passCode.screen') "
+            + "or @text='Enter your passcode' or @text='Passcode']");
+    // The clickable passcode container that, when tapped, focuses the hidden RN TextInput
+    // so DIGIT_x key events register. Pick the clickable node (the inner one).
+    private static final By PASSCODE_INPUT = AppiumBy.xpath(
+            "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
+    private static final By DASHBOARD_MARKER = AppiumBy.accessibilityId("testID-master-amount-main");
 
     public LoginFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
         this.platformActions = PlatformActionsFactory.create(driver);
         this.common = new CommonComponentsPage();
-        this.loginPage = new LoginPage();
         this.otpPage = new OtpPage();
         this.passcodePage = new PasscodePage();
     }
@@ -89,42 +94,85 @@ public class LoginFlow {
      * Login with specific credentials.
      * @return DashboardPage for the test to assert on
      */
-    @Step("Full login: skip → env → credentials → OTP → passcode → dashboard")
+    @Step("Full login: skip → credentials → OTP → passcode → dashboard")
     public DashboardPage loginWith(String mobile, String id, String otp, String passcode) {
         skipOnboarding();
 
-        // If passcode screen already visible (app remembers login), just enter passcode
-        if (waits.isPresent(PASSCODE_SCREEN, 2)) {
+        // Cold start of this FLAG_SECURE banking app is slow and the hidden mobile input sits
+        // in the DOM behind the splash/landing, so the discriminating checks below can run
+        // before the real screen has rendered. Block until a genuinely-visible, interactive
+        // screen has settled (passcode re-login, dashboard, or the landing "Login" button)
+        // before deciding which login path to take.
+        By settled = AppiumBy.xpath(
+                "//*[contains(@content-desc,'testID-passCode.screen') "
+                + "or @text='Enter your passcode' or @text='Passcode' "
+                + "or @content-desc='testID-master-amount-main' "
+                + "or @content-desc='testID-secondary-login-main']");
+        waits.isPresent(settled, 60);
+
+        // If passcode screen already visible (app remembers login), just enter passcode.
+        if (waits.isPresent(PASSCODE_SCREEN, 5)) {
             log.info("Passcode screen detected — entering passcode directly");
-            passcodePage.enterPasscode(passcode);
+            enterLoginPasscode(passcode);
+            dismissPostLoginPopups();
             return new DashboardPage();
         }
         // If dashboard already visible, no login needed
-        if (waits.isPresent(AppiumBy.accessibilityId("testID-master-amount-main"), 2)) {
+        if (waits.isPresent(DASHBOARD_MARKER, 5)) {
             log.info("Dashboard already visible — skipping login");
+            dismissPostLoginPopups();
             return new DashboardPage();
         }
 
-        // Select environment (SIT/UAT) from dropdown before entering credentials
-        selectEnvironment();
+        // Landing screen (fully logged out, e.g. after a passcode change): the credentials
+        // form is reached only by tapping the "Login" button. The onboarding-skip loop runs
+        // too fast to reliably catch it, and the mobile field exists in the DOM behind this
+        // overlay (present but NOT clickable), so tap Login explicitly here before entering
+        // credentials. Wait for it to be clickable to ride out the slow landing render.
+        if (waits.isPresent(LANDING_LOGIN, 10)) {
+            log.info("Landing screen detected — tapping Login to open the credentials form");
+            waits.waitForClickable(LANDING_LOGIN, 20).click();
+        }
 
+        selectEnvironment();
         enterCredentials(mobile, id);
         enterOtp(otp);
-        // The passcode screen appears a beat AFTER OTP submission — the backend transition
-        // can lag several seconds. Wait for it before firing keypad digits, otherwise the
-        // passcode is typed into the transitional screen and never registers (→ no dashboard).
-        if (!waits.isPresent(PASSCODE_SCREEN, 20)) {
-            log.warn("Passcode screen not detected within 20s after OTP — attempting passcode entry anyway");
-        }
-        passcodePage.enterPasscode(passcode);
-        // Let the dashboard render after passcode; backend can be slow on the first load.
-        if (waits.isPresent(AppiumBy.accessibilityId("testID-master-amount-main"), 20)) {
-            log.info("Dashboard rendered after passcode");
-        }
+        enterLoginPasscode(passcode);
+        dismissPostLoginPopups();
         return new DashboardPage();
     }
 
+    /**
+     * Dismiss post-login interstitials. After a full login the app shows an "Enable
+     * Fingerprint" bottom-sheet (and sometimes a notifications prompt) that overlays the
+     * dashboard and blocks the bottom navigation. Tap their "Later"/"Skip" dismissals if
+     * present. Best-effort and idempotent: short waits, and a no-op when nothing is shown
+     * (e.g. the remembered-login path that never raises these prompts).
+     */
+    @Step("Dismiss post-login popups (fingerprint / notifications)")
+    private void dismissPostLoginPopups() {
+        // The fingerprint "Later" button is testID-secondary-action-main (per Katalon
+        // laterButtonFingerPrint); also match the generic "Later"/"Skip" text dismissals.
+        By dismiss = AppiumBy.xpath(
+                "//*[@content-desc='testID-secondary-action-main' "
+                + "or @text='Later' or @text='Skip' or @text='No thanks' or @text='NO THANKS' "
+                + "or @text='Maybe Later' or @text='Not now' or @text='Not Now']");
+        for (int i = 0; i < 3; i++) {
+            if (!waits.isPresent(dismiss, 6)) {
+                break;
+            }
+            try {
+                waits.waitForClickable(dismiss, 5).click();
+                log.info("Dismissed a post-login popup");
+            } catch (Exception e) {
+                log.warn("Could not dismiss post-login popup: {}", e.getMessage());
+                break;
+            }
+        }
+    }
+
     // ── Private Steps ──────────────────────────────────
+
 
     @Step("Select environment from login dropdown")
     private void selectEnvironment() {
@@ -153,18 +201,103 @@ public class LoginFlow {
         }
     }
 
+    /**
+     * Enter the login passcode reliably.
+     *
+     * The passcode screen appears immediately after the OTP auto-submits and the server
+     * verifies it. Its hidden input is not focused for a brief moment, so digit key-events
+     * pressed too early are dropped (empty boxes) or partially delivered. Mirror Katalon's
+     * intent (wait for the passcode screen, then press) but make it focus-safe: press, verify
+     * the dashboard, and if not advanced clear any partial entry and re-press once the input
+     * has had time to focus. Clearing before each press prevents over-filling the field.
+     */
+    @Step("Enter login passcode (focus-safe)")
+    private void enterLoginPasscode(String passcode) {
+        if (!waits.isPresent(PASSCODE_SCREEN, 30)) {
+            log.warn("Passcode screen not detected after OTP");
+        }
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            if (waits.isPresent(DASHBOARD_MARKER, 1)) {
+                return; // already authenticated
+            }
+            // The passcode boxes have a hidden input that is NOT auto-focused (unlike the
+            // OTP screen). Without focus, DIGIT_x key events are dropped and the boxes stay
+            // empty. Tap the boxes region first to focus the input, then press the digits.
+            tapToFocusPasscode();
+            platformActions.clearDigits(passcode.length() + 2); // drop any partial/stale digits
+            passcodePage.enterPasscode(passcode);
+            log.info("Passcode entered (attempt {})", attempt);
+            if (waits.isPresent(DASHBOARD_MARKER, 8)) {
+                return;
+            }
+        }
+        // Still not authenticated after all attempts — dump the passcode screen tree once so
+        // we can see the exact input/box elements for diagnosis.
+        try {
+            log.warn("Passcode entry did not reach dashboard. Page source:\n{}",
+                    driver.getPageSource());
+        } catch (Exception e) {
+            log.warn("Could not capture page source: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Focus the hidden passcode TextInput. The RN passcode component exposes a clickable
+     * wrapper (content-desc 'testID-passCode.screen', clickable=true) whose onPress focuses
+     * the hidden input. Clicking that element is more reliable than a raw coordinate tap, so
+     * try it first; fall back to a coordinate tap on the boxes region if the element is not
+     * resolvable. Without focus, DIGIT_x key events are dropped and the boxes stay empty.
+     */
+    private void tapToFocusPasscode() {
+        try {
+            var els = driver.findElements(PASSCODE_INPUT);
+            if (!els.isEmpty()) {
+                els.get(els.size() - 1).click(); // inner clickable wrapper
+                log.info("Clicked passcode input wrapper to focus");
+                return;
+            }
+        } catch (Exception e) {
+            log.warn("Click passcode input wrapper failed: {}", e.getMessage());
+        }
+        // Fallback: coordinate tap on the boxes region (centre, ~34% down).
+        try {
+            org.openqa.selenium.Dimension size = driver.manage().window().getSize();
+            int x = (int) (size.getWidth() * 0.5);
+            int y = (int) (size.getHeight() * 0.34);
+            var finger = new org.openqa.selenium.interactions.PointerInput(
+                    org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger1");
+            var tap = new org.openqa.selenium.interactions.Sequence(finger, 0);
+            tap.addAction(finger.createPointerMove(java.time.Duration.ZERO,
+                    org.openqa.selenium.interactions.PointerInput.Origin.viewport(), x, y));
+            tap.addAction(finger.createPointerDown(
+                    org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+            tap.addAction(new org.openqa.selenium.interactions.Pause(finger,
+                    java.time.Duration.ofMillis(100)));
+            tap.addAction(finger.createPointerUp(
+                    org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+            driver.perform(java.util.Collections.singletonList(tap));
+            log.info("Tapped passcode boxes to focus input at ({}, {})", x, y);
+        } catch (Exception e) {
+            log.warn("Tap-to-focus passcode failed: {}", e.getMessage());
+        }
+    }
+
     @Step("Skip onboarding screens")
     private void skipOnboarding() {
         // Wait for ANY first screen element (app loaded)
         By anyFirst = AppiumBy.xpath(
                 "//*[@text='Skip' or @text='No thanks' or @text='Allow' "
                 + "or @text='Later' or @text='Passcode' or @text='Enter your passcode' "
+                + "or @text='Login' or @text='Register' "
                 + "or @content-desc='testID-secondary-login-main' "
+                + "or @content-desc='testID-secondary-g35-main' "
                 + "or @content-desc='testID-input-direct-mobile' "
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main' "
                 + "or @content-desc='testID-master-amount-main']");
-        waits.waitForVisible(anyFirst, 30);
+        // Cold start of this FLAG_SECURE banking app can take well over 15s to first render,
+        // so allow a longer window for the first onboarding/login element to appear.
+        waits.waitForVisible(anyFirst, 40);
 
         // ALL skippable elements in ONE xpath
         By skipAll = AppiumBy.xpath(
@@ -174,8 +307,13 @@ public class LoginFlow {
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main']");
 
-        // Login button = final onboarding target (tap it to go to login form)
-        By loginBtn = AppiumBy.accessibilityId("testID-secondary-login-main");
+        // Login button on the welcome screen (tap it to go to login form). Verified live: the
+        // welcome screen exposes content-desc testID-secondary-login-main. Keep it a SINGLE simple
+        // OR-xpath (no union '|' / relative './/' predicate, which UiAutomator2's XPath engine can
+        // throw on — that exception is swallowed by findQuick and looks like "button never found").
+        By loginBtn = AppiumBy.xpath(
+                "//*[@content-desc='testID-secondary-login-main' "
+                + "or @content-desc='testID-secondary-g35-main']");
 
         // True terminal = dashboard or passcode screen (NOT mobile field — it exists in DOM behind onboarding)
         By realTerminal = AppiumBy.xpath(
@@ -183,19 +321,22 @@ public class LoginFlow {
                 + "or contains(@content-desc,'testID-passCode.screen')]");
 
         driver.manage().timeouts().implicitlyWait(java.time.Duration.ZERO);
-        for (int i = 0; i < 8; i++) {
-            // Check real terminal first (dashboard/passcode — means we're past login)
+        for (int i = 0; i < 10; i++) {
+            // Check real terminal first (dashboard/passcode — means we're past login).
+            // findQuick waits up to 2s so a still-mounting RN screen isn't missed by a 0ms probe.
             try {
-                var termEls = driver.findElements(realTerminal);
+                var termEls = waits.findQuick(realTerminal, 2);
                 if (!termEls.isEmpty() && termEls.get(0).isDisplayed()) {
                     log.info("Dashboard/passcode visible — skip complete after {} iteration(s)", i);
                     break;
                 }
             } catch (Exception ignored) {}
 
-            // Try Login button (last onboarding step → goes to login form)
+            // Try Login button (last onboarding step → goes to login form). Give the welcome
+            // screen up to 2s per iteration to render the button before falling through; the
+            // previous 0ms probe could spin through every iteration before the button mounted.
             try {
-                var loginEls = driver.findElements(loginBtn);
+                var loginEls = waits.findQuick(loginBtn, 2);
                 if (!loginEls.isEmpty() && loginEls.get(0).isDisplayed()) {
                     loginEls.get(0).click();
                     log.info("Tapped Login button — onboarding complete");
@@ -224,17 +365,20 @@ public class LoginFlow {
 
     @Step("Enter credentials: {mobile} / {id}")
     private void enterCredentials(String mobile, String id) {
-        waits.waitForClickable(MOBILE, 8).click();
+        // After the Login button is tapped the credential FORM is a fresh screen transition that,
+        // on a cold cloud (LambdaTest) start of this FLAG_SECURE app, can take well over 8s to
+        // render — give the mobile field a generous window to avoid a false timeout.
+        waits.waitForClickable(MOBILE, 25).click();
         driver.findElement(MOBILE).sendKeys(mobile);
         log.info("Mobile: {}", mobile);
 
         dismissKeyboard();
-        waits.waitForClickable(NATID, 5).click();
+        waits.waitForClickable(NATID, 10).click();
         driver.findElement(NATID).sendKeys(id);
         log.info("ID: {}", id);
 
         dismissKeyboard();
-        waits.waitForClickable(SUBMIT, 5).click();
+        waits.waitForClickable(SUBMIT, 10).click();
         log.info("Login submitted");
     }
 
