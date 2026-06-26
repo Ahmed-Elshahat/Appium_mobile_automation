@@ -105,6 +105,12 @@ public class ChangePasscodePage extends BasePage {
     private static final By DONE_BTN =
             AppiumBy.accessibilityId("testID-primary--main");
 
+    // ── Inline error / alert notification (toast-style popup) ──
+    // Shared RN notification view reused across the app (Katalon:
+    // MobileConfiguration.waitForElementAndGetText → testID-notification-message).
+    private static final By NOTIFICATION_MESSAGE =
+            AppiumBy.xpath("//*[@content-desc='testID-notification-message']");
+
     // ══════════════════════════════════════════════════
     //  NAVIGATION
     // ══════════════════════════════════════════════════
@@ -307,5 +313,30 @@ public class ChangePasscodePage extends BasePage {
 
     public String getDoneButtonText() {
         return getText(DONE_TEXT);
+    }
+
+    /**
+     * Read the inline error/alert notification message (the toast-style popup the app shows for
+     * an invalid passcode, consecutive digits, mismatch, etc.). Mirrors Katalon
+     * {@code SystemPopupHandler.getMessageFromNotificationPopup}, which polls for
+     * {@code testID-notification-message} and reads its {@code text} attribute.
+     *
+     * <p>The popup is transient, so this polls up to {@code timeoutSec} for it to appear and
+     * returns an empty string if it never does (best-effort — the test asserts on the value).
+     */
+    public String getNotificationMessage(long timeoutSec) {
+        java.util.List<org.openqa.selenium.WebElement> els =
+                waitUtils.findQuick(NOTIFICATION_MESSAGE, timeoutSec);
+        if (els.isEmpty()) {
+            log.warn("Notification message popup did not appear within {}s", timeoutSec);
+            return "";
+        }
+        org.openqa.selenium.WebElement el = els.get(0);
+        String text = el.getAttribute("text");
+        if (text == null || text.isEmpty()) {
+            text = el.getText();
+        }
+        log.info("Notification popup message: {}", text);
+        return text == null ? "" : text;
     }
 }

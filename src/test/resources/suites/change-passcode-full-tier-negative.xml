@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Change Passcode Full Tier - Negative" verbose="1">
+    <test name="ChangePasscodeFullTier-NegativeCases">
+        <classes>
+            <class name="com.urpay.tests.settings.ChangePasscodeFullTierNegativeTest"/>
+        </classes>
+    </test>
+</suite>
