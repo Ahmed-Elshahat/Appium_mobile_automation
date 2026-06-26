@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Auto Top-up Suite" verbose="1">
+<!-- Auto Top-up Plan Creation — Daily / Weekly / Monthly -->
+    <test name="Auto Top-up Creation">
+        <groups>
+            <run>
+                <include name="auto-topup"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.wallet.AutoTopupCreationTest"/>
+        </classes>
+    </test>
+</suite>

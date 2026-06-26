@@ -7,6 +7,7 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.utils.AppGuard;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
@@ -43,7 +44,11 @@ public class FamilyMissionPage extends BasePage {
     private WebElement getStartedButton;
 
     // ── Add New Mission button ────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onAddNewMission-main")
+    // testID is build-specific (e.g. testID-primary-onAddNewMission-main / testID-primary-PTf-main),
+    // so match the clickable button by its visible "Add new mission" label with testID as fallback.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onAddNewMission-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Add new mission' or @text='Add New Mission']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onAddNewMission-main")
     private WebElement addNewMissionButton;
 
@@ -77,7 +82,11 @@ public class FamilyMissionPage extends BasePage {
     private WebElement targetTextField;
 
     // ── Next button (Step 1 → Step 2) ─────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onSubmit-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Next" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmit-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Next']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSubmit-main")
     private WebElement nextButton;
 
@@ -91,7 +100,11 @@ public class FamilyMissionPage extends BasePage {
     private WebElement amountField;
 
     // ── Second Next button (Step 2 → Step 3) ──────────
-    @AndroidFindBy(accessibility = "testID-primary-action-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Next" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Next']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement secondNextButton;
 
@@ -109,7 +122,11 @@ public class FamilyMissionPage extends BasePage {
     private WebElement dateDialogOk;
 
     // ── Primary button (generic — used for final Next) ──
-    @AndroidFindBy(accessibility = "testID-primary--main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Next" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary--main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Next']]")
     @iOSXCUITFindBy(accessibility = "testID-primary--main")
     private WebElement primaryButton;
 
@@ -125,9 +142,21 @@ public class FamilyMissionPage extends BasePage {
             + " or @value='Confirmation' or @name='Confirmation']");
 
     // ── Confirm button ────────────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onConfirm-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Confirm" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Confirm']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
     private WebElement confirmButton;
+
+    // By mirror of confirmButton, used to scroll the review screen until the button is on-screen
+    // (PageFactory WebElements cannot be polled with findElements for a presence check).
+    private static final By CONFIRM_BUTTON = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onConfirm-main']"
+            + " | //android.view.ViewGroup[@clickable='true'"
+            + " and .//android.widget.TextView[@text='Confirm']]"
+            + " | //XCUIElementTypeButton[@name='testID-primary-onConfirm-main']");
 
     // ── Thank you text (mission created success) ──────
     @AndroidFindBy(accessibility = "testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5")
@@ -135,7 +164,11 @@ public class FamilyMissionPage extends BasePage {
     private WebElement thankYouText;
 
     // ── Done button (after creation) ──────────────────
-    @AndroidFindBy(accessibility = "testID-primary-action-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Done" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Done']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement doneButton;
 
@@ -154,17 +187,30 @@ public class FamilyMissionPage extends BasePage {
     private WebElement missionStatusText;
 
     // ── Send Reward button ────────────────────────────
-    @AndroidFindBy(accessibility = "testID-secondary-onSendReward-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Send" label with the
+    // testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    // (The label renders as "Send " with a trailing space, so normalize-space is used.)
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-onSendReward-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[normalize-space(@text)='Send']]")
     @iOSXCUITFindBy(accessibility = "testID-secondary-onSendReward-main")
     private WebElement sendRewardButton;
 
     // ── Validate Reward button ────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onValidateReward-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Send Reward" label
+    // with the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onValidateReward-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Send Reward']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onValidateReward-main")
     private WebElement validateRewardButton;
 
     // ── Done Reward button (after sending reward) ─────
-    @AndroidFindBy(accessibility = "testID-primary-onSuccessButtonPress-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Done" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSuccessButtonPress-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Done']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSuccessButtonPress-main")
     private WebElement doneRewardButton;
 
@@ -191,14 +237,23 @@ public class FamilyMissionPage extends BasePage {
             AppiumBy.xpath("//*[starts-with(@content-desc,'testID-viewElemen')]");
 
     // ── Kid's "I'm Done" button ───────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onSubmitted-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "I'm Done!" label with
+    // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    // (The label uses a curly apostrophe, so contains(...,'Done') avoids any encoding issues.)
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmitted-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[contains(@text,'Done')]]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSubmitted-main")
     private WebElement imDoneButton;
 
     // ── Kid's "Ask Reward" button ─────────────────────
     // Same accessibilityId as I'm Done — it's a state-dependent button.
     // After "I'm Done" the button changes to ask reward.
-    @AndroidFindBy(accessibility = "testID-primary-onSubmitted-main")
+    // testID is build-specific (hashed on the LT build); match by the visible "Ask for reward" label
+    // with the testID as fallback so the locator works on BOTH the semantic and hashed builds.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmitted-main'] "
+            + "| //android.view.ViewGroup[@clickable='true' "
+            + "and .//android.widget.TextView[@text='Ask for reward']]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSubmitted-main")
     private WebElement askRewardButton;
 
@@ -278,8 +333,13 @@ public class FamilyMissionPage extends BasePage {
     @Step("Scroll to Confirm button and tap")
     public void scrollAndConfirm() {
         waitUtils.waitForVisible(CONFIRMATION_TEXT, 15);
-        swipeUp();
-        swipeUp();
+        // The Confirm button sits below the fold on the review screen; how far down it is varies
+        // with device resolution across the LT device pool, and an occasional swipe can no-op, so
+        // scroll until the button is actually present rather than relying on a fixed number of
+        // blind swipes. It anchors at the bottom of the screen, so extra swipes cannot overshoot.
+        for (int i = 0; i < 6 && !isPresent(CONFIRM_BUTTON, 1); i++) {
+            swipeUp();
+        }
         tap(confirmButton);
     }
 
@@ -412,11 +472,22 @@ public class FamilyMissionPage extends BasePage {
 
     @Step("Return to the dashboard from a stacked Family Wallet / Missions screen")
     public void returnToDashboard() {
-        // Android system back reliably pops every stacked Family Wallet / Missions screen
-        // (including those that lack a header back button), matching the verified Qatta approach.
-        for (int i = 0; i < 10 && !isPresent(DASHBOARD_MARKER, 2); i++) {
+        // Pop the stacked Family Wallet / Missions screens with Android system Back, stopping the
+        // moment we reach the dashboard. The dashboard testID marker is build-specific (hashed on
+        // the LambdaTest build), so gating ONLY on it makes every Back fire — overshooting the
+        // dashboard and ejecting the app to the launcher (App State: background). To stay
+        // build-agnostic we also treat "a Back press pushed the app out of the foreground" as proof
+        // we were on the dashboard: re-activate the app (which resumes on the dashboard) and stop.
+        for (int i = 0; i < 10; i++) {
+            if (isPresent(DASHBOARD_MARKER, 2) || AppGuard.isOnDashboard(driver)) {
+                break;
+            }
             pressBack();
+            if (!AppGuard.isInForeground(driver)) {
+                break; // Back popped past the root → we were on the dashboard
+            }
         }
+        AppGuard.ensureForeground(driver); // guarantee the dashboard is foreground for the next step
     }
 
     @Step("Tap on mission name to open details (Kid)")

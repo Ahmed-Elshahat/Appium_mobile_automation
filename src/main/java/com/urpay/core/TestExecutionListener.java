@@ -78,7 +78,10 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 } else {
                     log.info("Health check for {}: {}", testName, healthReport);
                 }
-            } catch (Exception healthEx) {
+            } catch (Throwable healthEx) {
+                // Health reporting is best-effort triage only. Catch Throwable (not just
+                // Exception) so a linkage/NoClassDefFoundError here can never mask the real
+                // test failure or crash the listener (which aborts the forked test JVM).
                 log.debug("Health check unavailable: {}", healthEx.getMessage());
             }
 

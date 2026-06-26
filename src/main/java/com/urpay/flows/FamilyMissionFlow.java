@@ -129,6 +129,12 @@ public class FamilyMissionFlow {
 
     @Step("Verify mission shows 'Rewarded' status")
     public String verifyRewardedStatus(FamilyMissionPage page) {
+        // After the reward OTP, the app shows a "Thank You! / Reward has been sent successfully"
+        // success screen whose only control is Done (testID-primary-onSuccessButtonPress-main) —
+        // there is NO back button here. Tap Done first to return to the Mission Details screen,
+        // which DOES expose the back button, then go to the missions list → Closed tab to read
+        // the final 'Rewarded' status.
+        page.tapDoneReward();
         page.tapBack();
         page.tapClosedTab();
         String status = page.getRewardedStatus();

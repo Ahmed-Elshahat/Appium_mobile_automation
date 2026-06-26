@@ -291,13 +291,16 @@ public class LoginFlow {
                 + "or @text='Login' or @text='Register' "
                 + "or @content-desc='testID-secondary-login-main' "
                 + "or @content-desc='testID-secondary-g35-main' "
+                + "or @content-desc='testID-primary-register-main' "
+                + "or @content-desc='testID-notification-contaniner' "
                 + "or @content-desc='testID-input-direct-mobile' "
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main' "
                 + "or @content-desc='testID-master-amount-main']");
-        // Cold start of this FLAG_SECURE banking app can take well over 15s to first render,
-        // so allow a longer window for the first onboarding/login element to appear.
-        waits.waitForVisible(anyFirst, 40);
+        // Cold start of this FLAG_SECURE banking app can take well over 15s to first render
+        // (the welcome screen's root wrapper is testID-notification-contaniner). On a cold/idle
+        // device the first paint can intermittently exceed 40s, so allow a generous window.
+        waits.waitForVisible(anyFirst, 75);
 
         // ALL skippable elements in ONE xpath
         By skipAll = AppiumBy.xpath(

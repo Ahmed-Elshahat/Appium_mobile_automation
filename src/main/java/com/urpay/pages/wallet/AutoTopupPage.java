@@ -56,19 +56,21 @@ public class AutoTopupPage extends BasePage {
     private WebElement amountInput;
 
     // ── Wizard navigation ─────────────────────────────
+    // The LambdaTest cloud build hashes the <action> segment of testID-primary-<action>-main
+    // buttons (e.g. action -> a hash), so fall back to the visible label.
     // AutoTopupPage/nextBtnSetup
-    @AndroidFindBy(accessibility = "testID-primary-action-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main' or @text='Next']")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-action-main' or @label='testID-primary-action-main' or @name='Next' or @label='Next']")
     private WebElement nextButton;
 
     // AutoTopupPage/confirmBtn
-    @AndroidFindBy(accessibility = "testID-primary-onConfirmation-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onConfirmation-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirmation-main' or @text='Confirm']")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onConfirmation-main' or @label='testID-primary-onConfirmation-main' or @name='Confirm' or @label='Confirm']")
     private WebElement confirmButton;
 
     // AutoTopupPage/doneBtn
-    @AndroidFindBy(accessibility = "testID-primary-onSubmit-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onSubmit-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmit-main' or @text='Done']")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onSubmit-main' or @label='testID-primary-onSubmit-main' or @name='Done' or @label='Done']")
     private WebElement doneButton;
 
     // ── Frequency / day / date / time selectors ───────
@@ -122,9 +124,14 @@ public class AutoTopupPage extends BasePage {
     @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-openDeleteModal-main' or @label='testID-primary-openDeleteModal-main' or @name='Delete auto Top-up']")
     private WebElement deleteTopupButton;
 
-    // AutoTopupPage/DeleteTopupBtn
-    @AndroidFindBy(accessibility = "testID-primary-onDeleteAutoTopup-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onDeleteAutoTopup-main")
+    // AutoTopupPage/DeleteTopupBtn — confirm button inside the delete-confirmation modal.
+    // The remote build OBFUSCATES the content-desc (observed as testID-primary-cqf-main), so the
+    // original testID is kept as the primary match for local builds and the stable visible label
+    // "Delete" is added as a resilient fallback. The exact text "Delete" is distinct from the
+    // "Delete auto Top-up" entry button and the "Delete Auto Top-up" modal title, so it resolves
+    // uniquely (mirrors the deleteTopupButton hardening, which is proven to click via @text here).
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onDeleteAutoTopup-main' or @text='Delete']")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onDeleteAutoTopup-main' or @label='testID-primary-onDeleteAutoTopup-main' or @name='Delete' or @label='Delete']")
     private WebElement confirmDeleteTopupButton;
 
     // AutoTopupPage/notificationMsg
@@ -133,24 +140,27 @@ public class AutoTopupPage extends BasePage {
     private WebElement notificationMessage;
 
     // ── Edit entry points (plan summary view) ─────────
+    // The cloud (LambdaTest) build hashes the <action> segment of
+    // testID-secondary-<action>-<index> edit (pencil) buttons (buttonAction -> a hash). These
+    // icons carry no visible text, so match on the stable prefix + preserved index suffix.
     // AutoTopupPage/editAmtBtn
-    @AndroidFindBy(accessibility = "testID-secondary-buttonAction-main")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-buttonAction-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-buttonAction-main' or (starts-with(@content-desc,'testID-secondary-') and substring(@content-desc, string-length(@content-desc) - 4) = '-main')]")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-buttonAction-main' or @label='testID-secondary-buttonAction-main' or (starts-with(@name,'testID-secondary-') and substring(@name, string-length(@name) - 4) = '-main')]")
     private WebElement editAmountButton;
 
     // AutoTopupPage/editFrequency
-    @AndroidFindBy(accessibility = "testID-secondary-buttonAction-1")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-buttonAction-1")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-buttonAction-1' or (starts-with(@content-desc,'testID-secondary-') and substring(@content-desc, string-length(@content-desc) - 1) = '-1')]")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-buttonAction-1' or @label='testID-secondary-buttonAction-1' or (starts-with(@name,'testID-secondary-') and substring(@name, string-length(@name) - 1) = '-1')]")
     private WebElement editFrequencyButton;
 
     // AutoTopupPage/editDay
-    @AndroidFindBy(accessibility = "testID-secondary-buttonAction-2")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-buttonAction-2")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-buttonAction-2' or (starts-with(@content-desc,'testID-secondary-') and substring(@content-desc, string-length(@content-desc) - 1) = '-2')]")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-buttonAction-2' or @label='testID-secondary-buttonAction-2' or (starts-with(@name,'testID-secondary-') and substring(@name, string-length(@name) - 1) = '-2')]")
     private WebElement editDayButton;
 
     // AutoTopupPage/editTime
-    @AndroidFindBy(accessibility = "testID-secondary-buttonAction-4")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-buttonAction-4")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-buttonAction-4' or (starts-with(@content-desc,'testID-secondary-') and substring(@content-desc, string-length(@content-desc) - 1) = '-4')]")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-buttonAction-4' or @label='testID-secondary-buttonAction-4' or (starts-with(@name,'testID-secondary-') and substring(@name, string-length(@name) - 1) = '-4')]")
     private WebElement editTimeButton;
 
     // ── Plan summary value texts (verification) ───────
@@ -191,8 +201,11 @@ public class AutoTopupPage extends BasePage {
     private WebElement statusToggle;
 
     // AutoTopupPage/disableBtn
-    @AndroidFindBy(accessibility = "testID-primary-onDisableAutoTopup-main")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onDisableAutoTopup-main")
+    // Disable-confirmation modal button; cloud build hashes the <action> segment, so fall back
+    // to the visible label. Exact button text is "Disable auto-top up" (distinct from the modal
+    // title "Disable Auto Top-up" — different casing/spacing).
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onDisableAutoTopup-main' or @text='Disable auto-top up']")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onDisableAutoTopup-main' or @label='testID-primary-onDisableAutoTopup-main' or @name='Disable auto-top up' or @label='Disable auto-top up']")
     private WebElement disableButton;
 
     // AutoTopupPage/statusTxt
@@ -247,7 +260,13 @@ public class AutoTopupPage extends BasePage {
 
     @Step("Tap Next")
     public void tapNext() {
-        tap(nextButton, 30);
+        try {
+            tap(nextButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Next button (testID-primary-action-main / text 'Next') "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Open frequency dropdown")
@@ -287,12 +306,24 @@ public class AutoTopupPage extends BasePage {
 
     @Step("Tap Confirm")
     public void tapConfirm() {
-        tap(confirmButton, 30);
+        try {
+            tap(confirmButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Confirm button (testID-primary-onConfirmation-main / text 'Confirm') "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Tap Done")
     public void tapDone() {
-        tap(doneButton, 30);
+        try {
+            tap(doneButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Done button (testID-primary-onSubmit-main / text 'Done') "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     // ══════════════════════════════════════════════════
@@ -319,22 +350,46 @@ public class AutoTopupPage extends BasePage {
 
     @Step("Tap Edit amount")
     public void tapEditAmount() {
-        tap(editAmountButton, 30);
+        try {
+            tap(editAmountButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Edit-amount button (testID-secondary-buttonAction-main) "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Tap Edit frequency")
     public void tapEditFrequency() {
-        tap(editFrequencyButton, 30);
+        try {
+            tap(editFrequencyButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Edit-frequency button (testID-secondary-buttonAction-1) "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Tap Edit day")
     public void tapEditDay() {
-        tap(editDayButton, 30);
+        try {
+            tap(editDayButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Edit-day button (testID-secondary-buttonAction-2) "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Tap Edit time")
     public void tapEditTime() {
-        tap(editTimeButton, 30);
+        try {
+            tap(editTimeButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Edit-time button (testID-secondary-buttonAction-4) "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Read plan frequency text")
@@ -373,7 +428,13 @@ public class AutoTopupPage extends BasePage {
 
     @Step("Confirm disable auto top-up")
     public void tapDisable() {
-        tap(disableButton, 30);
+        try {
+            tap(disableButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Disable button (testID-primary-onDisableAutoTopup-main / text 'Disable') "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Step("Read plan status text")
@@ -402,7 +463,36 @@ public class AutoTopupPage extends BasePage {
                 return false;
             }
         }
+        dumpScreenDiagnostics("Auto Top-up screen did not settle (no plan-delete marker, no amount input)");
         return isPresent(PLAN_DELETE_MARKER, 1);
+    }
+
+    /**
+     * One-time diagnostic: log the actual content-desc and text values present on screen so we can
+     * see the real testIDs exposed by the running build (local phone vs the LambdaTest APK can
+     * differ). Remove once the Auto Top-up screen locators are confirmed on the cloud build.
+     */
+    private void dumpScreenDiagnostics(String reason) {
+        try {
+            String src = driver.getPageSource();
+            java.util.LinkedHashSet<String> descs = new java.util.LinkedHashSet<>();
+            java.util.regex.Matcher dm =
+                    java.util.regex.Pattern.compile("content-desc=\"([^\"]+)\"").matcher(src);
+            while (dm.find()) {
+                descs.add(dm.group(1));
+            }
+            java.util.LinkedHashSet<String> texts = new java.util.LinkedHashSet<>();
+            java.util.regex.Matcher tm =
+                    java.util.regex.Pattern.compile("\\btext=\"([^\"]+)\"").matcher(src);
+            while (tm.find()) {
+                texts.add(tm.group(1));
+            }
+            log.warn("DIAGNOSTIC: {}", reason);
+            log.warn("DIAGNOSTIC content-desc values: {}", descs);
+            log.warn("DIAGNOSTIC text values: {}", texts);
+        } catch (Exception e) {
+            log.warn("DIAGNOSTIC dump failed: {}", e.getMessage());
+        }
     }
 
     @Step("Tap Delete auto top-up")
@@ -412,6 +502,12 @@ public class AutoTopupPage extends BasePage {
 
     @Step("Confirm delete auto top-up")
     public void tapConfirmDeleteTopup() {
-        tap(confirmDeleteTopupButton, 30);
+        try {
+            tap(confirmDeleteTopupButton, 30);
+        } catch (RuntimeException e) {
+            dumpScreenDiagnostics("Confirm-delete button (testID-primary-onDeleteAutoTopup-main) "
+                    + "not clickable after 30s: " + e.getMessage());
+            throw e;
+        }
     }
 }
