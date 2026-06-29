@@ -32,34 +32,48 @@ public class QattaGroupPage extends BasePage {
     private static final By GROUP_NAME_INPUT =
             AppiumBy.accessibilityId("testID-input-direct-QattaN.NewGroup");
 
-    private static final By NEXT_BTN =
-            AppiumBy.accessibilityId("testID-primary-buttonAction-main");
+    private static final By NEXT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-buttonAction-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[@text='Next' or @text='Continue']]");
 
-    private static final By ADD_NEW_NUMBER_BTN =
-            AppiumBy.accessibilityId("testID-secondary-action-main");
+    private static final By ADD_NEW_NUMBER_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-secondary-action-main']"
+            + " | //*[starts-with(@content-desc,'testID-secondary') and substring(@content-desc,string-length(@content-desc)-4)='-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[contains(@text,'Add new')]]");
 
     // Member mobile-number field — no stable testID, flag for dedicated testID.
     private static final By MEMBER_MOBILE_INPUT =
             AppiumBy.xpath("//android.widget.EditText");
 
-    private static final By NEXT_CONTACT_BTN =
-            AppiumBy.accessibilityId("testID-primary-onCheckContactNumber-main");
+    private static final By NEXT_CONTACT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onCheckContactNumber-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
     private static final By CONTACT_NAME_INPUT =
             AppiumBy.accessibilityId("testID-input-direct-undefined");
 
-    private static final By ADD_CONTACT_BTN =
-            AppiumBy.accessibilityId("testID-primary-onEnterContactName-main");
+    private static final By ADD_CONTACT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onEnterContactName-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
-    private static final By CREATE_GROUP_BTN =
-            AppiumBy.accessibilityId("testID-primary-onAddContacts-main");
+    private static final By CREATE_GROUP_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onAddContacts-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
     // ── Group list / edit details ────────────────────
-    // First qatta group row: the topmost clickable row that wraps a group-name TextView.
+    // First qatta group row. Each group row is a clickable ViewGroup whose content-desc is the
+    // MERGED descs of its two children (group name + member-count/role), so it STARTS WITH the
+    // generic ReactText id 'testID-ReactText.c8f08fb6...'. The summary CARDS start with
+    // 'testID-View.83414e9e', the Group/Single TABS with 'testID-TouchableOpacity.68ac7862', and the
+    // back/CTAs with other ids — so a starts-with(content-desc,'testID-ReactText.c8f08fb6') match
+    // uniquely isolates the group rows. (starts-with is resolved reliably/fast by the UiAutomator2
+    // XPath engine, unlike substring-after/count, which timed out on this 12-node list.)
     private static final By FIRST_QATTA_GROUP = AppiumBy.xpath(
-            "(//android.view.ViewGroup[@clickable='true' and @content-desc=''"
-            + " and .//android.widget.TextView[@content-desc="
-            + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']])[1]");
+            "(//android.view.ViewGroup[@clickable='true' and starts-with(@content-desc,"
+            + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42')])[1]"
+            + " | (//XCUIElementTypeCell[.//XCUIElementTypeStaticText["
+            + "@name='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42'"
+            + " or @label='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']])[1]");
 
     private static final By GROUP_DETAILS_HEADER = AppiumBy.xpath(
             "//android.widget.TextView[@content-desc="

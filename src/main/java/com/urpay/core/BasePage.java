@@ -135,6 +135,11 @@ public abstract class BasePage {
         return platformActions.scrollToText(text);
     }
 
+    /** Open an in-app deep link (urpay://...) — foregrounds the app and routes to the target screen. */
+    protected void openDeepLink(String deepLink) {
+        platformActions.openDeepLink(deepLink);
+    }
+
     protected void swipeUp() {
         swipeUtils.swipeUp();
     }
@@ -145,6 +150,29 @@ public abstract class BasePage {
 
     protected void tapAtCoordinates(int x, int y) {
         swipeUtils.tapAtCoordinates(x, y);
+    }
+
+    // ── Diagnostics (temporary — page-source capture for locator debugging) ──
+
+    /**
+     * Writes the full page source to target/diag/&lt;tag&gt;_&lt;ts&gt;.xml and logs a deduped
+     * summary of content-desc / resource-id / text values. Safe no-op on failure.
+     * TEMPORARY: used to capture ground-truth XML for the remaining Qatta locator fixes.
+     */
+    protected void dumpPageSource(String tag) {
+        try {
+            String src = driver.getPageSource();
+            String ts = new java.text.SimpleDateFormat("HHmmss").format(new java.util.Date());
+            java.io.File dir = new java.io.File("target/diag");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            java.io.File out = new java.io.File(dir, tag + "_" + ts + ".xml");
+            java.nio.file.Files.write(out.toPath(), src.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            log.warn("DIAG[{}] page source -> {}", tag, out.getAbsolutePath());
+        } catch (Exception e) {
+            log.warn("DIAG[{}] dump failed: {}", tag, e.getMessage());
+        }
     }
 
     // ── Global Error Detection ─────────────────────────────────────

@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Forgot Passcode Family Tier - Wrong Passcode" verbose="1">
+    <test name="ForgotPasscodeFamilyTierLoginNegative">
+        <classes>
+            <class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierLoginNegativeTest"/>
+        </classes>
+    </test>
+</suite>

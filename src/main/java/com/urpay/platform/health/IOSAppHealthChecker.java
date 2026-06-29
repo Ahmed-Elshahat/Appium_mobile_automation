@@ -52,6 +52,17 @@ public class IOSAppHealthChecker implements AppHealthChecker {
         }
     }
 
+    /**
+     * Not implemented for iOS: there is no logcat equivalent. iOS crash detection would read
+     * the device crash reports (e.g. {@code mobile: getDeviceTime} + crash log retrieval), which
+     * the cloud provider gates differently. Returns empty so callers fall back to the
+     * state-based checks.
+     */
+    @Override
+    public String findCrashSignature() {
+        return "";
+    }
+
     @Override
     public boolean recoverApp() {
         try {

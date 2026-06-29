@@ -42,8 +42,9 @@ public class GroupQattaPage extends BasePage {
     private static final By QATTA_NAME_INPUT =
             AppiumBy.accessibilityId("testID-input-direct-QattaN.NewGroup");
 
-    private static final By NEXT_BTN =
-            AppiumBy.accessibilityId("testID-primary-buttonAction-main");
+    private static final By NEXT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-buttonAction-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[@text='Next' or @text='Continue']]");
 
     private static final By AMOUNT_100 = AppiumBy.xpath(
             "//*[@content-desc='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd' and @text='100']"
@@ -51,14 +52,17 @@ public class GroupQattaPage extends BasePage {
             + " or @label='testID-Text.a0f96d2e-8083-4a83-bcd2-b867ff6144bd')"
             + " and (@label='100' or @value='100' or @name='100')]");
 
-    private static final By NEXT_AMOUNT_BTN =
-            AppiumBy.accessibilityId("testID-primary-action-main");
+    private static final By NEXT_AMOUNT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-action-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
-    private static final By NEXT_EQUAL_AMOUNT_BTN =
-            AppiumBy.accessibilityId("testID-primary-onPressNext-main");
+    private static final By NEXT_EQUAL_AMOUNT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onPressNext-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
-    private static final By SEND_QATTA_BTN =
-            AppiumBy.accessibilityId("testID-primary-onCreateExpense-main");
+    private static final By SEND_QATTA_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onCreateExpense-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
     private static final By SUCCESS_MSG = AppiumBy.xpath(
             "//*[@content-desc='testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5'"
@@ -106,14 +110,17 @@ public class GroupQattaPage extends BasePage {
             "(//*[@content-desc='testID-check-box-main'])[2]"
             + " | (//*[@name='testID-check-box-main' or @label='testID-check-box-main'])[2]");
 
-    private static final By NEXT_MULTI_BTN =
-            AppiumBy.accessibilityId("testID-primary-onNext-main");
+    private static final By NEXT_MULTI_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onNext-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
-    private static final By CONFIRM_PAY_BTN =
-            AppiumBy.accessibilityId("testID-primary-onConfirm-main");
+    private static final By CONFIRM_PAY_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onConfirm-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
-    private static final By PAY_DONE_BTN =
-            AppiumBy.accessibilityId("testID-primary-onSubmit-main");
+    private static final By PAY_DONE_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onSubmit-main']"
+            + " | //*[starts-with(@content-desc,'testID-primary') and substring(@content-desc,string-length(@content-desc)-4)='-main']");
 
     private static final By BACK_BTN =
             AppiumBy.accessibilityId("testID-right-icon-item");
@@ -127,12 +134,18 @@ public class GroupQattaPage extends BasePage {
             + "/ancestor::XCUIElementTypeCell[1]");
 
     // "Reject" text is not clickable; its clickable parent button carries the secondary-action testID.
-    private static final By REJECT_BTN =
-            AppiumBy.accessibilityId("testID-secondary-action-main");
+    private static final By REJECT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-secondary-action-main']"
+            + " | //*[starts-with(@content-desc,'testID-secondary') and substring(@content-desc,string-length(@content-desc)-4)='-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[contains(@text,'Reject')]]");
 
     // Confirm-reject button on the reject confirmation sheet (Katalon confirmRejectQatta).
-    private static final By CONFIRM_REJECT_BTN =
-            AppiumBy.accessibilityId("testID-primary-action-main");
+    // Keep exact id first, then the sheet's "Reject Qatta" label — NOT a broad primary-*-main match,
+    // which would grab the detail screen's "Pay Qatta" primary button sitting behind the sheet.
+    private static final By CONFIRM_REJECT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-action-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[@text='Reject Qatta']]"
+            + " | //android.widget.TextView[@text='Reject Qatta']");
 
     // After confirming, the app lands on the qatta detail screen where the
     // participant's status persists as "Rejected" (the success toast is transient).
@@ -145,8 +158,13 @@ public class GroupQattaPage extends BasePage {
 
     // Dashboard-UNIQUE presence marker (the wallet info icon only exists on the home screen;
     // master-amount-main also appears on some stacked qatta screens, so it must NOT be used here).
-    private static final By DASHBOARD_MARKER =
-            AppiumBy.accessibilityId("testID-dashboard#InfoIcon-Wallet");
+    // Cloud may hash the middle of the id, so also match by the stable 'testID-dashboard' prefix —
+    // this stops the back-navigation loop AT the dashboard instead of overshooting into the
+    // launcher (which backgrounds the app).
+    private static final By DASHBOARD_MARKER = AppiumBy.xpath(
+            "//*[@content-desc='testID-dashboard#InfoIcon-Wallet']"
+            + " | //*[starts-with(@content-desc,'testID-dashboard')]"
+            + " | //*[starts-with(@name,'testID-dashboard') or starts-with(@label,'testID-dashboard')]");
 
     // ═════════════════════════════════════════
     //  OPEN GROUP

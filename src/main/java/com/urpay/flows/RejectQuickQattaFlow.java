@@ -1,6 +1,5 @@
 package com.urpay.flows;
 
-import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.dashboard.SettingsPage;
 import com.urpay.pages.wallet.QuickQattaPage;
 
@@ -37,13 +36,9 @@ public class RejectQuickQattaFlow {
         return quickPage;
     }
 
-    @Step("Logout: return to dashboard → More → Settings → Logout → confirm")
+    @Step("Logout: deep link to Settings → Logout → confirm")
     public void logout() {
-        quickPage.returnToDashboard();
-        DashboardPage dashboard = new DashboardPage();
-        dashboard.isLoaded();
-        dashboard.navigateToMore();
-        settingsPage.openSettings();
+        settingsPage.openViaDeepLink();
         settingsPage.tapLogout();
         settingsPage.confirmLogout();
     }

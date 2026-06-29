@@ -31,7 +31,7 @@ import io.qameta.allure.Story;
  * Phase 2 (receiver) logs in, rejects the received qatta, and verifies the rejection.
  *
  * Katalon mapping:
- *   SetupTestDataForRejectQuickQatta / Member2 → quickQatta.* properties (shared with PayQuick)
+ *   SetupTestDataForRejectQuickQatta / Member2 → rejectQuick.* properties (own accounts)
  *   ToValidateCreatenewQuickQatta              → testSenderCreatesQuickQatta()
  *   ToRejectQuickQattaInReceivedTab            → testReceiverRejectsQuickQatta()
  */
@@ -52,14 +52,14 @@ public class RejectQuickQattaTest extends BaseTest {
         DashboardPage dashboard = loginAsSender();
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after sender login");
 
-        String qattaName = config.get("quickQatta.qattaName") + randomDigits(4);
+        String qattaName = config.get("rejectQuick.qattaName") + randomDigits(4);
         new QattaFlow().navigateToSingleQatta();
 
         RejectQuickQattaFlow flow = new RejectQuickQattaFlow();
         QuickQattaPage page = flow.createQuickQatta(
                 qattaName,
-                config.get("quickQatta.recipientMobile"),
-                config.get("quickQatta.recipientName"));
+                config.get("rejectQuick.recipientMobile"),
+                config.get("rejectQuick.recipientName"));
 
         Assert.assertTrue(page.isQattaCreatedSuccess(), "Quick qatta should be created successfully");
         page.tapDone();
@@ -96,20 +96,20 @@ public class RejectQuickQattaTest extends BaseTest {
     private DashboardPage loginAsSender() {
         ConfigManager config = ConfigManager.getInstance();
         return new LoginFlow().loginWith(
-                config.get("quickQatta.sender.mobileNumber"),
-                config.get("quickQatta.sender.id"),
-                config.get("quickQatta.sender.verificationCode", "1234"),
-                config.get("quickQatta.sender.passCode", "2233"));
+                config.get("rejectQuick.sender.mobileNumber"),
+                config.get("rejectQuick.sender.id"),
+                config.get("rejectQuick.sender.verificationCode", "1234"),
+                config.get("rejectQuick.sender.passCode", "2233"));
     }
 
     @Step("Login as Quick Qatta receiver user")
     private DashboardPage loginAsReceiver() {
         ConfigManager config = ConfigManager.getInstance();
         return new LoginFlow().loginWith(
-                config.get("quickQatta.receiver.mobileNumber"),
-                config.get("quickQatta.receiver.id"),
-                config.get("quickQatta.receiver.verificationCode", "1234"),
-                config.get("quickQatta.receiver.passCode", "2233"));
+                config.get("rejectQuick.receiver.mobileNumber"),
+                config.get("rejectQuick.receiver.id"),
+                config.get("rejectQuick.receiver.verificationCode", "1234"),
+                config.get("rejectQuick.receiver.passCode", "2233"));
     }
 
     private String randomDigits(int count) {

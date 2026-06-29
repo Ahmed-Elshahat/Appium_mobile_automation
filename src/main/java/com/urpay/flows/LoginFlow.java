@@ -143,6 +143,54 @@ public class LoginFlow {
     }
 
     /**
+     * Login only up to the passcode screen — credentials + OTP — WITHOUT entering the passcode.
+     *
+     * Migrated from Katalon {@code ResetPasscode/ForgotPasscode/ToValidateLoginTillPasscodeScreen}:
+     * the Forgot-Passcode journey starts from the passcode screen and taps "Forgot your passcode?"
+     * instead of entering the passcode, so the login must stop exactly on the passcode screen.
+     *
+     * Reuses the same onboarding-skip / landing / credentials / OTP steps as {@link #loginWith}
+     * but skips {@link #enterLoginPasscode}. Returns once the passcode screen has rendered.
+     */
+    @Step("Login until the passcode screen (no passcode entry)")
+    public void loginUntilPasscodeScreen(String mobile, String id, String otp) {
+        skipOnboarding();
+
+        By settled = AppiumBy.xpath(
+                "//*[contains(@content-desc,'testID-passCode.screen') "
+                + "or @text='Enter your passcode' or @text='Passcode' "
+                + "or @content-desc='testID-master-amount-main' "
+                + "or @content-desc='testID-secondary-login-main']");
+        waits.isPresent(settled, 60);
+
+        // App remembers the login → already on the passcode screen, nothing more to do.
+        if (waits.isPresent(PASSCODE_SCREEN, 5)) {
+            log.info("Passcode screen already visible — ready for Forgot Passcode");
+            return;
+        }
+        // Already authenticated (no passcode screen). The Forgot-Passcode flow needs the passcode
+        // screen, so log a warning — the caller's screen check will surface the real failure.
+        if (waits.isPresent(DASHBOARD_MARKER, 5)) {
+            log.warn("Dashboard already visible — Forgot Passcode flow expected the passcode screen");
+            return;
+        }
+        // Fully logged out (landing) → open the credentials form.
+        if (waits.isPresent(LANDING_LOGIN, 10)) {
+            log.info("Landing screen detected — tapping Login to open the credentials form");
+            waits.waitForClickable(LANDING_LOGIN, 20).click();
+        }
+
+        selectEnvironment();
+        enterCredentials(mobile, id);
+        enterOtp(otp);
+        // Wait for the passcode screen to render — but do NOT enter the passcode.
+        if (!waits.isPresent(PASSCODE_SCREEN, 30)) {
+            log.warn("Passcode screen not detected after OTP — Forgot Passcode flow may fail");
+        }
+        log.info("Login reached the passcode screen (passcode not entered)");
+    }
+
+    /**
      * Dismiss post-login interstitials. After a full login the app shows an "Enable
      * Fingerprint" bottom-sheet (and sometimes a notifications prompt) that overlays the
      * dashboard and blocks the bottom navigation. Tap their "Later"/"Skip" dismissals if

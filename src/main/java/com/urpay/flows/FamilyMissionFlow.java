@@ -145,13 +145,10 @@ public class FamilyMissionFlow {
     // ══════════════════════════════════════════════════    //  LOGOUT (switch user without restarting the app)
     // ═════════════════════════════════════════════════
 
-    @Step("Logout: return to dashboard → More → Settings → Logout → confirm")
+    @Step("Logout: deep link to Settings → Logout → confirm")
     public void logout() {
-        new FamilyMissionPage().returnToDashboard();
-        DashboardPage dashboard = new DashboardPage();
-        dashboard.navigateToMore();
         SettingsPage settings = new SettingsPage();
-        settings.openSettings();
+        settings.openViaDeepLink();
         settings.tapLogout();
         settings.confirmLogout();
         log.info("Logged out — ready for a new user login");

@@ -25,13 +25,15 @@ public class FamilyWalletPage extends BasePage {
     private static final By FAMILY_WALLET_BTN =
             AppiumBy.accessibilityId("testID-viewElemenDashboardFamily");
 
-    // ── Fallback: find Family Wallets by text ────
-    private static final By FAMILY_WALLET_TEXT =
-            AppiumBy.androidUIAutomator("new UiSelector().text(\"Family Wallets\")");
+    // ── Fallback: find Family Wallets by visible label (platform-aware: Android @text | iOS @label/@value/@name) ────
+    private static final By FAMILY_WALLET_TEXT = AppiumBy.xpath(
+            "//*[@text='Family Wallets']"
+            + " | //*[@label='Family Wallets' or @value='Family Wallets' or @name='Family Wallets']");
 
-    // ── Any dashboard service tile (used to anchor the horizontal carousel swipe) ──
-    private static final By ANY_SERVICE_TILE =
-            AppiumBy.xpath("//*[starts-with(@content-desc,'testID-viewElemen')]");
+    // ── Any dashboard service tile (platform-aware: Android @content-desc | iOS @name) ──
+    private static final By ANY_SERVICE_TILE = AppiumBy.xpath(
+            "//*[starts-with(@content-desc,'testID-viewElemen')]"
+            + " | //*[starts-with(@name,'testID-viewElemen')]");
 
     // ── Family Wallet screen marker (first kid row renders once the screen loads) ──
     private static final By FAMILY_MEMBER_MARKER =

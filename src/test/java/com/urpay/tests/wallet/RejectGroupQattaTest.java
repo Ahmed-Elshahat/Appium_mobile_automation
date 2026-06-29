@@ -31,7 +31,7 @@ import io.qameta.allure.Story;
  * Phase 2 (member) logs in and rejects both qattas from their detail screens.
  *
  * Katalon mapping:
- *   SetupTest Data for Reject Qatta Group / -Member1 → qattaPay.* properties (shared with PayGroup)
+ *   SetupTest Data for Reject Qatta Group / -Member1 → rejectGroup.* properties (own accounts)
  *   ToaddNewFirstQatta / ToaddNewSecondQatta         → testAdminAddsQattas()
  *   ToRejectFirstQattainGroup / ToRejectSecondQattainGroup → testMemberRejectsQattas()
  */
@@ -58,17 +58,17 @@ public class RejectGroupQattaTest extends BaseTest {
         new QattaFlow().navigateToQattaGroups();
         new QattaFlow().createGroup(
                 groupName,
-                config.get("qattaPay.firstMemberMobile"),
-                config.get("qattaPay.firstMemberName"),
-                config.get("qattaPay.secondMemberMobile"),
-                config.get("qattaPay.secondMemberName"));
+                config.get("rejectGroup.firstMemberMobile"),
+                config.get("rejectGroup.firstMemberName"),
+                config.get("rejectGroup.secondMemberMobile"),
+                config.get("rejectGroup.secondMemberName"));
 
         RejectGroupQattaFlow flow = new RejectGroupQattaFlow();
-        GroupQattaPage page = flow.addQattaToLatestGroup(config.get("qattaPay.firstQattaName"), true);
+        GroupQattaPage page = flow.addQattaToLatestGroup(config.get("rejectGroup.firstQattaName"), true);
         Assert.assertTrue(page.isQattaCreatedSuccess(), "First qatta should be created successfully");
         page.tapDone();
 
-        page = flow.addQattaToLatestGroup(config.get("qattaPay.secondQattaName"), false);
+        page = flow.addQattaToLatestGroup(config.get("rejectGroup.secondQattaName"), false);
         Assert.assertTrue(page.isQattaCreatedSuccess(), "Second qatta should be created successfully");
         page.tapDone();
 
@@ -110,20 +110,20 @@ public class RejectGroupQattaTest extends BaseTest {
     private DashboardPage loginAsAdmin() {
         ConfigManager config = ConfigManager.getInstance();
         return new LoginFlow().loginWith(
-                config.get("qattaPay.admin.mobileNumber"),
-                config.get("qattaPay.admin.id"),
-                config.get("qattaPay.admin.verificationCode", "1234"),
-                config.get("qattaPay.admin.passCode", "2233"));
+                config.get("rejectGroup.admin.mobileNumber"),
+                config.get("rejectGroup.admin.id"),
+                config.get("rejectGroup.admin.verificationCode", "1234"),
+                config.get("rejectGroup.admin.passCode", "2233"));
     }
 
     @Step("Login as Qatta member user")
     private DashboardPage loginAsMember() {
         ConfigManager config = ConfigManager.getInstance();
         return new LoginFlow().loginWith(
-                config.get("qattaPay.member.mobileNumber"),
-                config.get("qattaPay.member.id"),
-                config.get("qattaPay.member.verificationCode", "1234"),
-                config.get("qattaPay.member.passCode", "2233"));
+                config.get("rejectGroup.member.mobileNumber"),
+                config.get("rejectGroup.member.id"),
+                config.get("rejectGroup.member.verificationCode", "1234"),
+                config.get("rejectGroup.member.passCode", "2233"));
     }
 
     private String randomDigits(int count) {

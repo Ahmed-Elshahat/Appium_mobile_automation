@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +40,17 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     /** testMethodName → screenshot filename in allure-results */
     private final Map<String, String> failureScreenshots = new ConcurrentHashMap<>();
 
+    /**
+     * testMethodName → crash/health context captured at failure, only when the app crashed
+     * or left the foreground. Injected into the Allure result message in onFinish so the
+     * "App crashed / not in foreground" category matches (otherwise the crash is visible only
+     * in the console log and the failure is mis-bucketed as a generic element timeout).
+     */
+    private final Map<String, String> failureHealth = new ConcurrentHashMap<>();
+
+    /** testMethodName → logcat crash-evidence filename (text/plain) in allure-results */
+    private final Map<String, String> failureCrashLogFiles = new ConcurrentHashMap<>();
+
     @Override
     public void onTestStart(ITestResult result) {
         String testName = getFullTestName(result);
@@ -66,15 +79,31 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             // Log app health state — distinguishes crashes from assertion failures during triage
             try {
                 AppHealthChecker healthChecker = AppHealthCheckerFactory.create(driver);
+                boolean crashed = healthChecker.hasAppCrashed();
+                boolean inForeground = healthChecker.isAppInForeground();
+                // Logcat crash signature catches a crash that already auto-restarted (process
+                // alive again → crashed=false) by reading the persisted FATAL EXCEPTION / ANR.
+                String crashSignature = healthChecker.findCrashSignature();
+                boolean crashDetected = crashed || (crashSignature != null && !crashSignature.isEmpty());
                 String healthReport = String.format(
-                        "App State: %s | Foreground: %s | Crashed: %s",
+                        "App State: %s | Foreground: %s | Crashed: %s | LogcatCrash: %s",
                         healthChecker.getAppState(),
-                        healthChecker.isAppInForeground(),
-                        healthChecker.hasAppCrashed());
-                if (healthChecker.hasAppCrashed()) {
+                        inForeground,
+                        crashed,
+                        crashSignature != null && !crashSignature.isEmpty());
+                if (crashDetected) {
                     log.error("⚠ APP CRASHED during {} — {}", testName, healthReport);
-                } else if (!healthChecker.isAppInForeground()) {
+                    failureHealth.put(testName, "APP CRASHED - " + healthReport);
+                    if (crashSignature != null && !crashSignature.isEmpty()) {
+                        writeCrashLogAttachment(testName, crashSignature);
+                        log.error("Crash signature for {}:\n{}", testName, crashSignature);
+                    }
+                } else if (!inForeground) {
+                    // App left the foreground but no crash signature in logcat and the process is
+                    // still alive — surfaced as a distinct symptom (could be a backgrounding, a
+                    // system dialog, or a crash whose log we couldn't read).
                     log.warn("⚠ App not in foreground during {} — {}", testName, healthReport);
+                    failureHealth.put(testName, "APP NOT IN FOREGROUND - " + healthReport);
                 } else {
                     log.info("Health check for {}: {}", testName, healthReport);
                 }
@@ -118,8 +147,8 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
 
     @Override
     public void onFinish(ISuite suite) {
-        if (failureScreenshots.isEmpty()) return;
-        log.info("Patching {} Allure result(s) with failure screenshots...", failureScreenshots.size());
+        if (failureScreenshots.isEmpty() && failureHealth.isEmpty()) return;
+        log.info("Patching Allure result(s) with failure screenshots / crash context...");
 
         try {
             Files.list(ALLURE_DIR)
@@ -134,30 +163,113 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         try {
             String json = Files.readString(resultFile, StandardCharsets.UTF_8);
 
-            for (Map.Entry<String, String> entry : failureScreenshots.entrySet()) {
-                String testName = entry.getKey();
-                String screenshotFile = entry.getValue();
+            // Only failed/broken results carry screenshots or crash context
+            if (!json.contains("\"status\":\"failed\"") && !json.contains("\"status\":\"broken\"")) {
+                return;
+            }
 
-                // Match by test name in the JSON (e.g. "name":"testZainRecharge")
-                if (json.contains("\"name\":\"" + testName + "\"")
-                        && (json.contains("\"status\":\"failed\"") || json.contains("\"status\":\"broken\""))) {
+            // Match this file to a captured test by name (e.g. "name":"testZainRecharge")
+            String testName = matchTestName(json);
+            if (testName == null) {
+                return; // one patch per file
+            }
 
-                    // Build attachment JSON
-                    String attachment = "{\"name\":\"Failure Screenshot\","
+            boolean changed = false;
+
+            // 1. Failure screenshot + crash log → attachments array
+            if (json.contains("\"attachments\":[]")) {
+                List<String> attachments = new ArrayList<>();
+                String screenshotFile = failureScreenshots.get(testName);
+                if (screenshotFile != null) {
+                    attachments.add("{\"name\":\"Failure Screenshot\","
                             + "\"source\":\"" + screenshotFile + "\","
-                            + "\"type\":\"image/png\"}";
-
-                    // Insert into attachments array
-                    json = json.replace("\"attachments\":[]",
-                            "\"attachments\":[" + attachment + "]");
-
-                    Files.writeString(resultFile, json, StandardCharsets.UTF_8);
-                    log.info("Patched Allure result for {} with screenshot {}", testName, screenshotFile);
-                    return; // one patch per file
+                            + "\"type\":\"image/png\"}");
                 }
+                String crashLogFile = failureCrashLogFiles.get(testName);
+                if (crashLogFile != null) {
+                    attachments.add("{\"name\":\"Crash Log (logcat)\","
+                            + "\"source\":\"" + crashLogFile + "\","
+                            + "\"type\":\"text/plain\"}");
+                }
+                if (!attachments.isEmpty()) {
+                    json = json.replace("\"attachments\":[]",
+                            "\"attachments\":[" + String.join(",", attachments) + "]");
+                    changed = true;
+                    log.info("Patched Allure result for {} with {} attachment(s)",
+                            testName, attachments.size());
+                }
+            }
+
+            // 2. Crash / not-in-foreground context → prepend to statusDetails.message so the
+            //    "App crashed / not in foreground" category matches and the crash surfaces in
+            //    the report itself, not just the console log.
+            String health = failureHealth.get(testName);
+            if (health != null) {
+                String patched = injectHealthIntoMessage(json, health);
+                if (!patched.equals(json)) {
+                    json = patched;
+                    changed = true;
+                    log.info("Tagged Allure result for {} with crash context: {}", testName, health);
+                }
+            }
+
+            if (changed) {
+                Files.writeString(resultFile, json, StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
             log.warn("Failed to patch {}: {}", resultFile.getFileName(), e.getMessage());
+        }
+    }
+
+    /** Return the captured failed-test name whose Allure {@code name} appears in this result. */
+    private String matchTestName(String json) {
+        for (String testName : failureScreenshots.keySet()) {
+            if (json.contains("\"name\":\"" + testName + "\"")) {
+                return testName;
+            }
+        }
+        for (String testName : failureHealth.keySet()) {
+            if (json.contains("\"name\":\"" + testName + "\"")) {
+                return testName;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Prepend the crash/health marker to the test's statusDetails.message. Idempotent — skips
+     * if already tagged or no message field is present.
+     */
+    private String injectHealthIntoMessage(String json, String health) {
+        String marker = "[" + health + "] ";
+        if (json.contains(marker)) {
+            return json; // already tagged
+        }
+        String anchor = "\"message\":\"";
+        int idx = json.indexOf(anchor);
+        if (idx < 0) {
+            return json;
+        }
+        int insertAt = idx + anchor.length();
+        return json.substring(0, insertAt) + jsonEscape(marker) + json.substring(insertAt);
+    }
+
+    /** Minimal JSON string escaping for the controlled health marker (no control chars). */
+    private String jsonEscape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /** Persist the logcat crash evidence as a text attachment linked in onFinish. */
+    private void writeCrashLogAttachment(String testName, String crashSignature) {
+        try {
+            Files.createDirectories(ALLURE_DIR);
+            String fileName = UUID.randomUUID() + "-attachment.txt";
+            Files.write(ALLURE_DIR.resolve(fileName),
+                    crashSignature.getBytes(StandardCharsets.UTF_8));
+            failureCrashLogFiles.put(testName, fileName);
+            log.info("Crash log saved for Allure: {} -> {}", testName, fileName);
+        } catch (IOException e) {
+            log.warn("Failed to write crash log attachment for {}: {}", testName, e.getMessage());
         }
     }
 

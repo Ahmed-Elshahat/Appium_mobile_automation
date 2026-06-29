@@ -35,7 +35,8 @@ public class FamilyMissionPage extends BasePage {
             + "or @content-desc='testID-secondary-qTf-1'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Missions']]")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-action-1")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-action-1' or @name='testID-secondary-qTf-1'"
+            + " or @label='Missions' or @name='Missions']")
     private WebElement missionsButton;
 
     // ── Get Started button (shown on first visit) ─────
@@ -49,7 +50,9 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onAddNewMission-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Add new mission' or @text='Add New Mission']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onAddNewMission-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onAddNewMission-main'"
+            + " or @label='Add new mission' or @label='Add New Mission'"
+            + " or @name='Add new mission' or @name='Add New Mission']")
     private WebElement addNewMissionButton;
 
     // ── Dashboard-UNIQUE presence marker (wallet info icon only exists on the home screen) ──
@@ -87,7 +90,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmit-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Next']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onSubmit-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onSubmit-main'"
+            + " or @label='Next' or @name='Next']")
     private WebElement nextButton;
 
     // ══════════════════════════════════════════════════
@@ -105,7 +109,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Next']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-action-main'"
+            + " or @label='Next' or @name='Next']")
     private WebElement secondNextButton;
 
     // ══════════════════════════════════════════════════
@@ -127,7 +132,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary--main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Next']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary--main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary--main'"
+            + " or @label='Next' or @name='Next']")
     private WebElement primaryButton;
 
     // ══════════════════════════════════════════════════
@@ -147,7 +153,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Confirm']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onConfirm-main'"
+            + " or @label='Confirm' or @name='Confirm']")
     private WebElement confirmButton;
 
     // By mirror of confirmButton, used to scroll the review screen until the button is on-screen
@@ -169,7 +176,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Done']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-action-main'"
+            + " or @label='Done' or @name='Done']")
     private WebElement doneButton;
 
     // ══════════════════════════════════════════════════
@@ -193,7 +201,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-onSendReward-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[normalize-space(@text)='Send']]")
-    @iOSXCUITFindBy(accessibility = "testID-secondary-onSendReward-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-secondary-onSendReward-main'"
+            + " or @label='Send' or @name='Send']")
     private WebElement sendRewardButton;
 
     // ── Validate Reward button ────────────────────────
@@ -202,7 +211,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onValidateReward-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Send Reward']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onValidateReward-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onValidateReward-main'"
+            + " or @label='Send Reward' or @name='Send Reward']")
     private WebElement validateRewardButton;
 
     // ── Done Reward button (after sending reward) ─────
@@ -211,7 +221,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSuccessButtonPress-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Done']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onSuccessButtonPress-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onSuccessButtonPress-main'"
+            + " or @label='Done' or @name='Done']")
     private WebElement doneRewardButton;
 
     // ── Closed tab ────────────────────────────────────
@@ -232,9 +243,10 @@ public class FamilyMissionPage extends BasePage {
     private static final By KID_MISSIONS_HOME =
             AppiumBy.accessibilityId("testID-viewElemenMissionsLogo");
 
-    // ── Any dashboard service tile (used to anchor the horizontal carousel swipe) ──
-    private static final By ANY_SERVICE_TILE =
-            AppiumBy.xpath("//*[starts-with(@content-desc,'testID-viewElemen')]");
+    // ── Any dashboard service tile (platform-aware: Android @content-desc | iOS @name) ──
+    private static final By ANY_SERVICE_TILE = AppiumBy.xpath(
+            "//*[starts-with(@content-desc,'testID-viewElemen')]"
+            + " | //*[starts-with(@name,'testID-viewElemen')]");
 
     // ── Kid's "I'm Done" button ───────────────────────
     // testID is build-specific (hashed on the LT build); match by the visible "I'm Done!" label with
@@ -243,7 +255,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmitted-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[contains(@text,'Done')]]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onSubmitted-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onSubmitted-main'"
+            + " or contains(@label,'Done') or contains(@name,'Done')]")
     private WebElement imDoneButton;
 
     // ── Kid's "Ask Reward" button ─────────────────────
@@ -254,7 +267,8 @@ public class FamilyMissionPage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmitted-main'] "
             + "| //android.view.ViewGroup[@clickable='true' "
             + "and .//android.widget.TextView[@text='Ask for reward']]")
-    @iOSXCUITFindBy(accessibility = "testID-primary-onSubmitted-main")
+    @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onSubmitted-main'"
+            + " or @label='Ask for reward' or @name='Ask for reward']")
     private WebElement askRewardButton;
 
     // ══════════════════════════════════════════════════

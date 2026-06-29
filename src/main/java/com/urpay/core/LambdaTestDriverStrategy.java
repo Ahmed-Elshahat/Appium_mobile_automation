@@ -59,6 +59,11 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         String appUrl = config.get("lt.appUrl", "");
         if (!appUrl.isEmpty()) options.setApp(appUrl);
 
+        // Enable logcat capture so the health checker can scan for FATAL EXCEPTION / ANR /
+        // process-death signatures. LambdaTest defaults skipLogcatCapture=true, which would
+        // leave driver.getLogs("logcat") empty and crash detection blind.
+        options.setCapability("skipLogcatCapture", false);
+
         options.setCapability("lt:options", ltOptions);
         return new AndroidDriver(new URL(remoteUrl), options);
     }
@@ -92,6 +97,11 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         ltOptions.put("autoAcceptAlerts", true);
         ltOptions.put("w3c", true);
         ltOptions.put("video", true);
+        // Enable LambdaTest server-side device (logcat) + crash log capture. This is a
+        // LambdaTest cap (default false), distinct from Appium's skipLogcatCapture which LT
+        // forces true on cloud. With this on, the session's device_logs_url / crash_logs_url
+        // are populated and can be fetched post-session via the REST API for crash detection.
+        ltOptions.put("devicelog", true);
         ltOptions.put("idleTimeout", 300);
         ltOptions.put("newCommandTimeout", 300);
         ltOptions.put("appiumVersion", "2.12.1");

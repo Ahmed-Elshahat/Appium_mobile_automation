@@ -53,6 +53,16 @@ public interface MobilePlatformActions {
     WebElement scrollToElement(By locator, int maxAttempts);
 
     /**
+     * Scroll a scrollable container to bring an element with the given accessibility id
+     * (Android content-desc / iOS name) into view. Unlike {@link #scrollToText(String)} this
+     * matches the stable testID, and UiScrollable stops exactly when the element renders
+     * (handles React-Native virtualization without overshooting the target).
+     * Android: UiScrollable.scrollIntoView(descriptionContains).
+     * iOS: mobile:scroll with name predicate.
+     */
+    WebElement scrollToContentDesc(String contentDesc);
+
+    /**
      * Scroll horizontally within a carousel/list to find text.
      * Android: UiScrollable.setAsHorizontalList().scrollIntoView().
      * iOS: mobile:scroll direction=left with predicate.
@@ -65,6 +75,13 @@ public interface MobilePlatformActions {
      * iOS: Direct setValue or pasteboard.
      */
     void inputTextDirect(String text);
+
+    /**
+     * Open an in-app deep link (e.g. urpay://MORENAV/Settings). Brings the app to the foreground
+     * and routes directly to the target screen — avoids fragile multi-step back navigation.
+     * Android: mobile: deepLink (am start VIEW intent). iOS: mobile: deepLink with bundleId.
+     */
+    void openDeepLink(String deepLink);
 
     /**
      * Get the current platform identifier.

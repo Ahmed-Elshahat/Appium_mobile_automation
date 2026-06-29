@@ -80,6 +80,16 @@ public class IOSPlatformActions implements MobilePlatformActions {
     }
 
     @Override
+    public WebElement scrollToContentDesc(String contentDesc) {
+        // iOS: accessibility id maps to the element name; scroll down until it is visible.
+        Map<String, Object> params = new HashMap<>();
+        params.put("direction", "down");
+        params.put("predicateString", "name == '" + contentDesc + "' OR label == '" + contentDesc + "'");
+        driver.executeScript("mobile: scroll", params);
+        return driver.findElement(AppiumBy.accessibilityId(contentDesc));
+    }
+
+    @Override
     public WebElement scrollToElement(By locator, int maxAttempts) {
         SwipeUtils swipe = new SwipeUtils(driver);
         for (int i = 0; i < maxAttempts; i++) {
@@ -117,6 +127,14 @@ public class IOSPlatformActions implements MobilePlatformActions {
             log.warn("inputTextDirect fallback to sendKeys: {}", e.getMessage());
             driver.switchTo().activeElement().sendKeys(text);
         }
+    }
+
+    @Override
+    public void openDeepLink(String deepLink) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("url", deepLink);
+        params.put("bundleId", "com.urpay.consumer.sit");
+        driver.executeScript("mobile: deepLink", params);
     }
 
     @Override

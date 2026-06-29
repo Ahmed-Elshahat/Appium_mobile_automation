@@ -38,3 +38,10 @@ Desktop.ini
 .env
 *.env
 secrets.properties
+
+# -- Captured device logs & local artifacts --
+*.logcat
+ajcore.*
+Drivers/
+Katalon/
+logs-wmv/

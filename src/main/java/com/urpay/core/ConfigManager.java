@@ -2,6 +2,9 @@ package com.urpay.core;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -55,8 +58,8 @@ public class ConfigManager {
 
     private void loadFile(String name) {
         String path = "src/test/resources/config/" + name + ".properties";
-        try (FileInputStream fis = new FileInputStream(path)) {
-            properties.load(fis);
+        try (Reader reader = new InputStreamReader(new FileInputStream(path), StandardCharsets.UTF_8)) {
+            properties.load(reader);
         } catch (IOException e) {
             System.err.println("Config file not found: " + path + " (skipping)");
         }

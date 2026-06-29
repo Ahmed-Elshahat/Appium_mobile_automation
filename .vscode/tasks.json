@@ -9,6 +9,18 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "Run Auto Topup Suite",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"run-autotopup.cmd"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

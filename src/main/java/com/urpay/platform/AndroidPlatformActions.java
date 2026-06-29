@@ -1,5 +1,8 @@
 package com.urpay.platform;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
@@ -64,6 +67,13 @@ public class AndroidPlatformActions implements MobilePlatformActions {
     }
 
     @Override
+    public WebElement scrollToContentDesc(String contentDesc) {
+        return driver.findElement(AppiumBy.androidUIAutomator(
+                "new UiScrollable(new UiSelector().scrollable(true))" +
+                        ".scrollIntoView(new UiSelector().descriptionContains(\"" + contentDesc + "\"))"));
+    }
+
+    @Override
     public WebElement scrollToElement(By locator, int maxAttempts) {
         SwipeUtils swipe = new SwipeUtils(driver);
         for (int i = 0; i < maxAttempts; i++) {
@@ -92,6 +102,20 @@ public class AndroidPlatformActions implements MobilePlatformActions {
     @Override
     public void inputTextDirect(String text) {
         AdbHelper.inputText(text);
+    }
+
+    @Override
+    public void openDeepLink(String deepLink) {
+        Object pkgCap = driver.getCapabilities().getCapability("appPackage");
+        String pkg = (pkgCap == null) ? "com.urpay.consumer.sit" : String.valueOf(pkgCap);
+        Object udidCap = driver.getCapabilities().getCapability("udid");
+        Map<String, Object> params = new HashMap<>();
+        params.put("url", deepLink);
+        params.put("package", pkg);
+        if (udidCap != null) {
+            params.put("udid", String.valueOf(udidCap));
+        }
+        driver.executeScript("mobile: deepLink", params);
     }
 
     @Override

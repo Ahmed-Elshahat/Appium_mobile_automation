@@ -22,11 +22,15 @@ import io.qameta.allure.Step;
  */
 public class SettingsPage extends BasePage {
 
-    private static final By SETTINGS_BTN =
-            AppiumBy.accessibilityId("testID-avatar-Setting1-");
+    private static final By SETTINGS_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-avatar-Setting1-']"
+            + " | //*[starts-with(@content-desc,'testID-avatar-Setting')]"
+            + " | //*[starts-with(@name,'testID-avatar-Setting') or starts-with(@label,'testID-avatar-Setting')]");
 
-    private static final By LOGOUT_BTN =
-            AppiumBy.accessibilityId("testID-secondary-logOut-main");
+    private static final By LOGOUT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-secondary-logOut-main']"
+            + " | //*[starts-with(@content-desc,'testID-secondary') and substring(@content-desc,string-length(@content-desc)-4)='-main']"
+            + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[@text='Log out' or @text='Logout']]");
 
     // Logout confirmation dialog ("Are you sure you want to remove this device" → YES).
     private static final By CONFIRM_LOGOUT = AppiumBy.xpath(
@@ -36,6 +40,11 @@ public class SettingsPage extends BasePage {
     @Step("Open Settings from More options")
     public void openSettings() {
         tap(SETTINGS_BTN);
+    }
+
+    @Step("Open Settings directly via deep link")
+    public void openViaDeepLink() {
+        openDeepLink("urpay://MORENAV/Settings");
     }
 
     @Step("Tap Logout")
