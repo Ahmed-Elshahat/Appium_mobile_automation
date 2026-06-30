@@ -174,7 +174,9 @@ public final class RegistrationApiHelper {
     static Response preLogin(String baseUrl, String mobile, String poi, String poiType) {
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"poi\":{\"poiNumber\":\"" + poi
                 + "\",\"poiType\":\"" + poiType + "\"}}";
-        return baseHeaders(null)
+        // Matches the BE report's pre-login header set: no X-Client-Secret, plus X-Forwarded-For.
+        return baseHeaders(null, false)
+                .header("X-Forwarded-For", "51.235.115.205")
                 .header("Content-Type", "application/json")
                 .body(body)
                 .post(baseUrl + "/authentication/consumers/pre-login");
@@ -455,11 +457,14 @@ public final class RegistrationApiHelper {
     // ── Shared header set (matches the Katalon TestObjectProperty list) ──
 
     static RequestSpecification baseHeaders(String otpToken) {
+        return baseHeaders(otpToken, true);
+    }
+
+    static RequestSpecification baseHeaders(String otpToken, boolean withClientSecret) {
         ConfigManager config = ConfigManager.getInstance();
         RequestSpecification spec = RestAssured.given()
                 .header("X-Session-Language", "EN")
                 .header("X-Client-Id", config.get("registration.clientId", "1278490422"))
-                .header("X-Client-Secret", config.get("registration.clientSecret", "64"))
                 .header("X-Api-Key", config.get("registration.apiKey",
                         "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G"))
                 .header("X-Device-Id", config.get("registration.deviceId", "5237008156"))
@@ -467,6 +472,9 @@ public final class RegistrationApiHelper {
                 .header("X-Device-Platform", config.get("registration.devicePlatform", "IOS"))
                 .header("X-App-Version", config.get("registration.appVersion", "456"))
                 .header("X-Request-Id", UUID.randomUUID().toString());
+        if (withClientSecret) {
+            spec = spec.header("X-Client-Secret", config.get("registration.clientSecret", "64"));
+        }
         if (otpToken != null) {
             spec = spec.header(OTP_TOKEN_HEADER, otpToken);
         }
