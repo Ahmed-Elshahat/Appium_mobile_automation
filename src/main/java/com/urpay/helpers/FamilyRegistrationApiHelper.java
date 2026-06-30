@@ -131,6 +131,15 @@ public final class FamilyRegistrationApiHelper {
             }
             boolean approved = approveLinkRequest(baseUrl, parent, kid);
 
+            // Final Nazeer clear pass for BOTH members. The backend re-sets the kid's NATHEER_STATUS
+            // asynchronously after the link settles, which makes the in-app "verification" step reappear;
+            // the BE test runs updateNateerStatus twice for this reason. This second pass (after the link
+            // is fully done) clears it so the kid opens without the verification step.
+            if (approved) {
+                reactivate(parent);
+                reactivate(kid);
+            }
+
             RegistrationApiHelper.logCredentials(
                     "PARENT CREDENTIALS (" + parent.poiType + ")", parent.poiType, parent.mobile, parent.poi, parent.partyId);
             RegistrationApiHelper.logCredentials(
