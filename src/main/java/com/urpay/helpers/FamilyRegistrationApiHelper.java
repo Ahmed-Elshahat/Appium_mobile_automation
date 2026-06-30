@@ -117,6 +117,10 @@ public final class FamilyRegistrationApiHelper {
             kid.partyId = forceVerification(kid.mobile, kid.poi, false);
             parent.partyId = forceVerification(parent.mobile, parent.poi, true);
 
+            // Parent completes its own KYC during setup (createFamilyRequest): login -> /consumers/{id}/kyc
+            // -> re-activate. KYC flips the consumer INACTIVE, so we re-activate it in the DB right after.
+            completeParentKyc(baseUrl, parent);
+
             // Drive the link entirely through the backend, mirroring the BE report
             // (Family_Suite / CreateDelinkFamilyRequestlessthan18):
             //   kid logs in   → POST /family-requests/create
@@ -271,21 +275,11 @@ public final class FamilyRegistrationApiHelper {
      */
     @Step("API parent fetches the pending request and approves it")
     private static boolean approveLinkRequest(String baseUrl, Member parent, Member kid) {
+        // Parent is already KYC'd + ACTIVE (completeParentKyc ran during setup). Fresh login to approve.
         Session parentSession = RegistrationApiHelper.loginAndGetSession(baseUrl, parent.mobile, parent.poi,
                 parent.poiType);
         if (parentSession == null) {
             log.warn("Approve aborted: parent login failed");
-            return false;
-        }
-        completeKyc(baseUrl, parentSession);
-        reactivate(parent);
-
-        // KYC flips the parent to INACTIVE; re-activate (above) then RE-LOGIN so the approve runs on
-        // a fresh ACTIVE session — mirrors createFamilyRequest (KYC -> re-activate -> re-login -> approve).
-        parentSession = RegistrationApiHelper.loginAndGetSession(baseUrl, parent.mobile, parent.poi,
-                parent.poiType);
-        if (parentSession == null) {
-            log.warn("Approve aborted: parent re-login after KYC failed");
             return false;
         }
 
@@ -311,9 +305,15 @@ public final class FamilyRegistrationApiHelper {
         int status = response.getStatusCode();
         String resultStatus = response.jsonPath().getString("body.status");
         if (status >= 200 && status < 300) {
-            log.info("Family request {} approved (body.status {})", requestId, resultStatus);
+            // The approve response returns the kid's consumerId (createFamilyRequest uses it for KYC).
+            String kidConsumerId = response.jsonPath().getString("body.familyMemberConsumerId");
+            if (kidConsumerId == null) {
+                kidConsumerId = kid.consumerId;
+            }
+            log.info("Family request {} approved (body.status {}, familyMemberConsumerId {})",
+                    requestId, resultStatus, kidConsumerId);
             // After approval the parent completes the kid's KYC as a family member (createFamilyRequest).
-            completeFamilyMemberKyc(baseUrl, parentSession, kid.consumerId);
+            completeFamilyMemberKyc(baseUrl, parentSession, kidConsumerId);
             return true;
         }
         log.warn("Family request approve failed (status {}): {}", status, response.getBody().asString());
@@ -397,6 +397,23 @@ public final class FamilyRegistrationApiHelper {
         } catch (SQLException e) {
             log.warn("Re-activation failed for {} — continuing: {}", member.role, e.getMessage());
         }
+    }
+
+    /**
+     * Parent completes its own KYC during setup (createFamilyRequest): log in, call
+     * {@code /consumers/{id}/kyc}, then re-activate (KYC flips the consumer to INACTIVE) so the parent
+     * is ACTIVE again by the time it approves the link. Best-effort.
+     */
+    @Step("Parent completes KYC during setup")
+    private static void completeParentKyc(String baseUrl, Member parent) {
+        Session session = RegistrationApiHelper.loginAndGetSession(baseUrl, parent.mobile, parent.poi,
+                parent.poiType);
+        if (session == null) {
+            log.warn("Parent KYC skipped: parent login failed");
+            return;
+        }
+        completeKyc(baseUrl, session);
+        reactivate(parent);
     }
 
     /** Build an authenticated request for a logged-in consumer session. */
