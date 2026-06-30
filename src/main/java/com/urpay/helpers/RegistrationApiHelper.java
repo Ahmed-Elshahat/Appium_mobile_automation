@@ -258,9 +258,20 @@ public final class RegistrationApiHelper {
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"poi\":{\"poiNumber\":\"" + poi + "\",\"poiType\":\"" + poiType
                 + "\"},\"mobileNumber\":\"" + mobile + "\",\"passCode\":\"" + passcodeBlob + "\"}";
-        return baseHeaders(otpToken)
-                .header("X-Device-Token", "432")
-                .header("X-Latitude", "45")
+        // Matches the BE report's devices/register header set exactly: no X-Client-Secret,
+        // no X-Api-Key, no X-Device-Token; adds X-Latitude/X-Longitude/X-Forwarded-For.
+        return RestAssured.given()
+                .header("X-Session-Language", "EN")
+                .header("X-Client-Id", config.get("registration.clientId", "1278490422"))
+                .header("X-Device-Id", config.get("registration.deviceId", "5237008156"))
+                .header("X-Device-Name", config.get("registration.deviceName", "test1262472071"))
+                .header("X-Device-Platform", config.get("registration.devicePlatform", "IOS"))
+                .header("X-App-Version", config.get("registration.appVersion", "456"))
+                .header("X-Request-Id", UUID.randomUUID().toString())
+                .header(OTP_TOKEN_HEADER, otpToken)
+                .header("X-Latitude", "24.705742")
+                .header("X-Longitude", "46.679297")
+                .header("X-Forwarded-For", "51.235.115.207")
                 .header("Content-Type", "application/json")
                 .body(body)
                 .post(baseUrl + "/devices/register");
