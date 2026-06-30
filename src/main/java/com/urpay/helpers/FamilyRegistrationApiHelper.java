@@ -239,6 +239,7 @@ public final class FamilyRegistrationApiHelper {
             log.warn("Link request aborted: kid login failed");
             return false;
         }
+        completeKyc(baseUrl, kidSession);
         String body = "{"
                 + "\"familyMemberFirstNameAr\":\"" + kid.firstName + "\","
                 + "\"familyMemberFirstNameEn\":\"" + kid.englishFirstName + "\","
@@ -272,6 +273,7 @@ public final class FamilyRegistrationApiHelper {
             log.warn("Approve aborted: parent login failed");
             return false;
         }
+        completeKyc(baseUrl, parentSession);
 
         // Read the parent's RECEIVER inbox to obtain the pending LINK_TO_FAMILY request id.
         Response inbox = authedRequest(parentSession)
@@ -300,6 +302,35 @@ public final class FamilyRegistrationApiHelper {
         }
         log.warn("Family request approve failed (status {}): {}", status, response.getBody().asString());
         return false;
+    }
+
+    /**
+     * Complete the consumer's KYC (income / employment) exactly like the BE report's
+     * {@code ConsumerUpdateKYCAPI} — {@code PUT /consumers/{consumerId}/kyc}. Authenticated call
+     * that additionally carries the login OTP token (as the report does). Best-effort.
+     */
+    @Step("API complete KYC for consumer {session.consumerId}")
+    private static void completeKyc(String baseUrl, Session session) {
+        if (session.consumerId == null) {
+            log.warn("KYC skipped: login returned no consumerId");
+            return;
+        }
+        String body = "{"
+                + "\"additionalIncomeSource\":\"SALARY\","
+                + "\"basicIncomeSource\":\"SALARY\","
+                + "\"email\":\"email1@domain.com\","
+                + "\"employer\":\"AlRajhi Bank\","
+                + "\"employmentStatus\":\"Government Sector\","
+                + "\"incomeRange\":\"1\","
+                + "\"jobCategory\":\"21\""
+                + "}";
+        RequestSpecification spec = authedRequest(session);
+        if (session.otpToken != null) {
+            spec = spec.header("X-OTP-Token", session.otpToken);
+        }
+        Response resp = spec.body(body).put(baseUrl + "/consumers/" + session.consumerId + "/kyc");
+        log.info("KYC for consumer {} -> status {} body {}", session.consumerId,
+                resp.getStatusCode(), resp.getBody().asString());
     }
 
     /** Build an authenticated request for a logged-in consumer session. */

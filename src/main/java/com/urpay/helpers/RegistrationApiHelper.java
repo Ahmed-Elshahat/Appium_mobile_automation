@@ -356,13 +356,15 @@ public final class RegistrationApiHelper {
             log.info("Login> consumers/login status {} body {}", login.getStatusCode(), login.getBody().asString());
             String securityToken = login.getHeader(SECURITY_TOKEN_HEADER);
             String sessionId = login.getHeader("X-Session-Id");
+            String consumerId = login.jsonPath().getString("body.consumerId");
             int status = login.getStatusCode();
             if (status >= 200 && status < 300 && securityToken != null) {
                 ConfigManager config = ConfigManager.getInstance();
                 log.info("New consumer logged in (security token acquired)");
                 return new Session(securityToken, sessionId, deviceToken,
                         config.get("registration.deviceId", "5237008156"),
-                        config.get("registration.deviceName", "test1262472071"));
+                        config.get("registration.deviceName", "test1262472071"),
+                        consumerId, verifyToken);
             }
             log.warn("Consumer login failed (status {}): {}", status, login.getBody().asString());
             return null;
@@ -379,14 +381,18 @@ public final class RegistrationApiHelper {
         public final String deviceToken;
         public final String deviceId;
         public final String deviceName;
+        public final String consumerId;
+        public final String otpToken;
 
         Session(String securityToken, String sessionId, String deviceToken,
-                String deviceId, String deviceName) {
+                String deviceId, String deviceName, String consumerId, String otpToken) {
             this.securityToken = securityToken;
             this.sessionId = sessionId;
             this.deviceToken = deviceToken;
             this.deviceId = deviceId;
             this.deviceName = deviceName;
+            this.consumerId = consumerId;
+            this.otpToken = otpToken;
         }
     }
 
