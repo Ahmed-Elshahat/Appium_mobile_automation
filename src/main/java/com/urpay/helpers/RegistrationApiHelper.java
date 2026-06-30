@@ -184,7 +184,6 @@ public final class RegistrationApiHelper {
     static Response generateOtp(String baseUrl, String mobile) {
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"001\"}";
         return baseHeaders(null)
-                .header("X-Device-Token", "null")
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)

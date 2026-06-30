@@ -334,11 +334,17 @@ public final class FamilyRegistrationApiHelper {
             }
 
             executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", mobile);
-            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '' "
+            // Mark the consumer KYC-verified (same flags the standalone seed sets) WITHOUT overwriting
+            // the real identity/DOB — the kid must stay < 18. Login's pre-login/devices-register reject
+            // an un-verified consumer (E201023), so STATUS=ACTIVE alone is not enough.
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '', "
+                    + "ID_VERIFIED_FLAG = 'Y', TAHAKOOK_VERIFIED_FLAG = 'Y', ID_VERIFIED_SOURCE = 'NAFATH', "
+                    + "ID_VERIFIED_DATE = TO_TIMESTAMP('2024-01-25 01:26:03.440000000', 'YYYY-MM-DD HH24:MI:SS.FF'), "
+                    + "POI_EXPIRY_STATUS = 'N', POLITICALLY_RELATED_FLAG = 'N' WHERE PARTY_ID = ?", partyId);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET PRODUCT_TIER_ID = '5', STATUS = 'ACTIVE' "
                     + "WHERE PARTY_ID = ?", partyId);
-            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
 
-            log.info("Force-verification done for partyId {} (PARTY + PARTY_PRODUCT ACTIVE, Nazeer cleared)", partyId);
+            log.info("Force-verification done for partyId {} (KYC verified, tier 5, PARTY + PARTY_PRODUCT ACTIVE)", partyId);
             return partyId;
         } catch (SQLException e) {
             log.warn("Force-verification failed for POI {} — continuing: {}", poi, e.getMessage());
