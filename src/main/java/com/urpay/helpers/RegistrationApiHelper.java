@@ -460,6 +460,8 @@ public final class RegistrationApiHelper {
                 .header("X-Session-Language", "EN")
                 .header("X-Client-Id", config.get("registration.clientId", "1278490422"))
                 .header("X-Client-Secret", config.get("registration.clientSecret", "64"))
+                .header("X-Api-Key", config.get("registration.apiKey",
+                        "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G"))
                 .header("X-Device-Id", config.get("registration.deviceId", "5237008156"))
                 .header("X-Device-Name", config.get("registration.deviceName", "test1262472071"))
                 .header("X-Device-Platform", config.get("registration.devicePlatform", "IOS"))
