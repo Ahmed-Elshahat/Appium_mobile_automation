@@ -283,27 +283,27 @@ public final class RegistrationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"passCode\":\"" + passcodeBlob + "\",\"firstLoginFlg\":false}";
-        // Matches the BE report / Katalon createConsumerLoginHeaders: keeps X-Client-Secret,
-        // NO X-Api-Key; X-Request-Id is the device-register requestId, X-Device-Token is the real token.
+        // Matches the BE report's consumers/login header set exactly: NO X-Client-Secret, NO X-Api-Key,
+        // NO X-Host-IP; X-Request-Id is a fresh UUID; real X-Device-Token + X-OTP-Token; lat/long/fwd-for
+        // and x-push-notification-os-enabled-flag included.
         RequestSpecification spec = RestAssured.given()
                 .header("X-Session-Language", "EN")
                 .header("X-Client-Id", config.get("registration.clientId", "1278490422"))
-                .header("X-Client-Secret", config.get("registration.clientSecret", "64"))
                 .header("X-Device-Id", config.get("registration.deviceId", "5237008156"))
                 .header("X-Device-Name", config.get("registration.deviceName", "test1262472071"))
                 .header("X-Device-Platform", config.get("registration.devicePlatform", "IOS"))
                 .header("X-App-Version", config.get("registration.appVersion", "456"))
+                .header("X-Request-Id", UUID.randomUUID().toString())
                 .header(OTP_TOKEN_HEADER, otpToken)
-                .header("X-Longitude", "-7.6524")
-                .header("X-Latitude", "33.4498")
-                .header("X-Host-IP", "41.251.173.112")
+                .header("X-Latitude", "24.705742")
+                .header("X-Longitude", "46.679297")
+                .header("X-Forwarded-For", "51.235.115.209")
+                .header("x-push-notification-os-enabled-flag", "true")
                 .header("Content-Type", "application/json")
                 .body(body);
         if (deviceToken != null) {
             spec = spec.header(DEVICE_TOKEN_HEADER, deviceToken);
         }
-        // X-Request-Id must be the requestId returned by devices/register (not a fresh UUID).
-        spec = spec.header("X-Request-Id", requestId != null ? requestId : UUID.randomUUID().toString());
         return spec.post(baseUrl + "/authentication/consumers/login");
     }
 
