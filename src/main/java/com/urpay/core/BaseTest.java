@@ -76,6 +76,16 @@ public abstract class BaseTest {
         return DriverFactory.getInstance().getDriver();
     }
 
+    /**
+     * Fail fast with a categorised {@code AppCrashException} if the app process has crashed.
+     * Call at critical checkpoints (e.g. right after submitting an OTP, confirming a payment, or
+     * entering an amount) to pin a crash to the exact feature instead of waiting for the next
+     * element to time out.
+     */
+    protected void assertAppAlive() {
+        com.urpay.utils.CrashGuard.assertAppAlive(getDriver());
+    }
+
     protected void forceRestartApp() {
         String appId = config.get("platform", "android").equalsIgnoreCase("ios")
                 ? config.get("bundleId", "com.urpay.consumer.sit")

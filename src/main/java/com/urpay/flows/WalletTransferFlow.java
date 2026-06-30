@@ -1,9 +1,12 @@
 package com.urpay.flows;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +16,7 @@ import com.urpay.core.DriverFactory;
 import com.urpay.pages.auth.OtpPage;
 import com.urpay.pages.common.CommonComponentsPage;
 import com.urpay.pages.dashboard.DashboardPage;
+import com.urpay.pages.remittance.WalletTransactionDetailsPage;
 import com.urpay.pages.remittance.WalletTransferPage;
 import com.urpay.platform.MobilePlatformActions;
 import com.urpay.platform.PlatformActionsFactory;
@@ -88,36 +92,36 @@ public class WalletTransferFlow {
     //  NAVIGATION
     // ══════════════════════════════════════════════════
 
-    @Step("Navigate to Wallet Transfer: Dashboard → Transfer → Wallet Transfer")
+    @Step("Navigate to Wallet Transfer (deep link urpay://w2w)")
     public WalletTransferPage navigateToWalletTransfer() {
-        returnToDashboard();
-
-        // Open the Transfer landing — prefer the stable accessibility id, fall back to
-        // the bottom-nav coordinate tap if the build does not expose testID-TRANSFER.
-        if (!quickTap(TRANSFER_NAV)) {
-            log.info("testID-TRANSFER not found — using bottom-nav coordinate tap");
-            dashboardPage.navigateToTransfer();
+        // Already on the Wallet Transfer beneficiary screen (e.g. a prior chained test left us
+        // here)? Reuse it — re-navigating would be pure waste in a single session.
+        if (waits.isVisible(SEARCH_INPUT, 2)) {
+            log.info("Already on Wallet Transfer screen — reusing it");
+            return new WalletTransferPage();
         }
-
-        waits.waitForClickable(WALLET_TRANSFER_BTN, 15).click();
+        // Deep-link straight to Wallet-to-Wallet Transfer. UI back-navigation is fragile from
+        // deep stacks (e.g. the transaction-details screen), so mirror Katalon's w2w deep link.
+        openViaDeepLink("urpay://w2w");
         waits.waitForVisible(SEARCH_INPUT, 15);
-        log.info("Wallet Transfer beneficiary screen loaded");
+        log.info("Wallet Transfer beneficiary screen loaded (deep link)");
         return new WalletTransferPage();
     }
 
     /** Back out of any sub-screen until the dashboard (wallet balance) is visible. */
     private void returnToDashboard() {
-        // testID-master-amount-main (wallet balance) is a dashboard-ONLY marker. The
-        // generic search/right-icon also appears on sub-screens and gives false positives,
-        // so backing out would stop early and never reach the real dashboard.
+        // testID-master-amount-main (wallet balance) is a dashboard-ONLY marker. React Native
+        // keeps the dashboard mounted BEHIND overlays (e.g. the post-transfer Thank You screen),
+        // so a DOM-presence check falsely reports "home" — use VISIBILITY so the back-press loop
+        // actually continues until the dashboard is on screen. The 2s budget doubles as settle.
         By balance = AppiumBy.accessibilityId("testID-master-amount-main");
         for (int i = 0; i < 6; i++) {
-            if (waits.isPresent(balance, 2)) {
+            if (waits.isVisible(balance, 2)) {
                 break;
             }
             driver.navigate().back();
         }
-        if (!waits.isPresent(balance, 2)) {
+        if (!waits.isVisible(balance, 2)) {
             dashboardPage.navigateToHome();
             waits.waitForVisible(balance, 10);
         }
@@ -143,8 +147,12 @@ public class WalletTransferFlow {
     //  TRANSFER TO UNSAVED NUMBER (end-to-end)
     // ══════════════════════════════════════════════════
 
-    @Step("Transfer {amount} to unsaved number {recipientMobile}")
-    public WalletTransferPage transferToUnsavedNumber(String recipientMobile, String amount, String otp) {
+    /**
+     * Fill the wallet-transfer form up to the Confirm screen — search → unsaved number →
+     * recipient → amount → purpose. Stops BEFORE Confirm/OTP (no money moved), so it backs
+     * BOTH the full transfer and the recipient name-confirmation validation.
+     */
+    private WalletTransferPage fillToConfirm(String recipientMobile, String amount) {
         WalletTransferPage page = navigateToWalletTransfer();
         grantContactPermission();
 
@@ -155,7 +163,7 @@ public class WalletTransferFlow {
         platformActions.dismissKeyboard();
         page.tapTransferToUnsavedNumber();
 
-        // Confirmation shown when the recipient is not a registered URPay user.
+        // Confirmation shown when the recipient is not a saved beneficiary.
         acceptUnsavedNumberPopup();
 
         // Recipient mobile number (local format — leading zero dropped).
@@ -163,16 +171,23 @@ public class WalletTransferFlow {
         platformActions.dismissKeyboard();
         page.tapNext();
 
-        // Amount.
-        page.enterAmount(amount);
-        platformActions.dismissKeyboard();
+        // Amount — the screen auto-focuses a numeric keypad and the underlying field is not
+        // a standard EditText, so a quick-amount chip (20/50/100/200) is the reliable input.
+        page.isAmountScreenVisible(15);
+        page.selectQuickAmount(amount);
         page.tapNext();
 
-        // Purpose / relationship of transfer → Next → Confirm.
+        // Purpose / relationship of transfer → Next → Confirm screen.
         page.selectFirstPurpose();
         page.tapNext();
 
         waits.waitForVisible(AppiumBy.accessibilityId("testID-primary-confirm-main"), 15);
+        return page;
+    }
+
+    @Step("Transfer {amount} to unsaved number {recipientMobile}")
+    public WalletTransferPage transferToUnsavedNumber(String recipientMobile, String amount, String otp) {
+        WalletTransferPage page = fillToConfirm(recipientMobile, amount);
         page.tapConfirm();
 
         // Fail fast on insufficient funds rather than timing out later.
@@ -184,9 +199,107 @@ public class WalletTransferFlow {
 
         // OTP / verification code → success screen.
         otpPage.enterOtp(otp);
+        platformActions.dismissKeyboard();
         common.waitForResultAfterOtp(30);
         log.info("Wallet transfer of {} to {} completed", amount, recipientMobile);
         return page;
+    }
+
+    /**
+     * Reach the Confirm screen for an existing URPay user and STOP (no Confirm/OTP — no money).
+     * Migrated from ValidateExistingUserPayMobileNameConfirmationPage / ValidateNameConfirmationPage:
+     * entering a registered user's number must resolve & show their name on the Confirm screen.
+     */
+    @Step("Open the transfer Confirm screen for existing user {recipientMobile} (no confirm)")
+    public WalletTransferPage openTransferConfirmation(String recipientMobile, String amount) {
+        WalletTransferPage page = fillToConfirm(recipientMobile, amount);
+        log.info("Reached confirm screen for {} — recipient name confirmation ready", recipientMobile);
+        return page;
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  DIRECT TRANSFER TO A SAVED / ACTIVE BENEFICIARY
+    // ═══════════════════════════════════════════════════
+
+    /** Open Wallet Transfer and grant the contact permission so the beneficiary list loads. */
+    @Step("Open Wallet Transfer (with contacts)")
+    public WalletTransferPage openWalletTransferWithContacts() {
+        WalletTransferPage page = navigateToWalletTransfer();
+        grantContactPermission();
+        return page;
+    }
+
+    /**
+     * Complete a transfer to the first active/saved beneficiary — select it DIRECTLY (no search,
+     * no unsaved-number path) → amount → purpose → Confirm → OTP → success.
+     * Migrated from Katalon Scripts/Remittance/WalletTransfer (SelectBenfeficiery).
+     */
+    @Step("Transfer {amount} directly to the first active beneficiary")
+    public WalletTransferPage transferToActiveBeneficiary(WalletTransferPage page, String amount, String otp) {
+        page.tapFirstBeneficiary();
+        acceptUnsavedNumberPopup();
+
+        page.isAmountScreenVisible(15);
+        page.selectQuickAmount(amount);
+        page.tapNext();
+
+        page.selectFirstPurpose();
+        page.tapNext();
+
+        waits.waitForVisible(AppiumBy.accessibilityId("testID-primary-confirm-main"), 15);
+        page.tapConfirm();
+
+        if (waits.isPresent(INSUFFICIENT_BALANCE, 3)) {
+            throw new IllegalStateException(
+                    "INSUFFICIENT BALANCE — top up the sender wallet before running.");
+        }
+        otpPage.enterOtp(otp);
+        platformActions.dismissKeyboard();
+        common.waitForResultAfterOtp(30);
+        log.info("Wallet transfer of {} to active beneficiary completed", amount);
+        return page;
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  TRANSACTION HISTORY
+    // ═══════════════════════════════════════════════════
+
+    /**
+     * Dashboard → Transactions → open the most recent transaction's details.
+     * Used to verify a just-completed transfer is recorded in the sender's history.
+     */
+    @Step("Open the most recent transaction from history")
+    public WalletTransactionDetailsPage openLastTransaction() {
+        // Deep-link straight to the dashboard. The post-transfer success overlay keeps the soft
+        // keyboard up (covering Done) and cannot be left via BACK (that exits the app), so we
+        // mirror Katalon's navigateToHomePageDashboardThroughDeepLink instead of UI navigation.
+        openDashboardViaDeepLink();
+        dashboardPage.dismissPopups();
+        dashboardPage.clickTransactions();
+
+        WalletTransactionDetailsPage page = new WalletTransactionDetailsPage();
+        waits.waitForVisible(AppiumBy.accessibilityId("testID-main-firstRow-0"), 20);
+        page.tapFirstTransaction();
+        waits.waitForVisible(AppiumBy.accessibilityId("testID-label-value-main-0"), 15);
+        log.info("Opened most recent transaction details");
+        return page;
+    }
+
+    /** Navigate directly to the dashboard via deep link. */
+    @Step("Open dashboard via deep link")
+    private void openDashboardViaDeepLink() {
+        openViaDeepLink("urpay://DashboardHome");
+        waits.waitForVisible(AppiumBy.accessibilityId("testID-master-amount-main"), 20);
+        log.info("Dashboard opened via deep link");
+    }
+
+    /** Fire a urpay:// deep link via the UiAutomator2 mobile:deepLink command. */
+    private void openViaDeepLink(String url) {
+        String appPackage = ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit");
+        Map<String, Object> params = new HashMap<>();
+        params.put("url", url);
+        params.put("package", appPackage);
+        ((JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
     }
 
     // ══════════════════════════════════════════════════
