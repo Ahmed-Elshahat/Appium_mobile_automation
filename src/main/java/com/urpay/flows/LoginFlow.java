@@ -229,22 +229,20 @@ public class LoginFlow {
         // Its testID is not stable across builds, so locate by visible text and treat this as
         // BEST-EFFORT: if the dropdown/option is absent, skip and continue — the SIT build
         // defaults to the SIT backend, so login still proceeds.
+        // Use a SINGLE explicit waitForClickable (not isPresent + driver.findElement) so a still-
+        // settling login form does not trigger a ~10s implicit-wait retry on the click.
         By envDropdown = AppiumBy.xpath(
                 "//*[@content-desc='testID-env-dropdown' or @text='Environment' "
                 + "or @content-desc='Environment']");
-        if (!waits.isPresent(envDropdown, 5)) {
-            log.warn("Environment dropdown not found — skipping env selection (defaulting to {})", env);
-            return;
-        }
         try {
-            driver.findElement(envDropdown).click();
+            waits.waitForClickable(envDropdown, 8).click();
             log.info("Opened environment dropdown");
             By option = AppiumBy.xpath(
                     "//*[@text='" + env + "' or @content-desc='" + env + "' or @label='" + env + "']");
-            waits.waitForClickable(option, 6).click();
+            waits.waitForClickable(option, 5).click();
             log.info("Environment selected: {}", env);
         } catch (Exception e) {
-            log.warn("Environment selection incomplete for '{}' — continuing to credentials: {}",
+            log.warn("Environment dropdown not selected (defaulting to {}) — continuing: {}",
                     env, e.getMessage());
         }
     }
@@ -376,7 +374,7 @@ public class LoginFlow {
         By anyFirst = AppiumBy.xpath(
                 "//*[@text='Skip' or @text='No thanks' or @text='Allow' "
                 + "or @text='Later' or @text='Passcode' or @text='Enter your passcode' "
-                + "or @text='Login' or @text='Register' or @text='Enable Your Location' "
+                + "or @text='Login' or @text='LOGIN' or @text='Register' or @text='Enable Your Location' "
                 + "or @content-desc='testID-secondary-login-main' "
                 + "or @content-desc='testID-secondary-g35-main' "
                 + "or @content-desc='testID-primary-register-main' "
@@ -398,13 +396,14 @@ public class LoginFlow {
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main']");
 
-        // Login button on the welcome screen (tap it to go to login form). Verified live: the
-        // welcome screen exposes content-desc testID-secondary-login-main. Keep it a SINGLE simple
-        // OR-xpath (no union '|' / relative './/' predicate, which UiAutomator2's XPath engine can
-        // throw on — that exception is swallowed by findQuick and looks like "button never found").
+        // Login button on the welcome screen (tap it to go to login form). Covers multiple builds:
+        // testID-secondary-login-main / g35-main (obfuscated) / text "Login"/"LOGIN".
         By loginBtn = AppiumBy.xpath(
                 "//*[@content-desc='testID-secondary-login-main' "
-                + "or @content-desc='testID-secondary-g35-main']");
+                + "or @content-desc='testID-secondary-g35-main' "
+                + "or @content-desc='testID-primary-login-main' "
+                + "or @content-desc='testID-primary-loginBtn-main' "
+                + "or @text='Login' or @text='LOGIN' or @text='Log in']");
 
         // True terminal = dashboard or passcode screen (NOT mobile field — it exists in DOM behind onboarding)
         By realTerminal = AppiumBy.xpath(
