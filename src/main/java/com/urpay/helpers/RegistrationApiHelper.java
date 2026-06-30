@@ -258,6 +258,7 @@ public final class RegistrationApiHelper {
         String body = "{\"poi\":{\"poiNumber\":\"" + poi + "\",\"poiType\":\"" + poiType
                 + "\"},\"mobileNumber\":\"" + mobile + "\",\"passCode\":\"" + passcodeBlob + "\"}";
         return baseHeaders(otpToken)
+                .header("X-Device-Token", "432")
                 .header("X-Latitude", "45")
                 .header("Content-Type", "application/json")
                 .body(body)
@@ -300,9 +301,11 @@ public final class RegistrationApiHelper {
     @Step("API login (capture session) for {mobile}")
     static Session loginAndGetSession(String baseUrl, String mobile, String poi, String poiType) {
         try {
-            preLogin(baseUrl, mobile, poi, poiType);
+            Response pre = preLogin(baseUrl, mobile, poi, poiType);
+            log.info("Login> pre-login status {} body {}", pre.getStatusCode(), pre.getBody().asString());
 
             Response generate = generateOtp(baseUrl, mobile);
+            log.info("Login> otp/generate status {} body {}", generate.getStatusCode(), generate.getBody().asString());
             String otpReference = generate.jsonPath().getString("body.otpReference");
             String genToken = generate.getHeader(OTP_TOKEN_HEADER);
             if (otpReference == null || genToken == null) {
@@ -311,6 +314,7 @@ public final class RegistrationApiHelper {
             }
 
             Response verify = verifyOtp(baseUrl, mobile, otpReference, genToken);
+            log.info("Login> otp/verify status {} body {}", verify.getStatusCode(), verify.getBody().asString());
             String verifyToken = verify.getHeader(OTP_TOKEN_HEADER);
             if (verifyToken == null) {
                 log.warn("Login aborted: OTP verification returned no token");
@@ -318,15 +322,17 @@ public final class RegistrationApiHelper {
             }
 
             Response device = deviceRegister(baseUrl, mobile, poi, poiType, verifyToken);
+            log.info("Login> devices/register status {} body {}", device.getStatusCode(), device.getBody().asString());
             String deviceToken = device.getHeader(DEVICE_TOKEN_HEADER);
             String requestId = device.jsonPath().getString("header.requestId");
             if (deviceToken == null) {
-                log.warn("Login aborted: device register returned no device token (status {})",
-                        device.getStatusCode());
+                log.warn("Login aborted: device register returned no device token (status {}): {}",
+                        device.getStatusCode(), device.getBody().asString());
                 return null;
             }
 
             Response login = consumerLogin(baseUrl, deviceToken, requestId, verifyToken);
+            log.info("Login> consumers/login status {} body {}", login.getStatusCode(), login.getBody().asString());
             String securityToken = login.getHeader(SECURITY_TOKEN_HEADER);
             String sessionId = login.getHeader("X-Session-Id");
             int status = login.getStatusCode();

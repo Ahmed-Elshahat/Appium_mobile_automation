@@ -109,24 +109,29 @@ public final class FamilyRegistrationApiHelper {
             seedYakeenRelation(parent);
             seedYakeenRelation(kid);
 
-            // Activate the parent (Nazeer) so the kid can verify against it in-app.
+            // Activate BOTH members so each can log in: the kid to send the link request,
+            // the parent (Nazeer) to approve it. Without an ACTIVE PARTY_PRODUCT the login
+            // chain's devices/register call is rejected (HTTP 400).
+            kid.partyId = forceVerification(kid.mobile, kid.poi);
             parent.partyId = forceVerification(parent.mobile, parent.poi);
 
-            // Drive the link entirely through the backend: kid sends the request, parent approves.
-            String requestId = sendLinkRequest(baseUrl, kid, parent);
-            if (requestId == null) {
+            // Drive the link entirely through the backend, mirroring the BE report
+            // (Family_Suite / CreateDelinkFamilyRequestlessthan18):
+            //   kid logs in   → POST /family-requests/create
+            //   parent logs in → GET receiver inbox for the pending id → PUT .../{id}/update APPROVE
+            if (!sendLinkRequest(baseUrl, kid, parent)) {
                 log.warn("Family setup: link request was not created");
                 return false;
             }
-            boolean approved = approveLinkRequest(baseUrl, parent, requestId);
+            boolean approved = approveLinkRequest(baseUrl, parent, kid);
 
             RegistrationApiHelper.logCredentials(
                     "PARENT CREDENTIALS (" + parent.poiType + ")", parent.poiType, parent.mobile, parent.poi, parent.partyId);
             RegistrationApiHelper.logCredentials(
                     "KID CREDENTIALS (" + kid.poiType + ", relation " + kid.relationCode + ")",
                     kid.poiType, kid.mobile, kid.poi, kid.partyId);
-            log.info("=== Family setup complete | parent poi {} (partyId {}) linked with kid poi {} | requestId {} | approved {} ===",
-                    parent.poi, parent.partyId, kid.poi, requestId, approved ? "YES" : "NO");
+            log.info("=== Family setup complete | parent poi {} (partyId {}) linked with kid poi {} | approved {} ===",
+                    parent.poi, parent.partyId, kid.poi, approved ? "YES" : "NO");
             return approved;
         } catch (Exception e) {
             log.warn("Family registration/link failed: {}", e.getMessage());
@@ -168,8 +173,8 @@ public final class FamilyRegistrationApiHelper {
             return false;
         }
         log.info("{} registered (status {})", member.role, status);
-
-        RegistrationApiHelper.loginChain(baseUrl, member.mobile, member.poi, member.poiType);
+        // NB: do NOT log in here — the member is not active yet (no DB activation). Login is
+        // attempted only after force-verification, right before it is needed (link/approve).
         return true;
     }
 
@@ -220,11 +225,11 @@ public final class FamilyRegistrationApiHelper {
 
     /** Kid logs in and sends a LINK_TO_FAMILY request naming the parent as receiver. */
     @Step("API kid sends family link request")
-    private static String sendLinkRequest(String baseUrl, Member kid, Member parent) {
+    private static boolean sendLinkRequest(String baseUrl, Member kid, Member parent) {
         Session kidSession = RegistrationApiHelper.loginAndGetSession(baseUrl, kid.mobile, kid.poi, kid.poiType);
         if (kidSession == null) {
             log.warn("Link request aborted: kid login failed");
-            return null;
+            return false;
         }
         String body = "{"
                 + "\"familyMemberFirstNameAr\":\"" + kid.firstName + "\","
@@ -239,26 +244,45 @@ public final class FamilyRegistrationApiHelper {
                 .body(body)
                 .post(baseUrl + "/family-requests/create");
         int status = response.getStatusCode();
-        String requestId = response.jsonPath().getString("body.requestId");
-        if (status >= 200 && status < 300 && requestId != null) {
-            log.info("Family link request created (requestId {})", requestId);
-            return requestId;
+        if (status >= 200 && status < 300) {
+            log.info("Family link request created (status {}): {}", status, response.getBody().asString());
+            return true;
         }
         log.warn("Family link request failed (status {}): {}", status, response.getBody().asString());
-        return null;
+        return false;
     }
 
-    /** Parent logs in and approves the pending family request. */
-    @Step("API parent approves family link request {requestId}")
-    private static boolean approveLinkRequest(String baseUrl, Member parent, String requestId) {
+    /**
+     * Parent logs in, finds the pending request in its RECEIVER inbox (as the BE report does),
+     * then approves it. The approve body carries the kid's Hijri date of birth.
+     */
+    @Step("API parent fetches the pending request and approves it")
+    private static boolean approveLinkRequest(String baseUrl, Member parent, Member kid) {
         Session parentSession = RegistrationApiHelper.loginAndGetSession(baseUrl, parent.mobile, parent.poi,
                 parent.poiType);
         if (parentSession == null) {
             log.warn("Approve aborted: parent login failed");
             return false;
         }
+
+        // Read the parent's RECEIVER inbox to obtain the pending LINK_TO_FAMILY request id.
+        Response inbox = authedRequest(parentSession)
+                .queryParam("requestType", "LINK_TO_FAMILY")
+                .queryParam("requestUserRole", "RECEIVER")
+                .queryParam("offset", "0")
+                .queryParam("limit", "1")
+                .get(baseUrl + "/consumers/family-requests");
+        String requestId = inbox.jsonPath().getString("body.familyRequests[0].id");
+        log.info("Parent inbox status {} | pending requestId {}", inbox.getStatusCode(), requestId);
+        if (requestId == null) {
+            log.warn("Approve aborted: no pending family request in parent inbox: {}", inbox.getBody().asString());
+            return false;
+        }
+
+        String body = "{\"action\":\"APPROVE\",\"reason\":\"string\",\"familyMemberDateOfBirth\":\""
+                + kid.dateOfBirthH + "\"}";
         Response response = authedRequest(parentSession)
-                .body("{\"action\":\"APPROVE\",\"reason\":\"string\"}")
+                .body(body)
                 .put(baseUrl + "/consumers/family-requests/" + requestId + "/update");
         int status = response.getStatusCode();
         String resultStatus = response.jsonPath().getString("body.status");
@@ -384,7 +408,7 @@ public final class FamilyRegistrationApiHelper {
         m.fatherName = "\u0639\u0645\u0631";                                 // عمر
         m.grandFatherName = "\u0641\u0627\u064A\u0632";                      // فايز
         m.familyName = "\u0627\u0644\u063A\u0627\u0645\u062F\u064A";         // الغامدي
-        m.englishFirstName = "Sarah";
+        m.englishFirstName = "Mutez";                                        // matches BE report (معتز)
         m.englishSecondName = "Omar";
         m.englishThirdName = "Saed";
         m.englishLastName = "Alghamdi";
