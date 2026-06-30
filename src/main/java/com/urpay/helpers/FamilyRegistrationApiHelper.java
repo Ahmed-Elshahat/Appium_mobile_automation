@@ -95,36 +95,33 @@ public final class FamilyRegistrationApiHelper {
         try {
             RestAssured.useRelaxedHTTPSValidation();
 
+            // ── BE createFamilyRequest order (the order matters) ──────────────────────────
+            // 1. Seed the simulator for BOTH members BEFORE registering: tahaqoq + yakeen-info +
+            //    yakeen-relation must exist first so the guardianship is recognised at registration.
+            RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile);
+            RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile);
+            seedYakeenInfo(kid);
+            seedYakeenInfo(parent);
+            seedYakeenRelation(kid);     // kid → parent (kinship 6)
+            seedYakeenRelation(parent);  // parent → kid (kinship 1)
+
+            // 2. Register the PARENT fully (register → activate/seed → KYC), then the KID — BE order.
+            //    Tier 5 for the parent; the kid keeps its registration-default tier 3.
             if (!registerMember(baseUrl, parent)) {
                 log.warn("Family setup aborted: parent registration failed");
                 return false;
             }
+            parent.partyId = forceVerification(parent, true);
+            completeParentKyc(baseUrl, parent);
+
             if (!registerMember(baseUrl, kid)) {
                 log.warn("Family setup aborted: kid registration failed");
                 return false;
             }
-
-            // Seed Yakeen identity + relationship for both members.
-            seedYakeenInfo(parent);
-            seedYakeenInfo(kid);
-            seedYakeenRelation(parent);
-            seedYakeenRelation(kid);
-
-            // Activate BOTH members so each can log in: the kid to send the link request,
-            // the parent (Nazeer) to approve it. Without an ACTIVE PARTY_PRODUCT the login
-            // chain's devices/register call is rejected (HTTP 400). Only the parent is bumped
-            // to full tier 5 — the kid keeps its registration-default tier (report does the same).
             kid.partyId = forceVerification(kid, false);
-            parent.partyId = forceVerification(parent, true);
 
-            // Parent completes its own KYC during setup (createFamilyRequest): login -> /consumers/{id}/kyc
-            // -> re-activate. KYC flips the consumer INACTIVE, so we re-activate it in the DB right after.
-            completeParentKyc(baseUrl, parent);
-
-            // Drive the link entirely through the backend, mirroring the BE report
-            // (Family_Suite / CreateDelinkFamilyRequestlessthan18):
-            //   kid logs in   → POST /family-requests/create
-            //   parent logs in → GET receiver inbox for the pending id → PUT .../{id}/update APPROVE
+            // 3. Link: kid logs in → POST /family-requests/create; parent logs in → inbox → APPROVE
+            //    → family-member KYC (createFamilyRequest).
             if (!sendLinkRequest(baseUrl, kid, parent)) {
                 log.warn("Family setup: link request was not created");
                 return false;
