@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Driverless account-provisioning suite (no Appium / no device).
+  Requires the neoleap VPN (SIT API, backend simulator and Oracle DB are internal).
+
+  Run:
+    mvn test -Dprofile=sit-wmv -Dsuite=suites/provision-users.xml
+
+  By default this only mints + links a parent and a kid (<18). Uncomment the
+  other <include> lines to also create standalone NAT / IQA / BOR consumers.
+  Created credentials (mobile / POI / passcode / party id) are logged to the console.
+-->
+<suite name="URPay User Provisioning" verbose="1">
+    <test name="Provision Users">
+        <classes>
+            <class name="com.urpay.tests.provisioning.UserProvisioningTest">
+                <methods>
+                    <include name="provisionLinkedParentAndKid"/>
+                    <!--
+                    <include name="provisionNationalUser"/>
+                    <include name="provisionResidentUser"/>
+                    <include name="provisionVisitorUser"/>
+                    -->
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
