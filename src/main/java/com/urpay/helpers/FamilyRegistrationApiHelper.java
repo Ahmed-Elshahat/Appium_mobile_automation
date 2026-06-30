@@ -69,6 +69,7 @@ public final class FamilyRegistrationApiHelper {
         String idExpiryDate;
         String idExpirationDateH;
         String partyId;
+        String consumerId;
     }
 
     /**
@@ -239,8 +240,10 @@ public final class FamilyRegistrationApiHelper {
             log.warn("Link request aborted: kid login failed");
             return false;
         }
-        completeKyc(baseUrl, kidSession);
-        reactivate(kid);
+        // Per the BE report (createFamilyRequest): the KID does NOT complete its own KYC here.
+        // It just logs in and sends the request; its KYC is done by the parent AFTER approval
+        // via /consumers/family-member/kyc. Remember the kid's consumerId for that step.
+        kid.consumerId = kidSession.consumerId;
         String body = "{"
                 + "\"familyMemberFirstNameAr\":\"" + kid.firstName + "\","
                 + "\"familyMemberFirstNameEn\":\"" + kid.englishFirstName + "\","
@@ -300,10 +303,42 @@ public final class FamilyRegistrationApiHelper {
         String resultStatus = response.jsonPath().getString("body.status");
         if (status >= 200 && status < 300) {
             log.info("Family request {} approved (body.status {})", requestId, resultStatus);
+            // After approval the parent completes the kid's KYC as a family member (createFamilyRequest).
+            completeFamilyMemberKyc(baseUrl, parentSession, kid.consumerId);
             return true;
         }
         log.warn("Family request approve failed (status {}): {}", status, response.getBody().asString());
         return false;
+    }
+
+    /**
+     * Parent completes the kid's KYC as a family member after the link is approved
+     * ({@code PUT /consumers/family-member/kyc}), exactly as the BE report's createFamilyRequest does.
+     */
+    @Step("API parent completes family-member KYC for kid {kidConsumerId}")
+    private static void completeFamilyMemberKyc(String baseUrl, Session parentSession, String kidConsumerId) {
+        if (kidConsumerId == null) {
+            log.warn("Family-member KYC skipped: kid login returned no consumerId");
+            return;
+        }
+        String body = "{"
+                + "\"familyMemberConsumerId\":\"" + kidConsumerId + "\","
+                + "\"additionalIncomeSource\":\"SALARY\","
+                + "\"basicIncomeSource\":\"SALARY\","
+                + "\"email\":\"email1@domain.com\","
+                + "\"employer\":\"AlRajhi Bank\","
+                + "\"employmentStatus\":\"Government Sector\","
+                + "\"incomeRange\":\"1\","
+                + "\"isPoliticallyRelated\":false,"
+                + "\"jobCategory\":\"21\""
+                + "}";
+        RequestSpecification spec = authedRequest(parentSession);
+        if (parentSession.otpToken != null) {
+            spec = spec.header("X-OTP-Token", parentSession.otpToken);
+        }
+        Response resp = spec.body(body).put(baseUrl + "/consumers/family-member/kyc");
+        log.info("Family-member KYC for kid consumer {} -> status {} body {}", kidConsumerId,
+                resp.getStatusCode(), resp.getBody().asString());
     }
 
     /**
