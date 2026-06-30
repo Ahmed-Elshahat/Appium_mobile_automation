@@ -111,9 +111,10 @@ public final class FamilyRegistrationApiHelper {
 
             // Activate BOTH members so each can log in: the kid to send the link request,
             // the parent (Nazeer) to approve it. Without an ACTIVE PARTY_PRODUCT the login
-            // chain's devices/register call is rejected (HTTP 400).
-            kid.partyId = forceVerification(kid.mobile, kid.poi);
-            parent.partyId = forceVerification(parent.mobile, parent.poi);
+            // chain's devices/register call is rejected (HTTP 400). Only the parent is bumped
+            // to full tier 5 — the kid keeps its registration-default tier (report does the same).
+            kid.partyId = forceVerification(kid.mobile, kid.poi, false);
+            parent.partyId = forceVerification(parent.mobile, parent.poi, true);
 
             // Drive the link entirely through the backend, mirroring the BE report
             // (Family_Suite / CreateDelinkFamilyRequestlessthan18):
@@ -333,7 +334,7 @@ public final class FamilyRegistrationApiHelper {
      * @return the PARTY_ID, or {@code null} if the row was not found / DB unreachable
      */
     @Step("DB force-verification for {mobile} (poi {poi})")
-    private static String forceVerification(String mobile, String poi) {
+    private static String forceVerification(String mobile, String poi, boolean fullTier) {
         try (Connection conn = RegistrationApiHelper.openDbConnection()) {
             String partyId = lookupPartyId(conn, poi);
             if (partyId == null) {
@@ -349,10 +350,17 @@ public final class FamilyRegistrationApiHelper {
                     + "ID_VERIFIED_FLAG = 'Y', TAHAKOOK_VERIFIED_FLAG = 'Y', ID_VERIFIED_SOURCE = 'NAFATH', "
                     + "ID_VERIFIED_DATE = TO_TIMESTAMP('2024-01-25 01:26:03.440000000', 'YYYY-MM-DD HH24:MI:SS.FF'), "
                     + "POI_EXPIRY_STATUS = 'N', POLITICALLY_RELATED_FLAG = 'N' WHERE PARTY_ID = ?", partyId);
-            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET PRODUCT_TIER_ID = '5', STATUS = 'ACTIVE' "
-                    + "WHERE PARTY_ID = ?", partyId);
+            // Only the PARENT (Nazeer) is bumped to full tier 5. The report never sets the kid's
+            // PRODUCT_TIER_ID — a < 18 kid at tier 5 fails the link create with E430129 "Invalid Product tier".
+            if (fullTier) {
+                executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET PRODUCT_TIER_ID = '5', STATUS = 'ACTIVE' "
+                        + "WHERE PARTY_ID = ?", partyId);
+            } else {
+                executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
+            }
 
-            log.info("Force-verification done for partyId {} (KYC verified, tier 5, PARTY + PARTY_PRODUCT ACTIVE)", partyId);
+            log.info("Force-verification done for partyId {} (KYC verified, {}PARTY + PARTY_PRODUCT ACTIVE)",
+                    partyId, fullTier ? "tier 5, " : "default tier, ");
             return partyId;
         } catch (SQLException e) {
             log.warn("Force-verification failed for POI {} — continuing: {}", poi, e.getMessage());
