@@ -114,8 +114,8 @@ public final class FamilyRegistrationApiHelper {
             // the parent (Nazeer) to approve it. Without an ACTIVE PARTY_PRODUCT the login
             // chain's devices/register call is rejected (HTTP 400). Only the parent is bumped
             // to full tier 5 — the kid keeps its registration-default tier (report does the same).
-            kid.partyId = forceVerification(kid.mobile, kid.poi, false);
-            parent.partyId = forceVerification(parent.mobile, parent.poi, true);
+            kid.partyId = forceVerification(kid, false);
+            parent.partyId = forceVerification(parent, true);
 
             // Parent completes its own KYC during setup (createFamilyRequest): login -> /consumers/{id}/kyc
             // -> re-activate. KYC flips the consumer INACTIVE, so we re-activate it in the DB right after.
@@ -314,6 +314,9 @@ public final class FamilyRegistrationApiHelper {
                     requestId, resultStatus, kidConsumerId);
             // After approval the parent completes the kid's KYC as a family member (createFamilyRequest).
             completeFamilyMemberKyc(baseUrl, parentSession, kidConsumerId);
+            // The family-member KYC flips the kid INACTIVE; re-activate + clear Nazeer so the kid shows
+            // ACTIVE/verified when opened (mirrors the report's post-link EPAYPARTY updateNateerStatus).
+            reactivate(kid);
             return true;
         }
         log.warn("Family request approve failed (status {}): {}", status, response.getBody().asString());
@@ -391,6 +394,8 @@ public final class FamilyRegistrationApiHelper {
         }
         try (Connection conn = RegistrationApiHelper.openDbConnection()) {
             executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", member.mobile);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '' "
+                    + "WHERE PARTY_ID = ?", member.partyId);
             executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?",
                     member.partyId);
             log.info("Re-activated {} (partyId {}) after KYC", member.role, member.partyId);
@@ -447,23 +452,41 @@ public final class FamilyRegistrationApiHelper {
      *
      * @return the PARTY_ID, or {@code null} if the row was not found / DB unreachable
      */
-    @Step("DB force-verification for {mobile} (poi {poi})")
-    private static String forceVerification(String mobile, String poi, boolean fullTier) {
+    @Step("DB force-verification for {member.role}")
+    private static String forceVerification(Member member, boolean fullTier) {
         try (Connection conn = RegistrationApiHelper.openDbConnection()) {
-            String partyId = lookupPartyId(conn, poi);
+            String partyId = lookupPartyId(conn, member.poi);
             if (partyId == null) {
-                log.warn("Force-verification skipped: no CONSUMER row for POI_ID {}", poi);
+                log.warn("Force-verification skipped: no CONSUMER row for POI_ID {}", member.poi);
                 return null;
             }
 
-            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", mobile);
-            // Mark the consumer KYC-verified (same flags the standalone seed sets) WITHOUT overwriting
-            // the real identity/DOB — the kid must stay < 18. Login's pre-login/devices-register reject
-            // an un-verified consumer (E201023), so STATUS=ACTIVE alone is not enough.
-            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '', "
+            String fullNameEn = member.englishFirstName + " " + member.englishSecondName + " "
+                    + member.englishThirdName + " " + member.englishLastName;
+            String fullNameAr = member.firstName + " " + member.fatherName + " "
+                    + member.grandFatherName + " " + member.familyName;
+
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", member.mobile);
+
+            // Seed the consumer's real identity (name EN/AR, DOB G/H, gender) AND KYC-verify it, mirroring
+            // the report's post-registration DB batch. Without the name the app shows a null name; without
+            // ID_VERIFIED_FLAG the user appears unverified and login is rejected (E201023). The kid keeps
+            // its < 18 DOB (only the tier differs between parent and kid).
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET "
+                    + "FULL_NAME = '" + fullNameEn + "', FULL_NAME_AR = '" + fullNameAr + "', "
+                    + "FIRST_NAME = '" + member.englishFirstName + "', FIRST_NAME_AR = '" + member.firstName + "', "
+                    + "FATHER_NAME = '" + member.englishSecondName + "', FATHER_NAME_AR = '" + member.fatherName + "', "
+                    + "GRAND_NAME = '" + member.englishThirdName + "', GRAND_NAME_AR = '" + member.grandFatherName + "', "
+                    + "FAMILY_NAME = '" + member.englishLastName + "', FAMILY_NAME_AR = '" + member.familyName + "', "
+                    + "DATE_OF_BIRTH = TO_DATE('" + member.birthDateG + "', 'YYYY-MM-DD'), "
+                    + "DATE_OF_BIRTH_HIJRI = '" + member.dateOfBirthH + "', GENDER = '" + member.gender + "', "
+                    + "POI_EXPIRY_DATE = TO_TIMESTAMP('2035-01-01 03:00:00.000000000', 'YYYY-MM-DD HH24:MI:SS.FF'), "
+                    + "POI_EXPIRY_DATE_HIJRI = '1456-10-21', "
+                    + "NATHEER_STATUS = '', NATHEER_REASON = '', "
                     + "ID_VERIFIED_FLAG = 'Y', TAHAKOOK_VERIFIED_FLAG = 'Y', ID_VERIFIED_SOURCE = 'NAFATH', "
                     + "ID_VERIFIED_DATE = TO_TIMESTAMP('2024-01-25 01:26:03.440000000', 'YYYY-MM-DD HH24:MI:SS.FF'), "
                     + "POI_EXPIRY_STATUS = 'N', POLITICALLY_RELATED_FLAG = 'N' WHERE PARTY_ID = ?", partyId);
+
             // Only the PARENT (Nazeer) is bumped to full tier 5. The report never sets the kid's
             // PRODUCT_TIER_ID — a < 18 kid at tier 5 fails the link create with E430129 "Invalid Product tier".
             if (fullTier) {
@@ -473,11 +496,11 @@ public final class FamilyRegistrationApiHelper {
                 executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
             }
 
-            log.info("Force-verification done for partyId {} (KYC verified, {}PARTY + PARTY_PRODUCT ACTIVE)",
-                    partyId, fullTier ? "tier 5, " : "default tier, ");
+            log.info("Force-verification done for {} partyId {} ({}, name '{}', DOB {})",
+                    member.role, partyId, fullTier ? "tier 5" : "default tier", fullNameEn, member.birthDateG);
             return partyId;
         } catch (SQLException e) {
-            log.warn("Force-verification failed for POI {} — continuing: {}", poi, e.getMessage());
+            log.warn("Force-verification failed for {} — continuing: {}", member.role, e.getMessage());
             return null;
         }
     }
