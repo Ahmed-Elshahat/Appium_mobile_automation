@@ -186,6 +186,7 @@ public final class FamilyRegistrationApiHelper {
         return RestAssured.given()
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
+                .header("X-Api-Key", simApiKey())
                 .queryParam("nin", member.poi)
                 .queryParam("firstName", member.firstName)
                 .queryParam("fatherName", member.fatherName)
@@ -210,10 +211,16 @@ public final class FamilyRegistrationApiHelper {
         return RestAssured.given()
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
+                .header("X-Api-Key", simApiKey())
                 .queryParam("nin", member.poi)
                 .queryParam("deptNin", member.depthPoi)
                 .queryParam("kinshipCode", member.relationCode)
                 .post(simBaseUrl() + "/__admin/yakeen-relation");
+    }
+
+    private static String simApiKey() {
+        return ConfigManager.getInstance().get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
     }
 
     private static String simBaseUrl() {
@@ -306,6 +313,7 @@ public final class FamilyRegistrationApiHelper {
                 .header("X-Device-Name", session.deviceName)
                 .header("X-Security-Token", session.securityToken)
                 .header("X-Request-Id", UUID.randomUUID().toString())
+                .header("X-Forwarded-For", "51.235.115.210")
                 .header("Content-Type", "application/json");
         if (session.sessionId != null) {
             spec = spec.header("X-Session-Id", session.sessionId);
@@ -383,17 +391,17 @@ public final class FamilyRegistrationApiHelper {
         m.relationCode = "1";
         m.idExpiryDate = "2034-10-11T00:00:00";
         m.idExpirationDateH = "1456-07-28";
-        m.dateOfBirthH = "1418-03-05";
-        m.birthDateG = "1997-12-31";
+        m.dateOfBirthH = "1400-08-15";
+        m.birthDateG = "1980-06-27";
         m.gender = "M";
         m.placeOfBirth = "\u0627\u0644\u0631\u064A\u0627\u0636";            // الرياض
-        m.firstName = "\u0639\u0645\u0631";                                  // عمر
-        m.fatherName = "\u0633\u0639\u064A\u062F";                           // سعيد
-        m.grandFatherName = "\u0641\u0627\u064A\u0632";                      // فايز
+        m.firstName = "\u0645\u0639\u062A\u0632";                            // معتز
+        m.fatherName = "\u0635\u0644\u0627\u062D";                           // صلاح
+        m.grandFatherName = "\u0639\u0645\u0631";                            // عمر
         m.familyName = "\u0627\u0644\u063A\u0627\u0645\u062F\u064A";         // الغامدي
-        m.englishFirstName = "Omar";
-        m.englishSecondName = "Saed";
-        m.englishThirdName = "Fayez";
+        m.englishFirstName = "Mutez";
+        m.englishSecondName = "Salah";
+        m.englishThirdName = "Omar";
         m.englishLastName = "Alghamdi";
         return m;
     }
@@ -408,15 +416,15 @@ public final class FamilyRegistrationApiHelper {
         m.idExpirationDateH = "1456-07-28";
         m.dateOfBirthH = "1437-08-15";
         m.birthDateG = "2015-05-27";                                          // < 18
-        m.gender = "F";
+        m.gender = "M";
         m.placeOfBirth = "\u0627\u0644\u0631\u064A\u0627\u0636";            // الرياض
         m.firstName = "\u0645\u0639\u062A\u0632";                            // معتز
-        m.fatherName = "\u0639\u0645\u0631";                                 // عمر
-        m.grandFatherName = "\u0641\u0627\u064A\u0632";                      // فايز
+        m.fatherName = "\u0635\u0644\u0627\u062D";                           // صلاح
+        m.grandFatherName = "\u0639\u0645\u0631";                            // عمر
         m.familyName = "\u0627\u0644\u063A\u0627\u0645\u062F\u064A";         // الغامدي
         m.englishFirstName = "Mutez";                                        // matches BE report (معتز)
-        m.englishSecondName = "Omar";
-        m.englishThirdName = "Saed";
+        m.englishSecondName = "Salah";
+        m.englishThirdName = "Omar";
         m.englishLastName = "Alghamdi";
         return m;
     }
