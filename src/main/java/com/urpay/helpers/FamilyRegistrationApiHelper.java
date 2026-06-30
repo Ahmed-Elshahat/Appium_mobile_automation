@@ -240,6 +240,7 @@ public final class FamilyRegistrationApiHelper {
             return false;
         }
         completeKyc(baseUrl, kidSession);
+        reactivate(kid);
         String body = "{"
                 + "\"familyMemberFirstNameAr\":\"" + kid.firstName + "\","
                 + "\"familyMemberFirstNameEn\":\"" + kid.englishFirstName + "\","
@@ -274,6 +275,7 @@ public final class FamilyRegistrationApiHelper {
             return false;
         }
         completeKyc(baseUrl, parentSession);
+        reactivate(parent);
 
         // Read the parent's RECEIVER inbox to obtain the pending LINK_TO_FAMILY request id.
         Response inbox = authedRequest(parentSession)
@@ -331,6 +333,26 @@ public final class FamilyRegistrationApiHelper {
         Response resp = spec.body(body).put(baseUrl + "/consumers/" + session.consumerId + "/kyc");
         log.info("KYC for consumer {} -> status {} body {}", session.consumerId,
                 resp.getStatusCode(), resp.getBody().asString());
+    }
+
+    /**
+     * Re-activate a member after KYC. The {@code ConsumerUpdateKYCAPI} flips the consumer to
+     * INACTIVE; the BE report re-runs a DB batch (and re-logs-in) to flip it back to ACTIVE so the
+     * parent can approve (otherwise the approve fails with {@code E430038 "Consumer Not Active"}).
+     */
+    @Step("DB re-activate {member.role} after KYC")
+    private static void reactivate(Member member) {
+        if (member.partyId == null) {
+            return;
+        }
+        try (Connection conn = RegistrationApiHelper.openDbConnection()) {
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", member.mobile);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?",
+                    member.partyId);
+            log.info("Re-activated {} (partyId {}) after KYC", member.role, member.partyId);
+        } catch (SQLException e) {
+            log.warn("Re-activation failed for {} — continuing: {}", member.role, e.getMessage());
+        }
     }
 
     /** Build an authenticated request for a logged-in consumer session. */
