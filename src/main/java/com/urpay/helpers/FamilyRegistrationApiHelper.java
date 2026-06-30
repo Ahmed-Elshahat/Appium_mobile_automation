@@ -280,6 +280,15 @@ public final class FamilyRegistrationApiHelper {
         completeKyc(baseUrl, parentSession);
         reactivate(parent);
 
+        // KYC flips the parent to INACTIVE; re-activate (above) then RE-LOGIN so the approve runs on
+        // a fresh ACTIVE session — mirrors createFamilyRequest (KYC -> re-activate -> re-login -> approve).
+        parentSession = RegistrationApiHelper.loginAndGetSession(baseUrl, parent.mobile, parent.poi,
+                parent.poiType);
+        if (parentSession == null) {
+            log.warn("Approve aborted: parent re-login after KYC failed");
+            return false;
+        }
+
         // Read the parent's RECEIVER inbox to obtain the pending LINK_TO_FAMILY request id.
         Response inbox = authedRequest(parentSession)
                 .queryParam("requestType", "LINK_TO_FAMILY")
