@@ -151,6 +151,73 @@ public final class FamilyRegistrationApiHelper {
         }
     }
 
+    /**
+     * Provision a linkable parent + kid pair and STOP before the backend link. It seeds the
+     * simulators (tahaqoq + Yakeen guardianship), then registers + activates BOTH consumers exactly
+     * like {@link #registerAndLinkParentChild()} — but does NOT create/approve the family request.
+     *
+     * <p>Use this to drive the LINK (kid creates the request → parent approves → family-member KYC)
+     * manually from the app while capturing the real APIs, to validate them against our automated
+     * implementation. Both members' credentials (mobile / POI / passcode / party id) are logged.
+     *
+     * @return {@code true} if both members were registered and activated
+     */
+    @Step("Provision a linkable parent + kid pair (no backend link)")
+    public static boolean registerFamilyPairForManualLink() {
+        ConfigManager config = ConfigManager.getInstance();
+        String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
+
+        Member parent = buildParent();
+        Member kid = buildKid();
+        parent.depthPoi = kid.poi;
+        kid.depthPoi = parent.poi;
+
+        log.info("=== Provisioning family pair (NO backend link — manual app flow) ===");
+        log.info("  parent : mobile {} | poi {} | relationCode {}", parent.mobile, parent.poi, parent.relationCode);
+        log.info("  kid    : mobile {} | poi {} | relationCode {}", kid.mobile, kid.poi, kid.relationCode);
+
+        try {
+            RestAssured.useRelaxedHTTPSValidation();
+
+            // 1. Seed the simulators (tahaqoq + Yakeen guardianship) BEFORE registration.
+            RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile);
+            RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile);
+            seedYakeenInfo(kid);
+            seedYakeenInfo(parent);
+            seedYakeenRelation(kid);     // kid → parent (kinship 6)
+            seedYakeenRelation(parent);  // parent → kid (kinship 1)
+
+            // 2. Register + activate the PARENT fully (register → seed/activate → KYC), then the KID.
+            if (!registerMember(baseUrl, parent)) {
+                log.warn("Family pair aborted: parent registration failed");
+                return false;
+            }
+            parent.partyId = forceVerification(parent, true);
+            completeParentKyc(baseUrl, parent);
+
+            if (!registerMember(baseUrl, kid)) {
+                log.warn("Family pair aborted: kid registration failed");
+                return false;
+            }
+            kid.partyId = forceVerification(kid, false);
+
+            // 3. STOP here — the link (create → approve → family-member KYC) is driven from the app.
+            RegistrationApiHelper.logCredentials(
+                    "PARENT CREDENTIALS (" + parent.poiType + ")", parent.poiType, parent.mobile, parent.poi, parent.partyId);
+            RegistrationApiHelper.logCredentials(
+                    "KID CREDENTIALS (" + kid.poiType + ", relation " + kid.relationCode + ")",
+                    kid.poiType, kid.mobile, kid.poi, kid.partyId);
+            log.info("=== Family pair READY. Now drive the LINK from the app: log in as the KID and send a "
+                    + "family request to the PARENT, then approve as the PARENT. ===");
+            log.info("  parent poi {} (partyId {}) | kid poi {} (partyId {}) | passcode {}",
+                    parent.poi, parent.partyId, kid.poi, kid.partyId, RegistrationApiHelper.PASSCODE_PLAINTEXT);
+            return true;
+        } catch (Exception e) {
+            log.warn("Family pair provisioning failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
     // ── Per-member registration (reuses RegistrationApiHelper steps) ──
 
     @Step("Register family member {member.role}")

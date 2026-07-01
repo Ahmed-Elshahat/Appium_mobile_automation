@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Seed-and-stop family provisioning (no backend link). Requires the neoleap VPN.
+
+  Run:
+    mvn test -Dprofile=sit-wmv -Dsuite=suites/provision-family-pair.xml
+
+  This seeds the simulators (tahaqoq + Yakeen guardianship), registers + activates a parent and a
+  kid (<18), then STOPS before the link. Log in from the app as the kid to send a family request and
+  as the parent to approve it — then send the captured APIs to validate against our implementation.
+  Both accounts' credentials (mobile / POI / passcode 2233 / party id) are logged to the console.
+-->
+<suite name="URPay Family Pair (manual link)" verbose="1">
+    <test name="Provision Family Pair">
+        <classes>
+            <class name="com.urpay.tests.provisioning.UserProvisioningTest">
+                <methods>
+                    <include name="provisionFamilyPairForManualLink"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

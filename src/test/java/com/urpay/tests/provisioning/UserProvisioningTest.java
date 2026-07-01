@@ -76,4 +76,16 @@ public class UserProvisioningTest {
         assertTrue(FamilyRegistrationApiHelper.registerAndLinkParentChild(),
                 "Failed to provision and link a parent + kid family");
     }
+
+    @Test
+    @Story("Provision a linkable parent + kid pair (no backend link — manual app flow)")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Seeds the simulators and registers + activates a parent and a kid (<18), then STOPS "
+            + "before the backend link. Log in from the app as the kid to send a family request and as "
+            + "the parent to approve it, capturing the real APIs to validate against our implementation.")
+    public void provisionFamilyPairForManualLink() {
+        log.info("########## PROVISIONING: parent + kid pair (manual app link) ##########");
+        assertTrue(FamilyRegistrationApiHelper.registerFamilyPairForManualLink(),
+                "Failed to provision a linkable parent + kid pair");
+    }
 }
