@@ -1,3 +1,7 @@
+param(
+  [string]$Env = 'SIT',        # target environment: SIT | UAT  (passed as -Denv)
+  [string]$Profile = 'sit-wmv' # config profile / data set (passed as -Dprofile)
+)
 $ErrorActionPreference = 'Continue'
 $repo = 'D:\Mobile\WM\mobile-automation-WMV_Dev\appium\Appium_mobile_automation'
 Set-Location $repo
@@ -23,11 +27,11 @@ Get-Job | Where-Object Name -in $suites | Remove-Job -Force -ErrorAction Silentl
 
 foreach ($s in $suites) {
   while (@(Get-Job -State Running).Count -ge $max) { Wait-Job -Any -Timeout 120 | Out-Null }
-  Start-Job -Name $s -ArgumentList $repo, $s, $mvn -ScriptBlock {
-    param($repo, $s, $mvn)
+  Start-Job -Name $s -ArgumentList $repo, $s, $mvn, $Env, $Profile -ScriptBlock {
+    param($repo, $s, $mvn, $Env, $Profile)
     Set-Location $repo
     $log = Join-Path $repo "logs-wmv\$s.log"
-    & cmd /c "`"$mvn`" test -Dsuite=suites/$s.xml -Dprofile=sit-wmv -Dproject.build.directory=target-$s -Dmaven.test.failure.ignore=true > `"$log`" 2>&1"
+    & cmd /c "`"$mvn`" test -Dsuite=suites/$s.xml -Dprofile=$Profile -Denv=$Env -Dproject.build.directory=target-$s -Dmaven.test.failure.ignore=true > `"$log`" 2>&1"
   } | Out-Null
   Start-Sleep -Milliseconds 1500   # stagger session creation so LambdaTest device allocation doesn't burst
 }

@@ -1,0 +1,87 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Aggregate suite: ALL Wallet + Settings suites, run in parallel.
+  Parallel at <test> level (thread-count=24) — safe because DriverFactory uses a
+  ThreadLocal<AppiumDriver>, so each parallel test gets its own driver/session.
+  Run: mvn test -Dsuite=suites/all-wallet-settings.xml -Dprofile=sit-wmv
+  (add -Denv=uat to target a different environment)
+-->
+<suite name="All Wallet + Settings" verbose="1" parallel="tests" thread-count="24" data-provider-thread-count="24">
+
+    <!-- ───────────── Wallet ───────────── -->
+    <test name="auto-topup">
+        <classes><class name="com.urpay.tests.wallet.AutoTopupCreationTest"/></classes>
+    </test>
+    <test name="account-details">
+        <classes><class name="com.urpay.tests.wallet.AccountDetailsTest"/></classes>
+    </test>
+    <test name="account-statement">
+        <classes><class name="com.urpay.tests.wallet.AccountStatementTest"/></classes>
+    </test>
+    <test name="family-mission-suite">
+        <classes><class name="com.urpay.tests.wallet.FamilyMissionTest"/></classes>
+    </test>
+    <test name="registration-invitation-code">
+        <classes><class name="com.urpay.tests.wallet.RegistrationUsingInvitationCodeTest"/></classes>
+    </test>
+    <test name="send-money-request-approve">
+        <classes><class name="com.urpay.tests.wallet.SendMoneyRequestApproveTest"/></classes>
+    </test>
+    <test name="validate-notifications">
+        <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
+    </test>
+    <test name="edit-group-qatta-details">
+        <classes><class name="com.urpay.tests.wallet.EditGroupQattaDetailsTest"/></classes>
+    </test>
+    <test name="pay-group-qatta-suite">
+        <classes><class name="com.urpay.tests.wallet.PayGroupQattaTest"/></classes>
+    </test>
+    <test name="pay-quick-qatta-suite">
+        <classes><class name="com.urpay.tests.wallet.PayQuickQattaTest"/></classes>
+    </test>
+    <test name="reject-group-qatta-suite">
+        <classes><class name="com.urpay.tests.wallet.RejectGroupQattaTest"/></classes>
+    </test>
+    <test name="reject-quick-qatta-suite">
+        <classes><class name="com.urpay.tests.wallet.RejectQuickQattaTest"/></classes>
+    </test>
+
+    <!-- ───────────── Settings ───────────── -->
+    <test name="change-passcode-default-tier">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierTest"/></classes>
+    </test>
+    <test name="change-passcode-default-tier-negative">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierNegativeTest"/></classes>
+    </test>
+    <test name="change-passcode-family-tier">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierTest"/></classes>
+    </test>
+    <test name="change-passcode-family-tier-negative">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierNegativeTest"/></classes>
+    </test>
+    <test name="change-passcode-full-tier">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierTest"/></classes>
+    </test>
+    <test name="change-passcode-full-tier-negative">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierNegativeTest"/></classes>
+    </test>
+    <test name="change-passcode-visitor-tier">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierTest"/></classes>
+    </test>
+    <test name="change-passcode-visitor-tier-negative">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierNegativeTest"/></classes>
+    </test>
+    <test name="change-phone-number-full-tier">
+        <classes><class name="com.urpay.tests.settings.ChangePhoneNumberForFullTierTest"/></classes>
+    </test>
+    <test name="privacy-and-terms">
+        <classes><class name="com.urpay.tests.settings.PrivacyAndTermsTest"/></classes>
+    </test>
+    <test name="rating">
+        <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
+    </test>
+    <test name="change-app-language">
+        <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
+    </test>
+
+</suite>
