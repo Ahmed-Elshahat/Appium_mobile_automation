@@ -98,12 +98,13 @@ public final class FamilyRegistrationApiHelper {
             // ── BE createFamilyRequest order (the order matters) ──────────────────────────
             // 1. Seed the simulator for BOTH members BEFORE registering: tahaqoq + yakeen-info +
             //    yakeen-relation must exist first so the guardianship is recognised at registration.
-            RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile);
-            RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile);
-            seedYakeenInfo(kid);
-            seedYakeenInfo(parent);
-            seedYakeenRelation(kid);     // kid → parent (kinship 6)
-            seedYakeenRelation(parent);  // parent → kid (kinship 1)
+            //    Verify each seed — a silently-rejected seed makes the guardianship lookup fail later.
+            if (!seedFamilyPair(kid, parent)) {
+                log.error("=== Family setup aborted: simulator seeding did not take effect, so the "
+                        + "guardianship link would fail. Check the neoleap VPN + simulator ({}). ===",
+                        simBaseUrl());
+                return false;
+            }
 
             // 2. Register the PARENT fully (register → activate/seed → KYC), then the KID — BE order.
             //    Tier 5 for the parent; the kid keeps its registration-default tier 3.
@@ -179,13 +180,15 @@ public final class FamilyRegistrationApiHelper {
         try {
             RestAssured.useRelaxedHTTPSValidation();
 
-            // 1. Seed the simulators (tahaqoq + Yakeen guardianship) BEFORE registration.
-            RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile);
-            RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile);
-            seedYakeenInfo(kid);
-            seedYakeenInfo(parent);
-            seedYakeenRelation(kid);     // kid → parent (kinship 6)
-            seedYakeenRelation(parent);  // parent → kid (kinship 1)
+            // 1. Seed the simulators (tahaqoq + Yakeen guardianship) BEFORE registration. Verify each
+            //    seed took effect — a silently-rejected seed yields a member that logs in fine but is
+            //    NOT linkable (the parent's APPROVE does a Yakeen dependent lookup on the kid poi + DOB).
+            if (!seedFamilyPair(kid, parent)) {
+                log.error("=== Family pair aborted: simulator seeding did not take effect, so the pair "
+                        + "would NOT be linkable from the app. Check the neoleap VPN + simulator ({}). ===",
+                        simBaseUrl());
+                return false;
+            }
 
             // 2. Register + activate the PARENT fully (register → seed/activate → KYC), then the KID.
             if (!registerMember(baseUrl, parent)) {
@@ -298,6 +301,34 @@ public final class FamilyRegistrationApiHelper {
                 .queryParam("deptNin", member.depthPoi)
                 .queryParam("kinshipCode", member.relationCode)
                 .post(simBaseUrl() + "/__admin/yakeen-relation");
+    }
+
+    /**
+     * Seed BOTH members into the simulators (tahaqoq + Yakeen identity + guardianship relation) and
+     * verify every seed actually took effect. Returns {@code false} if any seed was rejected — the
+     * callers must abort, because a member whose Yakeen record never landed logs in normally yet can
+     * NOT be linked: the parent's APPROVE resolves the kid via a Yakeen dependent lookup on the kid's
+     * poi + Hijri DOB. This is exactly the "kid looks fine but the link fails" failure mode.
+     */
+    private static boolean seedFamilyPair(Member kid, Member parent) {
+        // Non-short-circuit (&) so every seed runs and is logged even if an earlier one failed.
+        return verifySeed("tahaqoq kid",              RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile))
+             & verifySeed("tahaqoq parent",           RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile))
+             & verifySeed("yakeen-info kid",          seedYakeenInfo(kid))
+             & verifySeed("yakeen-info parent",       seedYakeenInfo(parent))
+             & verifySeed("yakeen-relation kid->parent", seedYakeenRelation(kid))
+             & verifySeed("yakeen-relation parent->kid", seedYakeenRelation(parent));
+    }
+
+    /** Log a simulator seed's outcome; treat only 2xx as success so a rejected seed aborts loudly. */
+    private static boolean verifySeed(String label, Response resp) {
+        int code = resp.getStatusCode();
+        if (code >= 200 && code < 300) {
+            log.info("Seed OK     [{}] (status {})", label, code);
+            return true;
+        }
+        log.error("Seed FAILED [{}] (status {}): {}", label, code, resp.getBody().asString());
+        return false;
     }
 
     private static String simApiKey() {
