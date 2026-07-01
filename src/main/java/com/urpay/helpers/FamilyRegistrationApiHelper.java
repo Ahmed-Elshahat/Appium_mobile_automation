@@ -119,7 +119,12 @@ public final class FamilyRegistrationApiHelper {
                 log.warn("Family setup aborted: kid registration failed");
                 return false;
             }
-            kid.partyId = forceVerification(kid, false);
+            // The kid MUST start BARE (tier 3, null identity, unverified) — its identity + tier-9 promotion
+            // are populated by the LINK from the Yakeen guardianship seeded before registration. Pre-seeding
+            // the kid via forceVerification made it look like a standalone verified consumer, so the link
+            // created the family relation WITHOUT promoting the kid (half-linked) → app CreateFamilyRequest
+            // then collides with the existing relation (E430151). activateOnly matches the proven contract.
+            kid.partyId = activateOnly(kid);
 
             // 3. Link: kid logs in → POST /family-requests/create; parent logs in → inbox → APPROVE
             //    → family-member KYC (createFamilyRequest).
@@ -415,23 +420,30 @@ public final class FamilyRegistrationApiHelper {
                 .put(baseUrl + "/consumers/family-requests/" + requestId + "/update");
         int status = response.getStatusCode();
         String resultStatus = response.jsonPath().getString("body.status");
-        if (status >= 200 && status < 300) {
-            // The approve response returns the kid's consumerId (createFamilyRequest uses it for KYC).
-            String kidConsumerId = response.jsonPath().getString("body.familyMemberConsumerId");
-            if (kidConsumerId == null) {
-                kidConsumerId = kid.consumerId;
-            }
-            log.info("Family request {} approved (body.status {}, familyMemberConsumerId {})",
-                    requestId, resultStatus, kidConsumerId);
-            // After approval the parent completes the kid's KYC as a family member (createFamilyRequest).
-            completeFamilyMemberKyc(baseUrl, parentSession, kidConsumerId);
-            // The family-member KYC flips the kid INACTIVE; re-activate + clear Nazeer so the kid shows
-            // ACTIVE/verified when opened (mirrors the report's post-link EPAYPARTY updateNateerStatus).
-            reactivate(kid);
-            return true;
+        // The approve response returns the kid's consumerId ONLY when the link actually settled
+        // (BE ran the Yakeen dependent lookup and promoted the kid). A missing familyMemberConsumerId
+        // means the link did NOT settle — treat it as a failure instead of masking it with kid.consumerId,
+        // otherwise the kid is left half-linked (tier 3 + family relation) and the app link hits E430151.
+        String kidConsumerId = response.jsonPath().getString("body.familyMemberConsumerId");
+        boolean settled = status >= 200 && status < 300 && kidConsumerId != null;
+        if (!settled) {
+            log.warn("Family request approve did not settle (status {}, body.status {}): {}",
+                    status, resultStatus, response.getBody().asString());
+            return false;
         }
-        log.warn("Family request approve failed (status {}): {}", status, response.getBody().asString());
-        return false;
+        log.info("Family request {} approved (body.status {}, familyMemberConsumerId {})",
+                requestId, resultStatus, kidConsumerId);
+        // After approval the parent completes the kid's KYC as a family member (createFamilyRequest).
+        // The tier-9 promotion depends on this — if it fails the kid stays half-linked, so gate on it.
+        if (!completeFamilyMemberKyc(baseUrl, parentSession, kidConsumerId)) {
+            log.warn("Family-member KYC did not complete for kid consumer {} — kid may remain half-linked",
+                    kidConsumerId);
+            return false;
+        }
+        // The family-member KYC flips the kid INACTIVE; re-activate + clear Nazeer so the kid shows
+        // ACTIVE/verified when opened (mirrors the report's post-link EPAYPARTY updateNateerStatus).
+        reactivate(kid);
+        return true;
     }
 
     /**
@@ -439,10 +451,10 @@ public final class FamilyRegistrationApiHelper {
      * ({@code PUT /consumers/family-member/kyc}), exactly as the BE report's createFamilyRequest does.
      */
     @Step("API parent completes family-member KYC for kid {kidConsumerId}")
-    private static void completeFamilyMemberKyc(String baseUrl, Session parentSession, String kidConsumerId) {
+    private static boolean completeFamilyMemberKyc(String baseUrl, Session parentSession, String kidConsumerId) {
         if (kidConsumerId == null) {
             log.warn("Family-member KYC skipped: kid login returned no consumerId");
-            return;
+            return false;
         }
         // Minor/family-member KYC as sent by the app: INVESTMENT RETURNS / Student / incomeRange 4,
         // with no employer/email/jobCategory (that adult-style body belongs to the parent's own KYC).
@@ -458,8 +470,10 @@ public final class FamilyRegistrationApiHelper {
             spec = spec.header("X-OTP-Token", parentSession.otpToken);
         }
         Response resp = spec.body(body).put(baseUrl + "/consumers/family-member/kyc");
+        int status = resp.getStatusCode();
         log.info("Family-member KYC for kid consumer {} -> status {} body {}", kidConsumerId,
-                resp.getStatusCode(), resp.getBody().asString());
+                status, resp.getBody().asString());
+        return status >= 200 && status < 300;
     }
 
     /**
