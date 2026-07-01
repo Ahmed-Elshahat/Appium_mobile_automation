@@ -199,7 +199,10 @@ public final class FamilyRegistrationApiHelper {
                 log.warn("Family pair aborted: kid registration failed");
                 return false;
             }
-            kid.partyId = forceVerification(kid, false);
+            // BE createFamilyRequest leaves the kid UN-seeded (null name / unverified, tier 3) with only a
+            // 3-query activation — its identity is populated by the LINK. Match that so the app link is
+            // validated from the same starting state.
+            kid.partyId = activateOnly(kid);
 
             // 3. STOP here — the link (create → approve → family-member KYC) is driven from the app.
             RegistrationApiHelper.logCredentials(
@@ -574,6 +577,35 @@ public final class FamilyRegistrationApiHelper {
             return partyId;
         } catch (SQLException e) {
             log.warn("Force-verification failed for {} — continuing: {}", member.role, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Activate a consumer WITHOUT seeding its identity — mirrors the BE createFamilyRequest kid path,
+     * where the kid registers at tier 3 with a null name / unverified and only a 3-query batch runs
+     * (PARTY + PARTY_PRODUCT ACTIVE, Nazeer cleared). The kid's real identity is then populated by the
+     * LINK itself (from the Yakeen guardianship seeded before registration).
+     *
+     * @return the PARTY_ID, or {@code null} if not found / DB unreachable
+     */
+    @Step("DB activate-only for {member.role} (no identity seed — matches BE kid)")
+    private static String activateOnly(Member member) {
+        try (Connection conn = RegistrationApiHelper.openDbConnection()) {
+            String partyId = lookupPartyId(conn, member.poi);
+            if (partyId == null) {
+                log.warn("Activate-only skipped: no CONSUMER row for POI_ID {}", member.poi);
+                return null;
+            }
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", member.mobile);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '' "
+                    + "WHERE PARTY_ID = ?", partyId);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
+            log.info("Activate-only done for {} partyId {} (tier unchanged, no identity seed)",
+                    member.role, partyId);
+            return partyId;
+        } catch (SQLException e) {
+            log.warn("Activate-only failed for {} — continuing: {}", member.role, e.getMessage());
             return null;
         }
     }
