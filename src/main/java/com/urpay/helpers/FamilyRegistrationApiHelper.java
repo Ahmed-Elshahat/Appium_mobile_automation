@@ -324,14 +324,15 @@ public final class FamilyRegistrationApiHelper {
         // It just logs in and sends the request; its KYC is done by the parent AFTER approval
         // via /consumers/family-member/kyc. Remember the kid's consumerId for that step.
         kid.consumerId = kidSession.consumerId;
+        // Body mirrors the app's CreateFamilyRequestRq_Rule exactly: the parent (receiver) is
+        // resolved by mobile only (no receiverPoi*), and the kid is named via requesterConsumerId.
         String body = "{"
                 + "\"familyMemberFirstNameAr\":\"" + kid.firstName + "\","
                 + "\"familyMemberFirstNameEn\":\"" + kid.englishFirstName + "\","
                 + "\"familyMemberNewMobileNumber\":\"" + kid.mobile + "\","
                 + "\"familyRequestType\":\"LINK_TO_FAMILY\","
                 + "\"receiverMobileNumber\":\"" + parent.mobile + "\","
-                + "\"receiverPoiNumber\":\"" + parent.poi + "\","
-                + "\"receiverPoiType\":\"" + parent.poiType + "\""
+                + "\"requesterConsumerId\":\"" + kidSession.consumerId + "\""
                 + "}";
         Response response = authedRequest(kidSession)
                 .body(body)
@@ -359,12 +360,15 @@ public final class FamilyRegistrationApiHelper {
             return false;
         }
 
-        // Read the parent's RECEIVER inbox to obtain the pending LINK_TO_FAMILY request id.
+        // Read the parent's RECEIVER inbox to obtain the pending request id. Mirrors the app:
+        // statusCategory=PENDING + invalidateCache=true forces a fresh read so the just-created
+        // request is visible immediately (avoids a stale-cache miss right after create).
         Response inbox = authedRequest(parentSession)
-                .queryParam("requestType", "LINK_TO_FAMILY")
                 .queryParam("requestUserRole", "RECEIVER")
+                .queryParam("statusCategory", "PENDING")
+                .queryParam("invalidateCache", "true")
                 .queryParam("offset", "0")
-                .queryParam("limit", "1")
+                .queryParam("limit", "10")
                 .get(baseUrl + "/consumers/family-requests");
         String requestId = inbox.jsonPath().getString("body.familyRequests[0].id");
         log.info("Parent inbox status {} | pending requestId {}", inbox.getStatusCode(), requestId);
@@ -373,7 +377,7 @@ public final class FamilyRegistrationApiHelper {
             return false;
         }
 
-        String body = "{\"action\":\"APPROVE\",\"reason\":\"string\",\"familyMemberDateOfBirth\":\""
+        String body = "{\"action\":\"APPROVE\",\"familyMemberDateOfBirth\":\""
                 + kid.dateOfBirthH + "\"}";
         Response response = authedRequest(parentSession)
                 .body(body)
@@ -409,16 +413,14 @@ public final class FamilyRegistrationApiHelper {
             log.warn("Family-member KYC skipped: kid login returned no consumerId");
             return;
         }
+        // Minor/family-member KYC as sent by the app: INVESTMENT RETURNS / Student / incomeRange 4,
+        // with no employer/email/jobCategory (that adult-style body belongs to the parent's own KYC).
         String body = "{"
                 + "\"familyMemberConsumerId\":\"" + kidConsumerId + "\","
-                + "\"additionalIncomeSource\":\"SALARY\","
-                + "\"basicIncomeSource\":\"SALARY\","
-                + "\"email\":\"email1@domain.com\","
-                + "\"employer\":\"AlRajhi Bank\","
-                + "\"employmentStatus\":\"Government Sector\","
-                + "\"incomeRange\":\"1\","
-                + "\"isPoliticallyRelated\":false,"
-                + "\"jobCategory\":\"21\""
+                + "\"basicIncomeSource\":\"INVESTMENT RETURNS\","
+                + "\"employmentStatus\":\"Student\","
+                + "\"incomeRange\":\"4\","
+                + "\"isPoliticallyRelated\":false"
                 + "}";
         RequestSpecification spec = authedRequest(parentSession);
         if (parentSession.otpToken != null) {
