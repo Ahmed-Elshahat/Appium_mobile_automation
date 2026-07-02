@@ -1,12 +1,14 @@
 package com.urpay.tests.settings;
 
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
 import com.urpay.flows.LoginFlow;
 import com.urpay.flows.RatingFlow;
+import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.settings.RatingPage;
 
@@ -29,6 +31,27 @@ import io.qameta.allure.Story;
 @Feature("Rating")
 public class RatingTest extends BaseTest {
 
+    /** Credentials of the brand-new consumer provisioned for this run (see {@link #provisionFreshUser()}). */
+    private static RegistrationApiHelper.Provisioned freshUser;
+
+    // ══════════════════════════════════════════════════
+    //  PRE-SUITE: PROVISION A BRAND-NEW USER
+    // ══════════════════════════════════════════════════
+
+    /**
+     * Register a fresh consumer via the backend before the UI journey runs. The NPS/feedback
+     * survey is gated to once-per-period, so a reused account that has already submitted feedback
+     * would never reach the rating screen — a never-used account guarantees it is available.
+     * Requires the neoleap VPN (SIT API host, simulator and Oracle DB are internal-network only).
+     */
+    @BeforeClass(alwaysRun = true)
+    public void provisionFreshUser() {
+        freshUser = RegistrationApiHelper.registerNationalAndReturn();
+        Assert.assertNotNull(freshUser,
+                "Failed to provision a fresh consumer for the rating suite (needs the neoleap VPN)");
+        log.info("Rating suite will use freshly registered user: {}", freshUser.mobile);
+    }
+
     // ══════════════════════════════════════════════════
     //  TEST: FIRST FEEDBACK SCREEN TEXTS
     // ══════════════════════════════════════════════════
@@ -38,9 +61,7 @@ public class RatingTest extends BaseTest {
     @Description("Navigate to rating screen and verify all texts on the first NPS screen")
     @Severity(SeverityLevel.CRITICAL)
     public void testFirstFeedbackScreenTexts() {
-        ConfigManager config = ConfigManager.getInstance();
-
-        DashboardPage dashboard = login(config);
+        DashboardPage dashboard = login();
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
         RatingFlow flow = new RatingFlow();
@@ -163,12 +184,12 @@ public class RatingTest extends BaseTest {
     //  ALLURE STEP METHODS
     // ══════════════════════════════════════════════════
 
-    @Step("Login with Rating test user")
-    private DashboardPage login(ConfigManager config) {
+    @Step("Login with the freshly registered rating user")
+    private DashboardPage login() {
         return new LoginFlow().loginWith(
-                config.get("rating.mobileNumber"),
-                config.get("rating.id"),
-                config.get("rating.verificationCode", "1234"),
-                config.get("rating.passCode", "2233"));
+                freshUser.mobile,
+                freshUser.poi,
+                ConfigManager.getInstance().get("rating.verificationCode", "1234"),
+                freshUser.passcode);
     }
 }

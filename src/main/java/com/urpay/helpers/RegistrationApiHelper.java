@@ -102,6 +102,17 @@ public final class RegistrationApiHelper {
     }
 
     /**
+     * Register a new National (NAT) consumer and return its login credentials so a caller can
+     * drive a fresh UI login (e.g. a suite that must run against a brand-new, never-used account).
+     *
+     * @return the provisioned credentials, or {@code null} if the backend chain failed
+     */
+    @Step("Register new NAT consumer via API and return its credentials")
+    public static Provisioned registerNationalAndReturn() {
+        return registerAndReturn(PoiType.NAT);
+    }
+
+    /**
      * Register a new consumer of the given POI type, seed full KYC in the DB and log it in.
      *
      * @param poiType NAT, IQA or BOR
@@ -109,6 +120,18 @@ public final class RegistrationApiHelper {
      */
     @Step("Register new {poiType} consumer via API (full flow)")
     public static boolean register(PoiType poiType) {
+        return registerAndReturn(poiType) != null;
+    }
+
+    /**
+     * Register a new consumer of the given POI type, seed full KYC in the DB and log it in,
+     * returning the generated credentials (mobile / POI / passcode) for a subsequent UI login.
+     *
+     * @param poiType NAT, IQA or BOR
+     * @return the provisioned credentials, or {@code null} if any stage of the chain failed
+     */
+    @Step("Register new {poiType} consumer via API (full flow, returns credentials)")
+    public static Provisioned registerAndReturn(PoiType poiType) {
         ConfigManager config = ConfigManager.getInstance();
         String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
 
@@ -130,7 +153,7 @@ public final class RegistrationApiHelper {
             String genToken = generate.getHeader(OTP_TOKEN_HEADER);
             if (otpReference == null || genToken == null) {
                 log.warn("Registration aborted: missing otpReference/token from generate-OTP");
-                return false;
+                return null;
             }
 
             Response verify = verifyOtp(baseUrl, mobile, otpReference, genToken);
@@ -138,7 +161,7 @@ public final class RegistrationApiHelper {
             if (verifyToken == null) {
                 log.warn("Registration aborted: OTP verification returned no token (status {})",
                         verify.getStatusCode());
-                return false;
+                return null;
             }
 
             seedTahaqoqInfo(poiNumber, mobile);
@@ -149,7 +172,7 @@ public final class RegistrationApiHelper {
             if (regStatus < 200 || regStatus >= 300) {
                 log.warn("Consumer registration failed for {} (status {}): {}",
                         mobile, regStatus, registration.getBody().asString());
-                return false;
+                return null;
             }
             log.info("Consumer registration succeeded for {} (status {})", mobile, regStatus);
 
@@ -161,10 +184,10 @@ public final class RegistrationApiHelper {
             logCredentials(poiType.code() + " CONSUMER CREDENTIALS", poiType.code(), mobile, poiNumber, partyId);
             log.info("=== Registration complete for {} | mobile {} | poi {} | partyId {} | login {} ===",
                     poiType.code(), mobile, poiNumber, partyId, loggedIn ? "OK" : "FAILED");
-            return loggedIn;
+            return loggedIn ? new Provisioned(mobile, poiNumber, poiType.code(), PASSCODE_PLAINTEXT) : null;
         } catch (Exception e) {
             log.warn("Registration via API failed for {} ({}): {}", mobile, poiType.code(), e.getMessage());
-            return false;
+            return null;
         }
     }
 
@@ -393,6 +416,24 @@ public final class RegistrationApiHelper {
             this.deviceName = deviceName;
             this.consumerId = consumerId;
             this.otpToken = otpToken;
+        }
+    }
+
+    /**
+     * Login credentials for a freshly provisioned consumer, returned by
+     * {@link #registerAndReturn(PoiType)} so a caller can drive a UI login against a brand-new account.
+     */
+    public static final class Provisioned {
+        public final String mobile;
+        public final String poi;
+        public final String poiType;
+        public final String passcode;
+
+        Provisioned(String mobile, String poi, String poiType, String passcode) {
+            this.mobile = mobile;
+            this.poi = poi;
+            this.poiType = poiType;
+            this.passcode = passcode;
         }
     }
 
