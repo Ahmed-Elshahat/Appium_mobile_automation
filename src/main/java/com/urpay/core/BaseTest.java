@@ -2,6 +2,7 @@ package com.urpay.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
@@ -25,7 +26,7 @@ import io.qameta.allure.Allure;
  *   DIP — Uses DriverFactory.getInstance() (DriverProvider interface).
  *
  * Rules enforced:
- *   - Driver lifecycle in @BeforeMethod/@AfterMethod (not suite-level).
+ *   - Driver lifecycle in @BeforeMethod/@AfterClass (a fresh session per suite, not suite-level).
  *   - No Thread.sleep().
  *   - No assertions (those belong in test classes).
  *   - No reporting logic (that's the listener's job).
@@ -61,6 +62,18 @@ public abstract class BaseTest {
             DriverFactory.getInstance().initDriver();
         }
         healthChecker = AppHealthCheckerFactory.create(getDriver());
+    }
+
+    /**
+     * Quit this suite's driver when the class finishes so the next {@code <test>} scheduled on
+     * the same parallel worker thread starts a brand-new session. Without this the ThreadLocal
+     * driver leaks across suites, and on cloud (LambdaTest) every subsequent suite would reuse
+     * the previous suite's session/device. Per-class (not per-method) because a suite's chained
+     * tests ({@code dependsOnMethods}) deliberately share one session/device.
+     */
+    @AfterClass(alwaysRun = true)
+    public void teardownDriver() {
+        DriverFactory.getInstance().quitDriver();
     }
 
     @AfterSuite(alwaysRun = true)
