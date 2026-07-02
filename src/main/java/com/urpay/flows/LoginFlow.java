@@ -268,6 +268,10 @@ public class LoginFlow {
             if (waits.isPresent(DASHBOARD_MARKER, 1)) {
                 return; // already authenticated
             }
+            // The app requests location then notifications at runtime; the notifications
+            // dialog can render a few seconds late — i.e. during passcode entry — and overlay
+            // the boxes. Clear any permission dialog that is currently up before typing.
+            dismissPermissionDialogs(1);
             // The passcode boxes have a hidden input that is NOT auto-focused (unlike the
             // OTP screen). Without focus, DIGIT_x key events are dropped and the boxes stay
             // empty. Tap the boxes region first to focus the input, then press the digits.
@@ -330,13 +334,49 @@ public class LoginFlow {
         }
     }
 
+    /**
+     * Dismiss the Android runtime permission dialogs this app raises after the "Enable Your
+     * Location" button is tapped. autoGrantPermissions pre-grants manifest permissions at session
+     * start, but the app requests permissions explicitly at runtime, so the system
+     * permissioncontroller dialogs can still appear on top of the passcode screen. The app chains
+     * TWO dialogs in sequence — location ("While using the app") then notifications
+     * ("Allow ... to send you notifications?") — and the second only renders a few seconds after
+     * the first is granted, so the loop keeps checking long enough to bridge that gap. Matched by
+     * the stable Android system resource-ids first (immune to the app's testID obfuscation), with
+     * visible-text fallbacks across OEM/locale variants. Best-effort and idempotent.
+     */
+    @Step("Dismiss system permission dialogs")
+    private void dismissPermissionDialogs(long firstWaitSec) {
+        By allow = AppiumBy.xpath(
+                "//*[@resource-id='com.android.permissioncontroller:id/permission_allow_foreground_only_button' "
+                + "or @resource-id='com.android.permissioncontroller:id/permission_allow_one_time_button' "
+                + "or @resource-id='com.android.permissioncontroller:id/permission_allow_button' "
+                + "or @text='While using the app' or @text='Only this time' "
+                + "or @text='Allow' or @text='ALLOW' or @text='Allow only while using the app']");
+        long wait = firstWaitSec;
+        for (int i = 0; i < 4; i++) {
+            var els = waits.findQuick(allow, wait);
+            if (els.isEmpty()) {
+                break;
+            }
+            try {
+                els.get(0).click();
+                log.info("Dismissed system permission dialog ({})", i + 1);
+            } catch (Exception e) {
+                log.warn("Could not dismiss permission dialog: {}", e.getMessage());
+                break;
+            }
+            wait = 4; // a chained dialog (e.g. notifications after location) renders shortly after
+        }
+    }
+
     @Step("Skip onboarding screens")
     private void skipOnboarding() {
         // Wait for ANY first screen element (app loaded)
         By anyFirst = AppiumBy.xpath(
                 "//*[@text='Skip' or @text='No thanks' or @text='Allow' "
                 + "or @text='Later' or @text='Passcode' or @text='Enter your passcode' "
-                + "or @text='Login' or @text='Register' "
+                + "or @text='Login' or @text='Register' or @text='Enable Your Location' "
                 + "or @content-desc='testID-secondary-login-main' "
                 + "or @content-desc='testID-secondary-g35-main' "
                 + "or @content-desc='testID-primary-register-main' "
@@ -392,6 +432,31 @@ public class LoginFlow {
                     loginEls.get(0).click();
                     log.info("Tapped Login button — onboarding complete");
                     break;
+                }
+            } catch (Exception ignored) {}
+
+            // "Enable Your Location" screen: its only action button carries a build-specific
+            // testID (clean=testID-primary-enableLocation-main, obfuscated builds hash the
+            // middle segment → e.g. testID-primary-sCV-main) and has NO visible text. Detect the
+            // screen by its stable title text, then tap the single primary-*-main button on it —
+            // a hybrid locator that resolves on clean, obfuscated (local) and cloud builds alike.
+            try {
+                var locScreen = waits.findQuick(
+                        AppiumBy.xpath("//*[@text='Enable Your Location']"), 1);
+                if (!locScreen.isEmpty()) {
+                    var locBtn = driver.findElements(AppiumBy.xpath(
+                            "//*[@content-desc='testID-primary-enableLocation-main' "
+                            + "or (starts-with(@content-desc,'testID-primary-') "
+                            + "and substring(@content-desc,string-length(@content-desc)-4)='-main')]"));
+                    if (!locBtn.isEmpty()) {
+                        locBtn.get(0).click();
+                        log.info("Tapped Enable-Location button (hybrid locator)");
+                        // Tapping Enable triggers the Android runtime location-permission
+                        // dialog (and a chained notifications dialog), which overlay the next
+                        // screen (passcode) and block input.
+                        dismissPermissionDialogs(6);
+                        continue;
+                    }
                 }
             } catch (Exception ignored) {}
 
