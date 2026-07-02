@@ -100,9 +100,13 @@ public class AccountDetailsPage extends BasePage {
     // ── Account Statement ─────────────────────────────
 
     @AndroidFindBy(xpath = "//android.widget.TextView[@text='Account Statement']"
-            + "/ancestor::android.view.ViewGroup[@content-desc='testID-primary-action-main']")
+            + "/ancestor::android.view.ViewGroup[@content-desc='testID-primary-action-main'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')][1]")
     @iOSXCUITFindBy(xpath = "//XCUIElementTypeStaticText[@name='Account Statement']"
-            + "/ancestor::XCUIElementTypeOther[@name='testID-primary-action-main']")
+            + "/ancestor::XCUIElementTypeOther[@name='testID-primary-action-main'"
+            + " or (starts-with(@name,'testID-primary-')"
+            + " and substring(@name,string-length(@name)-4)='-main')][1]")
     private WebElement accountStatementButton;
 
     // ── Footer ────────────────────────────────────────

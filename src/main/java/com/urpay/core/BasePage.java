@@ -61,17 +61,47 @@ public abstract class BasePage {
     // ── Tap / Click ────────────────────────────────────────────────
 
     protected void tap(WebElement element) {
-        waitUtils.waitForClickable(element).click();
+        try {
+            waitUtils.waitForClickable(element).click();
+        } catch (org.openqa.selenium.TimeoutException e) {
+            if (grantSystemPermissionIfPresent(1) > 0) {
+                waitUtils.waitForClickable(element).click();
+            } else {
+                dumpPageSource("tap-timeout");
+                throw e;
+            }
+        }
         checkForErrorBanner();
     }
 
     protected void tap(WebElement element, long timeoutSec) {
-        waitUtils.waitForClickable(element, timeoutSec).click();
+        try {
+            waitUtils.waitForClickable(element, timeoutSec).click();
+        } catch (org.openqa.selenium.TimeoutException e) {
+            if (grantSystemPermissionIfPresent(1) > 0) {
+                waitUtils.waitForClickable(element, timeoutSec).click();
+            } else {
+                dumpPageSource("tap-timeout");
+                throw e;
+            }
+        }
         checkForErrorBanner();
     }
 
     protected void tap(By locator) {
-        waitUtils.waitForClickable(locator).click();
+        try {
+            waitUtils.waitForClickable(locator).click();
+        } catch (org.openqa.selenium.TimeoutException e) {
+            // An Android runtime-permission dialog (contacts / camera / etc.) can appear mid-flow
+            // after an app-data clear, covering the target and hiding the app's view tree so the
+            // locator never resolves. Grant it and retry once; otherwise surface the real failure.
+            if (grantSystemPermissionIfPresent(1) > 0) {
+                waitUtils.waitForClickable(locator).click();
+            } else {
+                dumpPageSource("tap-timeout");
+                throw e;
+            }
+        }
         checkForErrorBanner();
     }
 
@@ -173,6 +203,48 @@ public abstract class BasePage {
         } catch (Exception e) {
             log.warn("DIAG[{}] dump failed: {}", tag, e.getMessage());
         }
+    }
+
+    // ── System permission dialogs (Android runtime grants) ─────────
+
+    /**
+     * "Allow" button of an Android runtime-permission dialog raised by the OS permission
+     * controller (contacts, camera, location, notifications …). Matched by the OS resource-id,
+     * which is stable across locales and identical on local Samsung and LambdaTest cloud devices
+     * (the window package is google/aosp but the id namespace stays com.android.permissioncontroller).
+     */
+    private static final By SYSTEM_PERMISSION_ALLOW = By.xpath(
+            "//*[starts-with(@resource-id,'com.android.permissioncontroller:id/permission_allow')]");
+
+    /**
+     * Dismiss any Android system permission dialog(s) currently covering the screen by tapping
+     * "Allow". Handles a few chained dialogs, and is a fast no-op when none are present — so it is
+     * safe to call defensively before, or on the failure path of, a tap that a runtime-permission
+     * request could block. Returns the number of dialogs granted.
+     *
+     * @param firstWaitSec how long to wait for the first dialog to surface (later chained dialogs
+     *                     use a short fixed poll).
+     */
+    protected int grantSystemPermissionIfPresent(long firstWaitSec) {
+        if (!platform.isAndroid()) {
+            return 0;
+        }
+        int granted = 0;
+        for (int i = 0; i < 4; i++) {
+            long wait = (i == 0) ? firstWaitSec : 2;
+            List<WebElement> allow = waitUtils.findQuick(SYSTEM_PERMISSION_ALLOW, wait);
+            if (allow.isEmpty()) {
+                break;
+            }
+            try {
+                allow.get(0).click();
+                granted++;
+                log.info("Granted system permission dialog ({})", granted);
+            } catch (Exception ignored) {
+                break;
+            }
+        }
+        return granted;
     }
 
     // ── Global Error Detection ─────────────────────────────────────
