@@ -84,4 +84,36 @@
         <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
     </test>
 
+    <!-- ───────────── Auth (Forgot Passcode) ───────────── -->
+    <test name="forgot-passcode-default-tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/></classes>
+    </test>
+    <test name="forgot-passcode-family-tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierTest"/></classes>
+    </test>
+    <test name="forgot-passcode-family-tier-negative">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-family-tier-negative-02">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierLoginNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-full-tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierTest"/></classes>
+    </test>
+    <test name="forgot-passcode-full-tier-negative">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-full-tier-negative-02">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierLoginNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-visitor-tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierTest"/></classes>
+    </test>
+    <test name="forgot-passcode-visitor-tier-negative">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-visitor-tier-negative-02">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierLoginNegativeTest"/></classes>
+    </test>
+
 </suite>
