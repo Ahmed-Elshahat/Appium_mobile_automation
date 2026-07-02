@@ -75,9 +75,20 @@ public class QattaGroupPage extends BasePage {
             + "@name='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42'"
             + " or @label='testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42']])[1]");
 
+    // The React-Native text wrapper id (testID-ReactText.c8f08fb6…) is a GENERIC id reused across
+    // dozens of text nodes (Settings, Save, group name, this header …), so it adds fragility without
+    // uniquely identifying the header. Match on the visible label instead, cross-platform.
+    // Accept EITHER the read-only "Group details" view OR the "Edit Group" view: both screens
+    // display the group's details (incl. the updated name), and after Save the app may land on
+    // either depending on device/build timing (must work on Local AND LambdaTest).
     private static final By GROUP_DETAILS_HEADER = AppiumBy.xpath(
-            "//android.widget.TextView[@content-desc="
-            + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42' and @text='Group details']");
+            "//*[@text='Group details' or @label='Group details'"
+            + " or @name='Group details' or @content-desc='Group details'"
+            + " or @text='Edit Group' or @label='Edit Group' or @name='Edit Group']");
+
+    // "Edit Group" header only — used to detect whether we are still in edit mode.
+    private static final By EDIT_GROUP_HEADER = AppiumBy.xpath(
+            "//*[@text='Edit Group' or @label='Edit Group' or @name='Edit Group']");
 
     private static final By EDIT_BTN =
             AppiumBy.accessibilityId("testID-right-icon-0");
@@ -182,12 +193,16 @@ public class QattaGroupPage extends BasePage {
     }
 
     /**
-     * Toggle out of edit mode back to the read-only "Group details" view (the edit icon acts
-     * as a toggle). Mirrors Katalon editFirstQattaDetails' final "tap editBtn again" step.
+     * Ensure we are viewing the group details after an edit. After Save the app already returns
+     * to the read-only "Group details" view, so the edit icon (testID-right-icon-0) — which is a
+     * TOGGLE — must NOT be tapped again or it would re-open "Edit Group". Only tap the toggle when
+     * the "Edit Group" screen is actually still showing.
      */
     @Step("Return to Group details view")
     public void returnToGroupDetails() {
-        tap(EDIT_BTN);
+        if (isPresent(EDIT_GROUP_HEADER, 3)) {
+            tap(EDIT_BTN);
+        }
     }
 
     // ══════════════════════════════════════════════════
@@ -202,10 +217,17 @@ public class QattaGroupPage extends BasePage {
         return getText(groupNameByText(name));
     }
 
-    /** Runtime text-qualified locator for the group name in the details tab. */
+    /**
+     * Runtime text-qualified locator for the group name. Matches the name whether it is rendered
+     * as the read-only ReactText TextView (Group details view), an EditText (Edit Group view), or
+     * any element carrying the text — so validation works cross-platform on Local and LambdaTest.
+     */
     private By groupNameByText(String name) {
         return AppiumBy.xpath(
                 "//android.widget.TextView[@content-desc="
-                + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42' and @text='" + name + "']");
+                + "'testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42' and @text='" + name + "']"
+                + " | //android.widget.EditText[@text='" + name + "']"
+                + " | //*[@text='" + name + "' or @label='" + name + "'"
+                + " or @value='" + name + "' or @name='" + name + "']");
     }
 }

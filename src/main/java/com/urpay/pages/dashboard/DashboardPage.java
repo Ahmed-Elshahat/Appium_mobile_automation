@@ -30,9 +30,18 @@ public class DashboardPage extends BasePage {
             AppiumBy.xpath("//*[@text='Later']");
     private static final By CLOSE_BTN =
             AppiumBy.xpath("//*[@text='×' or @text='✕' or @text='X']");
+    // The app requests POST_NOTIFICATIONS at runtime AFTER login, so the Android system
+    // notification-permission dialog renders a few seconds LATE on top of the dashboard. It lives
+    // in a separate permissioncontroller window that hides the dashboard elements from the a11y
+    // tree, so it must be dismissed before the dashboard marker can be found. Match the stable
+    // system resource-ids first (immune to the app's testID obfuscation), with visible-text
+    // fallbacks across OEM/locale variants.
     private static final By SYSTEM_DIALOG = AppiumBy.xpath(
-            "//*[@text='No thanks' or @text='NO THANKS' or @text='Allow' "
-            + "or @text='ALLOW' or @text='While using the app']");
+            "//*[@resource-id='com.android.permissioncontroller:id/permission_allow_button' "
+            + "or @resource-id='com.android.permissioncontroller:id/permission_allow_foreground_only_button' "
+            + "or @resource-id='com.android.permissioncontroller:id/permission_allow_one_time_button' "
+            + "or @text='No thanks' or @text='NO THANKS' or @text='Allow' "
+            + "or @text='ALLOW' or @text='While using the app' or @text='Only this time']");
 
     // ── Search icon (dashboard presence marker) ────────
     private static final By SEARCH_ICON =
@@ -86,12 +95,20 @@ public class DashboardPage extends BasePage {
     public void clickWallet() { tap(walletButton); }
 
     public boolean isLoaded() {
-        dismissPopups();
-        return isDisplayed(yourBalanceLabel, 10)
-                || isPresent(SEARCH_ICON, 5);
+        // The dashboard can be hidden behind a late Android notification-permission dialog (it
+        // appears a few seconds after login and lives in a separate system window). Dismiss any
+        // popup / system dialog, then check the marker — retry a few times to bridge the gap until
+        // the late dialog has appeared and been cleared.
+        for (int attempt = 0; attempt < 4; attempt++) {
+            dismissPopups();
+            if (isDisplayed(yourBalanceLabel, 5) || isPresent(SEARCH_ICON, 2)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    @Step("Dismiss any popups (Later, close buttons)")
+    @Step("Dismiss any popups (Later, close, system permission dialog)")
     public void dismissPopups() {
         // Instant check: with the global implicit wait (timeout=20s), findQuick on an
         // ABSENT popup blocks ~20s per locator (implicit+explicit wait mixing) — ~40s
@@ -100,6 +117,7 @@ public class DashboardPage extends BasePage {
         long implicit = ConfigManager.getInstance().getInt("timeout", 10);
         driver.manage().timeouts().implicitlyWait(Duration.ZERO);
         try {
+            clickIfPresentNow(SYSTEM_DIALOG, "system permission dialog");
             clickIfPresentNow(LATER_BTN, "Later");
             clickIfPresentNow(CLOSE_BTN, "close button");
         } finally {

@@ -127,9 +127,15 @@ public class GroupQattaPage extends BasePage {
 
     // ── Reject (member) ──────────────────────────
     // Topmost unpaid qatta row (rows carry no dedicated testID): locate by its "Unpaid" status
-    // label and tap the nearest clickable ancestor (the row container).
+    // label and tap the row container. On the GROUP screen the row is a React-Native card that is
+    // NOT flagged clickable="true" (unlike the quick-qatta screen), so a plain clickable-ancestor
+    // lookup finds nothing. Fall back to the nearest ancestor card that also holds the qatta amount
+    // — its centre sits inside the card, so the RN touch handler still opens the qatta. Keeping the
+    // clickable-ancestor variant first preserves behaviour on any build where the row IS clickable.
     private static final By UNPAID_QATTA_ROW = AppiumBy.xpath(
             "(//android.widget.TextView[@text='Unpaid'])[1]/ancestor::*[@clickable='true'][1]"
+            + " | (//android.widget.TextView[@text='Unpaid'])[1]"
+            + "/ancestor::android.view.ViewGroup[.//*[contains(@content-desc,'amount')]][1]"
             + " | (//XCUIElementTypeStaticText[@label='Unpaid' or @value='Unpaid'])[1]"
             + "/ancestor::XCUIElementTypeCell[1]");
 
@@ -295,6 +301,13 @@ public class GroupQattaPage extends BasePage {
 
     @Step("Tap Reject on the qatta detail")
     public void tapReject() {
+        // The Reject action sits at the bottom of the qatta-detail ScrollView. On a qatta with
+        // several participants it renders below the fold, and React Native omits off-screen nodes
+        // from the accessibility tree — so the locator resolves nothing until we scroll it into
+        // view. Reveal it with a few bounded upward scrolls before tapping.
+        for (int i = 0; i < 3 && waitUtils.findQuick(REJECT_BTN, 1).isEmpty(); i++) {
+            swipeUp();
+        }
         tap(REJECT_BTN);
     }
 

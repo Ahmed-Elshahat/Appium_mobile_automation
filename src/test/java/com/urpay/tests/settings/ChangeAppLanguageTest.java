@@ -82,12 +82,19 @@ public class ChangeAppLanguageTest extends BaseTest {
     @Description("Navigate back to Language settings, switch to English and verify English text appears")
     @Severity(SeverityLevel.CRITICAL)
     public void testSwitchBackToEnglish() {
+        ConfigManager config = ConfigManager.getInstance();
+
+        // Switching to Arabic restarts the app to the passcode screen (logged out), so
+        // re-authenticate to reach the dashboard before navigating to Language settings.
+        // loginWith() detects the passcode screen and re-enters the passcode only.
+        login(config);
+
         ChangeAppLanguagePage page = new ChangeAppLanguagePage();
         page.navigateToLanguageSettings();
         page.switchToEnglish();
 
         Assert.assertTrue(page.isEnglishApplied(),
-                "English text (Your Balance) should be visible after switching to English");
+                "English text should be visible after switching back to English");
 
         log.info("Language switched back to English successfully");
     }

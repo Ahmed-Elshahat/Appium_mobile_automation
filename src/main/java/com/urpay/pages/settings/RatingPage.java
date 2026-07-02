@@ -140,7 +140,12 @@ public class RatingPage extends BasePage {
     }
 
     public boolean isFirstScreenLoaded() {
-        return isPresent(HEADER_TEXT_FIRST_SCREEN, 15);
+        // Identify the NPS screen by its stable scale markers (0-10 buttons and the lower/upper
+        // limit labels) rather than the personalised "Hello …" greeting, whose exact text varies by
+        // user/locale and is the weakest signal. Any one of these confirms the first screen rendered.
+        return isPresent(NOT_LIKELY_TEXT, 15)
+                || isPresent(RATING_BTN_6, 2)
+                || isPresent(HEADER_TEXT_FIRST_SCREEN, 2);
     }
 
     public boolean isNextButtonVisible() {

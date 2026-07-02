@@ -6,7 +6,7 @@
   Run: mvn test -Dsuite=suites/all-wallet-settings.xml -Dprofile=sit-wmv
   (add -Denv=uat to target a different environment)
 -->
-<suite name="All Wallet + Settings" verbose="1" parallel="tests" thread-count="24" data-provider-thread-count="24">
+<suite name="All Wallet + Settings" verbose="1" parallel="tests" thread-count="15" data-provider-thread-count="15">
 
     <!-- ───────────── Wallet ───────────── -->
     <test name="auto-topup">
