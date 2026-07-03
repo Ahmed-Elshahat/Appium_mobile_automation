@@ -30,6 +30,9 @@
     <test name="reject-money-request">
         <classes><class name="com.urpay.tests.wallet.RejectMoneyRequestTest"/></classes>
     </test>
+    <test name="wallet-balance">
+        <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
+    </test>
     <test name="validate-notifications">
         <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
     </test>
