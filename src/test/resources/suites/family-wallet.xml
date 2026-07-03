@@ -1,0 +1,23 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Family-wallet suite: migrated family parent/kid journeys (Send Gift, and future Direct Top-up,
+  Family Request Money, Permission Control, Delink).
+
+  Run SEQUENTIALLY (parallel="none"): these suites use scarce, shared parent/kid accounts (some
+  overlap with accounts used elsewhere), so they must NOT run concurrently with each other or with
+  the parallel all-wallet-settings aggregate.
+
+  Run: mvn test -Dsuite=suites/family-wallet.xml -Dprofile=sit-wmv
+  (add -Dremote=true for LambdaTest)
+-->
+<suite name="Family Wallet" verbose="1" parallel="none">
+
+    <!-- ───────────── Send Gift (Eidya) ───────────── -->
+    <test name="send-gift-parent-to-kid">
+        <classes><class name="com.urpay.tests.wallet.SendGiftFromParentTest"/></classes>
+    </test>
+    <test name="kid-receive-gift">
+        <classes><class name="com.urpay.tests.wallet.KidReceiveGiftTest"/></classes>
+    </test>
+
+</suite>
