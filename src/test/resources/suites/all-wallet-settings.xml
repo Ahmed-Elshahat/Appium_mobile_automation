@@ -33,6 +33,9 @@
     <test name="wallet-balance">
         <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
     </test>
+    <test name="invite-friends">
+        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
+    </test>
     <test name="validate-notifications">
         <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
     </test>

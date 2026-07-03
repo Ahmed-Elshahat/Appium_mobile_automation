@@ -42,6 +42,27 @@ public class InviteFriendsPage extends BasePage {
     private static final By REGISTERED_USERS_TEXT =
             AppiumBy.accessibilityId("testID-Text.7876fa59-e42a-449d-b40b-f41cf5a7f2f3");
 
+    // ── Invite Friends share flow (Katalon android/WalletVas/referralLink/*) ──
+    /** Generic React-Native text testID shared by nav / button labels (disambiguated by @text). */
+    private static final String REACT_TEXT = "testID-ReactText.c8f08fb6-ea7b-4dd0-b237-cf96296e4c42";
+
+    private static final By MORE_TAB_BTN = AppiumBy.xpath(
+            "//android.widget.TextView[@content-desc='" + REACT_TEXT + "' and @text='More']");
+    private static final By INVITE_FRIENDS_MENU_BTN = AppiumBy.xpath(
+            "//android.widget.TextView[@content-desc='" + REACT_TEXT + "' and @text='Invite Friends']");
+    private static final By INVITE_FRIENDS_TITLE = AppiumBy.xpath(
+            "(//android.widget.TextView[@content-desc='" + REACT_TEXT + "'])[1]");
+    private static final By INVITE_FRIENDS_HEADER_TAB = AppiumBy.xpath(
+            "(//android.widget.TextView[@content-desc='" + REACT_TEXT + "'])[2]");
+    private static final By SHARE_BTN = AppiumBy.xpath(
+            "//android.widget.TextView[@content-desc='" + REACT_TEXT + "' and @text='Share']");
+    private static final By INVITE_OPTIONS_TITLE =
+            AppiumBy.accessibilityId("testID-total-transfer");
+    private static final By INVITE_OPTIONS_SUBTITLE =
+            AppiumBy.accessibilityId("testID-total-transfer-message");
+    private static final By SHARE_INVITATION_BTN = AppiumBy.xpath(
+            "//android.widget.TextView[@content-desc='" + REACT_TEXT + "' and @text='Share Invitation']");
+
     // ══════════════════════════════════════════════════
     //  NAVIGATION
     // ══════════════════════════════════════════════════
@@ -100,5 +121,57 @@ public class InviteFriendsPage extends BasePage {
 
     public boolean isLoaded() {
         return waitUtils.isPresent(REFERRAL_CODE_TEXT, 15);
+    }
+
+    // ══════════════════════════════════════════════════
+    //  INVITE FRIENDS SHARE FLOW
+    // ══════════════════════════════════════════════════
+
+    @Step("Navigate to Invite Friends via the More menu")
+    public void navigateViaMore() {
+        tap(MORE_TAB_BTN);
+        tap(INVITE_FRIENDS_MENU_BTN);
+        waitUtils.waitForVisible(INVITE_FRIENDS_TITLE, 15);
+    }
+
+    @Step("Read the Invite Friends screen title")
+    public String getInviteFriendsTitle() {
+        return getText(INVITE_FRIENDS_TITLE);
+    }
+
+    @Step("Read the Invite Friends header tab label")
+    public String getInviteFriendsTab() {
+        return getText(INVITE_FRIENDS_HEADER_TAB);
+    }
+
+    @Step("Read the Share button label")
+    public String getShareButtonText() {
+        return getText(SHARE_BTN);
+    }
+
+    @Step("Tap the Share button")
+    public void tapShare() {
+        tap(SHARE_BTN);
+    }
+
+    @Step("Read the Invite Friends Options title")
+    public String getOptionsTitle() {
+        waitUtils.waitForVisible(INVITE_OPTIONS_TITLE, 15);
+        return getText(INVITE_OPTIONS_TITLE);
+    }
+
+    @Step("Read the Invite Friends Options subtitle")
+    public String getOptionsSubtitle() {
+        return getText(INVITE_OPTIONS_SUBTITLE);
+    }
+
+    @Step("Read the Share Invitation button label")
+    public String getShareInvitationText() {
+        return getText(SHARE_INVITATION_BTN);
+    }
+
+    @Step("Tap the Share Invitation button")
+    public void tapShareInvitation() {
+        tap(SHARE_INVITATION_BTN);
     }
 }
