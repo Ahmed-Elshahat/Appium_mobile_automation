@@ -38,4 +38,9 @@
         <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
     </test>
 
+    <!-- ───────────── Delink From Parent ───────────── -->
+    <test name="delink-from-parent">
+        <classes><class name="com.urpay.tests.wallet.DelinkFromParentTest"/></classes>
+    </test>
+
 </suite>
