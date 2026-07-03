@@ -59,6 +59,18 @@ public class MoneyRequestFlow {
         return moneyRequestPage;
     }
 
+    @Step("Kid sends a money request to the linked parent")
+    public MoneyRequestPage kidRequestFromParent(String amount) {
+        moneyRequestPage.kidRequestFromParent(amount);
+        return moneyRequestPage;
+    }
+
+    @Step("Open the Money Request list (More → Request List → Money Request)")
+    public MoneyRequestPage openRequestList() {
+        moneyRequestPage.openRequestList();
+        return moneyRequestPage;
+    }
+
     @Step("Logout: deep link to Settings → Logout → confirm")
     public void logout() {
         settingsPage.openViaDeepLink();

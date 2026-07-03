@@ -306,6 +306,35 @@ public class MoneyRequestPage extends BasePage {
         tap(APPROVE_CONFIRM_BTN);
     }
 
+    // ══════════════════════════════════════════════════
+    //  KID → PARENT (family wallet request money)
+    // ══════════════════════════════════════════════════
+
+    // The kid's dashboard "Request Money" shortcut (Katalon WalletVas/MoneyRequest/requestMoneyBtn).
+    private static final By KID_REQUEST_MONEY_BTN =
+            AppiumBy.accessibilityId("testID-PlusWithCircle-Request Money");
+    // The primary action button (Next / Confirm / Done share this testID across the request screens).
+    private static final By PRIMARY_ACTION_BTN =
+            AppiumBy.accessibilityId("testID-primary-action-main");
+
+    /**
+     * Kid requests money from the linked parent: tap Request Money, enter the amount on the on-screen
+     * keypad ({@code testID-keyboard-element-N} per digit), then Next → Confirm → Done. There is no
+     * recipient selection — a kid's request always targets the linked parent.
+     */
+    @Step("Kid requests {amount} from the linked parent")
+    public void kidRequestFromParent(String amount) {
+        tap(KID_REQUEST_MONEY_BTN);
+        for (char ch : amount.toCharArray()) {
+            if (Character.isDigit(ch)) {
+                tap(AppiumBy.accessibilityId("testID-keyboard-element-" + ch));
+            }
+        }
+        tap(PRIMARY_ACTION_BTN);   // Next
+        tap(PRIMARY_ACTION_BTN);   // Confirm
+        tap(PRIMARY_ACTION_BTN);   // Done
+    }
+
     @Step("Enter the verification code")
     public void enterVerificationCode(String code) {
         platformActions.enterDigits(code);

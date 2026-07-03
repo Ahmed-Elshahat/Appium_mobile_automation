@@ -20,4 +20,9 @@
         <classes><class name="com.urpay.tests.wallet.KidReceiveGiftTest"/></classes>
     </test>
 
+    <!-- ───────────── Family Request Money ───────────── -->
+    <test name="family-request-money">
+        <classes><class name="com.urpay.tests.wallet.FamilyRequestMoneyTest"/></classes>
+    </test>
+
 </suite>
