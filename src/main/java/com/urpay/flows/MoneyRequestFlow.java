@@ -52,6 +52,13 @@ public class MoneyRequestFlow {
         return moneyRequestPage;
     }
 
+    @Step("Reject the latest pending money request")
+    public MoneyRequestPage rejectLatestRequest() {
+        moneyRequestPage.openRequestList();
+        moneyRequestPage.rejectLatestRequest();
+        return moneyRequestPage;
+    }
+
     @Step("Logout: deep link to Settings → Logout → confirm")
     public void logout() {
         settingsPage.openViaDeepLink();

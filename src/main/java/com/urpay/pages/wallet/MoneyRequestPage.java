@@ -111,6 +111,10 @@ public class MoneyRequestPage extends BasePage {
     private static final By APPROVE_CARD_BTN = AppiumBy.xpath(
             "//*[@content-desc='testID-ActionCard-card-item-0']");
 
+    // Reject action card — the second action item (Katalon android/WalletVas/MoneyRequest/rejectBtn).
+    private static final By REJECT_CARD_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-ActionCard-card-item-1']");
+
     private static final By APPROVE_CONFIRM_BTN = AppiumBy.xpath(
             "//*[@content-desc='testID-primary--main']");
 
@@ -292,6 +296,13 @@ public class MoneyRequestPage extends BasePage {
     public void approveLatestRequest() {
         tap(LATEST_STATUS);
         tap(APPROVE_CARD_BTN);
+        tap(APPROVE_CONFIRM_BTN);
+    }
+
+    @Step("Open the latest request and reject it")
+    public void rejectLatestRequest() {
+        tap(LATEST_STATUS);
+        tap(REJECT_CARD_BTN);
         tap(APPROVE_CONFIRM_BTN);
     }
 

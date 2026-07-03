@@ -27,6 +27,9 @@
     <test name="send-money-request-approve">
         <classes><class name="com.urpay.tests.wallet.SendMoneyRequestApproveTest"/></classes>
     </test>
+    <test name="reject-money-request">
+        <classes><class name="com.urpay.tests.wallet.RejectMoneyRequestTest"/></classes>
+    </test>
     <test name="validate-notifications">
         <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
     </test>
