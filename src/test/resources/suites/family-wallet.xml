@@ -25,4 +25,12 @@
         <classes><class name="com.urpay.tests.wallet.FamilyRequestMoneyTest"/></classes>
     </test>
 
+    <!-- ───────────── Direct Top-up ───────────── -->
+    <test name="direct-topup-positive">
+        <classes><class name="com.urpay.tests.wallet.DirectTopupPositiveTest"/></classes>
+    </test>
+    <test name="direct-topup-negative">
+        <classes><class name="com.urpay.tests.wallet.DirectTopupNegativeTest"/></classes>
+    </test>
+
 </suite>
