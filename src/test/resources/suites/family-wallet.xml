@@ -33,4 +33,9 @@
         <classes><class name="com.urpay.tests.wallet.DirectTopupNegativeTest"/></classes>
     </test>
 
+    <!-- ───────────── Permission Control ───────────── -->
+    <test name="permission-control">
+        <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
+    </test>
+
 </suite>
