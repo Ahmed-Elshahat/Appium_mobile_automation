@@ -88,6 +88,12 @@
     <test name="forgot-passcode-default-tier">
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/></classes>
     </test>
+    <test name="forgot-passcode-default-tier-negative">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierNegativeTest"/></classes>
+    </test>
+    <test name="forgot-passcode-default-tier-negative-02">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
+    </test>
     <test name="forgot-passcode-family-tier">
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierTest"/></classes>
     </test>

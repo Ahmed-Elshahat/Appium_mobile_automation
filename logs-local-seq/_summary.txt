@@ -1,0 +1,26 @@
+=== LOCAL SEQUENTIAL RUN 2026-07-02 14:45:05 (device R5CX73LLSPE) ===
+auto-topup                               SUCCESS  [ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 5
+account-details                          SUCCESS  [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+account-statement                        SUCCESS  [ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+family-mission-suite                     SUCCESS  [ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+registration-invitation-code             SUCCESS  [ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0
+send-money-request-approve               SUCCESS  [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+validate-notifications                   SUCCESS  [ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 4
+edit-group-qatta-details                 SUCCESS  [ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0
+pay-group-qatta-suite                    SUCCESS  [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+pay-quick-qatta-suite                    SUCCESS  [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+reject-group-qatta-suite                 SUCCESS  [ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0
+reject-quick-qatta-suite                 SUCCESS  [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+change-passcode-default-tier             SUCCESS  [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+change-passcode-default-tier-negative    SUCCESS  [ERROR] Tests run: 8, Failures: 1, Errors: 0, Skipped: 7
+change-passcode-family-tier              SUCCESS  [ERROR] Tests run: 11, Failures: 1, Errors: 0, Skipped: 10
+change-passcode-family-tier-negative     SUCCESS  [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+change-passcode-full-tier                SUCCESS  [ERROR] Tests run: 11, Failures: 1, Errors: 0, Skipped: 10
+change-passcode-full-tier-negative       SUCCESS  [ERROR] Tests run: 8, Failures: 1, Errors: 0, Skipped: 7
+change-passcode-visitor-tier             SUCCESS  [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+change-passcode-visitor-tier-negative    SUCCESS  [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+change-phone-number-full-tier            SUCCESS  [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+privacy-and-terms                        SUCCESS  [ERROR] Tests run: 6, Failures: 4, Errors: 0, Skipped: 0
+rating                                   SUCCESS  [ERROR] Tests run: 5, Failures: 1, Errors: 0, Skipped: 4
+change-app-language                      SUCCESS  [ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 1
+=== DONE 2026-07-02 17:38:54 ===

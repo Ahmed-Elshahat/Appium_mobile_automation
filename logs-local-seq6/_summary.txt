@@ -1,0 +1,4 @@
+=== LOCAL VERIFY RE-RUN 2026-07-02 20:52:26 (device R5CX73LLSPE) ===
+change-app-language                      SUCCESS  [ERROR] Tests run: 3, Failures: 1, Errors: 0, Skipped: 0
+reject-group-qatta-suite                 SUCCESS  [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+=== DONE 2026-07-02 21:11:05 ===
