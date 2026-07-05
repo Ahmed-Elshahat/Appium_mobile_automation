@@ -228,6 +228,92 @@ public class LocalTransferFlow {
     }
 
     // ══════════════════════════════════════════════════
+    //  ADD NEW LOCAL BENEFICIARY (+ IVR-skip activation)
+    // ══════════════════════════════════════════════════
+
+    /**
+     * Best-effort cleanup: delete any existing local beneficiary with the given nickname so a
+     * fresh one can be added (mirrors Katalon AddLocalBeneficiary deleting the prior "zaza").
+     * Wrapped so a missing beneficiary / a differing build never fails the test.
+     */
+    @Step("Delete any existing local beneficiary nicknamed '{nickname}' (best-effort)")
+    public void deleteExistingLocalBeneficiary(String nickname) {
+        try {
+            openViaDeepLink("urpay://DashboardHome");
+            waits.waitForVisible(DASHBOARD_BALANCE, 20);
+            dashboardPage.dismissPopups();
+            waits.waitForClickable(TRANSFER_NAV, 10).click();
+
+            LocalTransferPage page = new LocalTransferPage();
+            page.tapBeneficiaryManagement();
+            grantContactPermission();
+            page.tapLocalBeneficiaryCategory();
+            page.searchBeneficiary(nickname);
+            platformActions.dismissKeyboard();
+
+            if (page.isFirstContactPresent(5)) {
+                page.tapFirstContact();
+                page.tapDeleteContact();
+                page.tapConfirmDelete();
+                log.info("Deleted existing local beneficiary '{}'", nickname);
+            } else {
+                log.info("No existing local beneficiary '{}' found to delete", nickname);
+            }
+        } catch (Exception e) {
+            log.warn("Beneficiary cleanup for '{}' skipped: {}", nickname, e.getMessage());
+        }
+    }
+
+    /**
+     * Add a new local beneficiary end-to-end (UI): amount → Next → Add new beneficiary →
+     * IBAN / full name / nickname → Next → Confirm → OTP. Stops on the IVR-pending screen —
+     * the beneficiary is created with STATUS=PENDING and must then be activated in the DB
+     * ({@code BeneficiaryActivationHelper.activate}) to bypass the IVR phone verification.
+     * Migrated from Scripts/Remittance/LocalTran/AddLocalBeneficiary.
+     */
+    @Step("Add a new local beneficiary: {fullName} (IBAN {iban})")
+    public LocalTransferPage addLocalBeneficiary(String amount, String iban, String fullName,
+            String nickname, String otp) {
+        LocalTransferPage page = navigateToLocalTransfer();
+        page.enterAmount(amount);
+        page.tapNextAtAmount();
+        grantContactPermission();
+
+        page.tapAddNewBeneficiary();
+        page.enterIban(iban);
+        page.enterFullName(fullName);
+        page.enterNickname(nickname);
+        page.scrollToBeneficiaryNextAndTap();
+
+        page.scrollToConfirmAndTap();
+        if (waits.isPresent(INSUFFICIENT_BALANCE, 1)) {
+            throw new IllegalStateException(
+                    "INSUFFICIENT BALANCE — top up the sender account before adding a beneficiary.");
+        }
+        otpPage.enterOtp(otp);
+        platformActions.dismissKeyboard();
+        log.info("Submitted new local beneficiary '{}' — pending IVR; activate via DB", fullName);
+        return page;
+    }
+
+    /**
+     * Transfer to the freshly added (and DB-activated) local beneficiary, selecting it by name.
+     * Migrated from Scripts/Remittance/LocalTran/LocalTransferNewTransfer.
+     *
+     * @return true if the success screen is shown; false if the beneficiary is not selectable
+     *         (e.g. activation did not run / the beneficiary is still PENDING).
+     */
+    @Step("Transfer {amount} to the newly added local beneficiary {fullName}")
+    public boolean transferToNewBeneficiary(String amount, String fullName, String otp) {
+        LocalTransferPage page = openLocalTransferAmount(amount);
+        if (!selectBeneficiary(page, fullName)) {
+            log.warn("New beneficiary '{}' is not selectable — not active yet?", fullName);
+            return false;
+        }
+        return completeTransfer(page, otp);
+    }
+
+    // ══════════════════════════════════════════════════
     //  TRANSACTION HISTORY
     // ══════════════════════════════════════════════════
 
