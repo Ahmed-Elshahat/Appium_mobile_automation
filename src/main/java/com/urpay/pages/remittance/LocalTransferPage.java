@@ -58,6 +58,57 @@ public class LocalTransferPage extends BasePage {
             + " | //*[@content-desc='testID-contacts-number-0']");
 
     // ══════════════════════════════════════════════════
+    //  ADD NEW BENEFICIARY (IBAN / name / nickname)
+    // ══════════════════════════════════════════════════
+
+    @AndroidFindBy(accessibility = "testID-primary-transferToNewBeneficiary-main")
+    @iOSXCUITFindBy(accessibility = "testID-primary-transferToNewBeneficiary-main")
+    private WebElement addNewBeneficiaryButton;
+
+    @AndroidFindBy(accessibility = "testID-input-direct-iban")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-iban")
+    private WebElement ibanField;
+
+    @AndroidFindBy(accessibility = "testID-input-direct-accountHolderName")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-accountHolderName")
+    private WebElement fullNameField;
+
+    @AndroidFindBy(accessibility = "testID-input-direct-nickName")
+    @iOSXCUITFindBy(accessibility = "testID-input-direct-nickName")
+    private WebElement nicknameField;
+
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary--main' or @text='Next' or @text='NEXT']")
+    @iOSXCUITFindBy(iOSNsPredicate = "name == 'testID-primary--main' OR label == 'Next'")
+    private WebElement nextAtBeneficiaryDetailsButton;
+
+    // ══════════════════════════════════════════════════
+    //  BENEFICIARY MANAGEMENT (cleanup of a prior beneficiary)
+    // ══════════════════════════════════════════════════
+
+    @AndroidFindBy(accessibility = "testID-viewElemenGroupOfPeople")
+    @iOSXCUITFindBy(accessibility = "testID-viewElemenGroupOfPeople")
+    private WebElement beneficiaryManagementButton;
+
+    /** "Local" beneficiary category tab on the Beneficiary Management screen (testID has a UUID). */
+    private static final By LOCAL_BENEFICIARY_CATEGORY = AppiumBy.xpath(
+            "//*[@content-desc='testID-View.72efaf72-308e-4ce0-af71-af29baa368c2.2'] "
+            + "| //*[@text='Local' or @text='Local Transfer']");
+
+    /** First saved contact row on the Beneficiary Management list (testID has a UUID). */
+    private static final By FIRST_CONTACT = AppiumBy.xpath(
+            "//*[@content-desc='testID-TouchableOpacity.677b6f96-4757-4b1c-b5ad-6bbd9250fbf9.0'] "
+            + "| //*[@content-desc='testID-TouchableOpacity.d2163287-1d7a-4ae9-b909-eaed6bc6f08f.0'] "
+            + "| //*[contains(@content-desc,'testID-TouchableOpacity') and contains(@content-desc,'.0')]");
+
+    @AndroidFindBy(xpath = "//*[@text='Delete' or @content-desc='testID-secondary-action-main']")
+    @iOSXCUITFindBy(iOSNsPredicate = "label == 'Delete' OR name == 'testID-secondary-action-main'")
+    private WebElement deleteContactButton;
+
+    @AndroidFindBy(accessibility = "testID-primary-deleteBeneficiary-main")
+    @iOSXCUITFindBy(accessibility = "testID-primary-deleteBeneficiary-main")
+    private WebElement confirmDeleteButton;
+
+    // ══════════════════════════════════════════════════
     //  PURPOSE / FEES / NOTE
     // ══════════════════════════════════════════════════
 
@@ -152,6 +203,71 @@ public class LocalTransferPage extends BasePage {
     }
 
     // ══════════════════════════════════════════════════
+    //  ACTIONS — ADD NEW BENEFICIARY
+    // ══════════════════════════════════════════════════
+
+    @Step("Tap 'Add new beneficiary'")
+    public void tapAddNewBeneficiary() {
+        tap(addNewBeneficiaryButton);
+    }
+
+    @Step("Enter IBAN: {iban}")
+    public void enterIban(String iban) {
+        type(ibanField, iban);
+        hideKeyboard();
+    }
+
+    @Step("Enter beneficiary full name: {name}")
+    public void enterFullName(String name) {
+        type(fullNameField, name);
+        hideKeyboard();
+    }
+
+    @Step("Enter beneficiary nickname: {nickname}")
+    public void enterNickname(String nickname) {
+        type(nicknameField, nickname);
+        hideKeyboard();
+    }
+
+    @Step("Tap Next on the beneficiary details screen")
+    public void tapNextAtBeneficiaryDetails() {
+        tap(nextAtBeneficiaryDetailsButton);
+    }
+
+    // ══════════════════════════════════════════════════
+    //  ACTIONS — BENEFICIARY MANAGEMENT (cleanup)
+    // ══════════════════════════════════════════════════
+
+    @Step("Open Beneficiary Management")
+    public void tapBeneficiaryManagement() {
+        tap(beneficiaryManagementButton);
+    }
+
+    @Step("Open the Local beneficiary category")
+    public void tapLocalBeneficiaryCategory() {
+        tap(LOCAL_BENEFICIARY_CATEGORY);
+    }
+
+    public boolean isFirstContactPresent(long timeoutSec) {
+        return isPresent(FIRST_CONTACT, timeoutSec);
+    }
+
+    @Step("Open the first contact")
+    public void tapFirstContact() {
+        tap(FIRST_CONTACT);
+    }
+
+    @Step("Tap Delete contact")
+    public void tapDeleteContact() {
+        tap(deleteContactButton);
+    }
+
+    @Step("Confirm delete contact")
+    public void tapConfirmDelete() {
+        tap(confirmDeleteButton);
+    }
+
+    // ══════════════════════════════════════════════════
     //  ACTIONS — PURPOSE / FEES / NOTE
     // ══════════════════════════════════════════════════
 
@@ -203,6 +319,16 @@ public class LocalTransferPage extends BasePage {
     public void scrollToConfirmAndTap() {
         scrollToEnd();
         tap(confirmButton);
+    }
+
+    /**
+     * Reveal and tap the Next button on the add-beneficiary details screen. Like the review
+     * screen, the Next button can sit below the fold, so fling the scroll view to its end first.
+     */
+    @Step("Scroll to and tap Next on the beneficiary details screen")
+    public void scrollToBeneficiaryNextAndTap() {
+        scrollToEnd();
+        tap(nextAtBeneficiaryDetailsButton);
     }
 
     /** Fling the first scrollable to its end to reveal the bottom action button (no tap). */
