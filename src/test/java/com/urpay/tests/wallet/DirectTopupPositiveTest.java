@@ -48,7 +48,8 @@ public class DirectTopupPositiveTest extends BaseTest {
         family.tapFirstFamilyMember();
 
         DirectTopupPage topup = new DirectTopupPage();
-        topup.addMoneyAndConfirm(c.get("directTopup.amount", "10"));
+        topup.addMoneyAndConfirm(c.get("directTopup.amount", "10"),
+                c.get("directTopup.parent.verificationCode", "1234"));
 
         Assert.assertTrue(topup.isThankYouShown(),
                 "The 'Thank You' success screen should appear after adding money to the kid wallet");

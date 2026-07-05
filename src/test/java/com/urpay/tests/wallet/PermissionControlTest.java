@@ -41,7 +41,16 @@ public class PermissionControlTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
         FamilyPermissionPage permission = openKidSettings();
 
+        // Ensure the kid ends up FROZEN regardless of the starting state (a previous run may have
+        // left it frozen). Toggling the switch shows the freeze warning ONLY when freezing, so if
+        // the warning does not appear we just unfroze a leftover-frozen kid — clear any prompt and
+        // toggle again to actually freeze.
         permission.toggleFreeze();
+        if (!permission.isFreezeWarningShown(8)) {
+            permission.confirmIfPresent();
+            permission.toggleFreeze();
+        }
+
         Assert.assertTrue(
                 permission.getFreezeWarning().contains(c.get("permissionControl.freezeWarningPrefix")),
                 "The freeze-wallet warning text should be displayed");
@@ -51,13 +60,17 @@ public class PermissionControlTest extends BaseTest {
     @Test(groups = {"wallet", "permission-control", "family"}, priority = 2,
             dependsOnMethods = "testParentFreezesKid")
     @Story("Parent unfreezes the kid wallet")
-    @Description("Parent toggles Freeze again to reactivate the kid wallet and confirms")
+    @Description("Parent toggles Freeze again on the kid Settings screen to reactivate the "
+            + "kid wallet, and confirms")
     @Severity(SeverityLevel.CRITICAL)
     public void testParentUnfreezesKid() {
+        // The freeze test leaves the app on the kid Settings screen with Freeze now ON, so toggle
+        // Freeze off and confirm in place if a confirmation is shown (unfreezing may not prompt
+        // one). Do NOT re-open Settings here: the settings gear and the Close (X) button share
+        // testID-right-icon-0, so tapping it on this screen would exit it.
         FamilyPermissionPage permission = new FamilyPermissionPage();
-        permission.openSettings();
         permission.toggleFreeze();
-        permission.confirmFreeze();
+        permission.confirmIfPresent();
     }
 
     @Step("Login as parent, open the family wallet, the kid profile and its settings")

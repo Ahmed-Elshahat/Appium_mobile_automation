@@ -1,0 +1,34 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Focused re-run suite for the RUN-1/RUN-2 fixes:
+    - Fix A: Invite Friends screen title "Invite & Earn" + options-sheet title "Invite Friends".
+    - Fix B: cloud-obfuscation fallbacks on the testID-primary-<action>-main buttons in
+             DirectTopupPage (Add money / Next / Confirm / Done) and FamilyPermissionPage (Freeze).
+    - Direct Top-up OTP: addMoneyAndConfirm now enters the verification code after Confirm.
+
+  Run SEQUENTIALLY (parallel="none"): DirectTopup and Permission share the SAME parent account
+  (0567982178) and mutate shared kid-wallet state, so they must NOT run concurrently. Order:
+  Invite (independent account) -> top-up on an unfrozen wallet -> freeze. The env-blocked negative
+  Direct Top-up test (backend "Service is currently unavailable") is intentionally excluded to keep
+  the shared account to two logins and avoid the 3rd-login passcode flake.
+
+  Run: mvn test -Dsuite=suites/retest-fixes.xml -Dprofile=sit-wmv (remote=true -> LambdaTest)
+-->
+<suite name="Retest Fixes" verbose="1" parallel="none">
+
+    <!-- Fix A -->
+    <test name="invite-friends">
+        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
+    </test>
+
+    <!-- Fix B + OTP step -->
+    <test name="direct-topup-positive">
+        <classes><class name="com.urpay.tests.wallet.DirectTopupPositiveTest"/></classes>
+    </test>
+
+    <!-- Fix B: Permission Control freeze / unfreeze -->
+    <test name="permission-control">
+        <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
+    </test>
+
+</suite>

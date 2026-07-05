@@ -6,6 +6,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.pages.auth.OtpPage;
 
 import io.appium.java_client.AppiumBy;
 import io.qameta.allure.Step;
@@ -24,18 +25,30 @@ public class DirectTopupPage extends BasePage {
 
     private static final By KID_BALANCE =
             AppiumBy.accessibilityId("testID-master-amount-index_0");
-    private static final By ADD_MONEY_BTN =
-            AppiumBy.accessibilityId("testID-primary-addMoneyAction-main");
+    // The LambdaTest cloud build hashes the <action> segment of testID-primary-<action>-main
+    // buttons (prefix/suffix preserved), so each primary button keeps its exact testID for local
+    // builds and adds a visible-label + structural (any preserved testID-primary-…-main) fallback
+    // for the remote build. Mirrors the proven AutoTopupPage hardening.
+    private static final By ADD_MONEY_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-addMoneyAction-main' or @text='Add money' or "
+            + "(starts-with(@content-desc,'testID-primary-') and "
+            + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
     private static final By ADD_AMOUNT_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-TextInput.99d56835-0082-495d-8e6a-d3f74489f518']");
-    private static final By NEXT_BTN =
-            AppiumBy.accessibilityId("testID-primary-action-main");
-    private static final By CONFIRM_BTN =
-            AppiumBy.accessibilityId("testID-primary-generateOtp-main");
+    private static final By NEXT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-action-main' or @text='Next' or "
+            + "(starts-with(@content-desc,'testID-primary-') and "
+            + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
+    private static final By CONFIRM_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-generateOtp-main' or @text='Confirm' or "
+            + "(starts-with(@content-desc,'testID-primary-') and "
+            + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
     private static final By THANK_YOU_TEXT =
             AppiumBy.accessibilityId("testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5");
-    private static final By DONE_BTN =
-            AppiumBy.accessibilityId("testID-primary-onSubmit-main");
+    private static final By DONE_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onSubmit-main' or @text='Done' or "
+            + "(starts-with(@content-desc,'testID-primary-') and "
+            + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
     private static final By NOTIFICATION_MSG =
             AppiumBy.accessibilityId("testID-notification-message");
     private static final By EXIT_BTN =
@@ -54,10 +67,16 @@ public class DirectTopupPage extends BasePage {
         tap(NEXT_BTN);
     }
 
-    @Step("Add {amount} to the kid wallet and confirm")
-    public void addMoneyAndConfirm(String amount) {
+    @Step("Add {amount} to the kid wallet, confirm and enter the OTP")
+    public void addMoneyAndConfirm(String amount, String otp) {
         enterAmountAndNext(amount);
         tap(CONFIRM_BTN);
+        // Confirm (generateOtp) sends a verification code to the parent; enter it to reach the
+        // "Thank You" success screen. Gated so a build that skips the OTP step still proceeds.
+        OtpPage otpPage = new OtpPage();
+        if (otpPage.isVisible(20)) {
+            otpPage.enterOtp(otp);
+        }
     }
 
     /** True once the "Thank You" success screen has rendered. */

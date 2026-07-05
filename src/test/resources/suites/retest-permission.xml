@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Focused verification of the Permission Control freeze/unfreeze fix.
+  Runs both tests in one session: testParentFreezesKid (priority 1) then testParentUnfreezesKid
+  (priority 2, dependsOnMethods=testParentFreezesKid) which reopens the frozen kid profile from the
+  Family members list before toggling Freeze off.
+
+  Run: mvn test -Dsuite=suites/retest-permission.xml -Dprofile=sit-wmv (remote=true -> LambdaTest)
+-->
+<suite name="Retest Permission" verbose="1" parallel="none">
+    <test name="permission-control">
+        <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
+    </test>
+</suite>

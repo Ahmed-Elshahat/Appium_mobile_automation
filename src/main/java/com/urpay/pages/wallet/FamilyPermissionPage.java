@@ -28,8 +28,13 @@ public class FamilyPermissionPage extends BasePage {
             AppiumBy.accessibilityId("testID-switcher-switch_1");
     private static final By FREEZE_WARNING_TEXT =
             AppiumBy.accessibilityId("testID-total-transfer-message");
-    private static final By FREEZE_CONFIRM_BTN =
-            AppiumBy.accessibilityId("testID-primary-freezeAccount-main");
+    // The LambdaTest cloud build hashes the <action> segment of testID-primary-<action>-main
+    // buttons (prefix/suffix preserved), so keep the exact testID for local builds and add a
+    // visible-label + structural (preserved testID-primary-…-main) fallback for the remote build.
+    private static final By FREEZE_CONFIRM_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-freezeAccount-main' or @text='Freeze' or "
+            + "(starts-with(@content-desc,'testID-primary-') and "
+            + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
 
     @Step("Open the kid profile settings")
     public void openSettings() {
@@ -49,5 +54,17 @@ public class FamilyPermissionPage extends BasePage {
     @Step("Confirm the freeze / unfreeze action")
     public void confirmFreeze() {
         tap(FREEZE_CONFIRM_BTN);
+    }
+
+    @Step("Check whether the freeze-confirmation warning is shown (it appears only when freezing)")
+    public boolean isFreezeWarningShown(long timeoutSec) {
+        return isPresent(FREEZE_WARNING_TEXT, timeoutSec);
+    }
+
+    @Step("Confirm the freeze / unfreeze action only if a confirmation button is shown")
+    public void confirmIfPresent() {
+        if (isPresent(FREEZE_CONFIRM_BTN, 3)) {
+            tap(FREEZE_CONFIRM_BTN);
+        }
     }
 }
