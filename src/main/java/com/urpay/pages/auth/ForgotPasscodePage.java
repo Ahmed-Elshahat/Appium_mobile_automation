@@ -252,11 +252,39 @@ public class ForgotPasscodePage extends BasePage {
         }
     }
 
+    /**
+     * Enter the passcode on the on-screen keypad and immediately read the resulting toast. The
+     * shared {@code testID-notification-message} toast is transient; {@link BasePage#tap} runs a
+     * per-tap error-banner poll that adds ~1s, and on the final digit that delay would push the
+     * first notification poll past the toast's lifetime and miss it. The last digit is therefore
+     * tapped without that check so the read starts at once.
+     */
+    @Step("Enter passcode on the on-screen keypad and read the notification toast")
+    public String enterPasscodeAndReadNotification(String passcode, long timeoutSec) {
+        char[] digits = passcode.toCharArray();
+        for (int i = 0; i < digits.length - 1; i++) {
+            tapKeypadDigit(String.valueOf(digits[i]));
+        }
+        if (digits.length > 0) {
+            tapKeypadDigitRaw(String.valueOf(digits[digits.length - 1]));
+        }
+        return getNotificationMessage(timeoutSec);
+    }
+
     private void tapKeypadDigit(String digit) {
-        By key = AppiumBy.xpath(
+        tap(keypadDigit(digit));
+    }
+
+    private void tapKeypadDigitRaw(String digit) {
+        // Raw click without BasePage.tap's per-tap error-banner poll (~1s) so the transient
+        // rejection toast fired by the final digit can be read immediately.
+        waitUtils.waitForClickable(keypadDigit(digit)).click();
+    }
+
+    private By keypadDigit(String digit) {
+        return AppiumBy.xpath(
                 "//*[@content-desc='testID-ReactText.888d97d4-41e5-487a-bff6-34201eb3731e'"
                 + " and @text='" + digit + "']");
-        tap(key);
     }
 
     /**

@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Forgot Passcode — Default tier, login negative cases (new-passcode login validation).
+  Account: 0591181431 / 2141673968 IQA (forgotPasscodeDefaultNegPasscode.* in sit-wmv.properties).
+  Run: mvn test -Dsuite=suites/forgot-passcode-default-tier-negative-02.xml -Dprofile=sit-wmv
+-->
+<suite name="Forgot Passcode Default Tier - Login Negative" verbose="1">
+    <test name="forgot-passcode-default-tier-negative-02">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
+    </test>
+</suite>

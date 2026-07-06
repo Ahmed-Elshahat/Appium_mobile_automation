@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Forgot Passcode — Default tier, negative cases (reset flow validation).
+  Account: 0520110197 / 1147439663 NAT (forgotPasscodeDefaultNeg.* in sit-wmv.properties).
+  Run: mvn test -Dsuite=suites/forgot-passcode-default-tier-negative.xml -Dprofile=sit-wmv
+-->
+<suite name="Forgot Passcode Default Tier - Negative" verbose="1">
+    <test name="forgot-passcode-default-tier-negative">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierNegativeTest"/></classes>
+    </test>
+</suite>

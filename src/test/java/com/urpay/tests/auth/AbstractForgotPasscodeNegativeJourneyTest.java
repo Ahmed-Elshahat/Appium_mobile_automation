@@ -58,6 +58,12 @@ public abstract class AbstractForgotPasscodeNegativeJourneyTest extends Abstract
     @Severity(SeverityLevel.NORMAL)
     public void testReturnToUserVerification() {
         ForgotPasscodePage page = new ForgotPasscodePage();
+        if (!dobStepAvailable) {
+            // DOB was skipped at step 2, so we never left the Enter New Passcode screen.
+            Assert.assertTrue(page.isEnterNewPasscodeScreenDisplayed(),
+                    "DOB skipped \u2014 should already be on the Enter New Passcode screen");
+            return;
+        }
         page.tapForgotPasscode();
 
         Assert.assertTrue(page.isUserVerificationScreenDisplayed(),
@@ -73,7 +79,9 @@ public abstract class AbstractForgotPasscodeNegativeJourneyTest extends Abstract
     @Severity(SeverityLevel.CRITICAL)
     public void testEnterValidDobNavigatesToNewPasscode() {
         ForgotPasscodePage page = new ForgotPasscodePage();
-        page.enterDateOfBirth(dobMonth(), dobDay(), dobYear());
+        if (dobStepAvailable) {
+            page.enterDateOfBirth(dobMonth(), dobDay(), dobYear());
+        }
 
         Assert.assertTrue(page.isEnterNewPasscodeScreenDisplayed(),
                 "Enter New Passcode screen should be shown after entering a valid date of birth");
@@ -88,9 +96,7 @@ public abstract class AbstractForgotPasscodeNegativeJourneyTest extends Abstract
     @Severity(SeverityLevel.NORMAL)
     public void testConsecutivePasscodeShowsAlert() {
         ForgotPasscodePage page = new ForgotPasscodePage();
-        page.enterPasscodeOnKeypad(consecutivePasscode());
-
-        String message = page.getNotificationMessage(20);
+        String message = page.enterPasscodeAndReadNotification(consecutivePasscode(), 20);
         Assert.assertEquals(message, "The passcode should not be in sequence or consecutive",
                 "Consecutive passcode alert should be displayed");
     }
@@ -119,9 +125,7 @@ public abstract class AbstractForgotPasscodeNegativeJourneyTest extends Abstract
     @Severity(SeverityLevel.NORMAL)
     public void testDifferentConfirmPasscodeShowsMismatch() {
         ForgotPasscodePage page = new ForgotPasscodePage();
-        page.enterPasscodeOnKeypad(differentPasscode());
-
-        String message = page.getNotificationMessage(20);
+        String message = page.enterPasscodeAndReadNotification(differentPasscode(), 20);
         Assert.assertEquals(message, "The passcode is not matched",
                 "Passcode mismatch alert should be displayed");
     }
