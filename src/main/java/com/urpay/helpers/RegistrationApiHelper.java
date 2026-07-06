@@ -682,7 +682,7 @@ public final class RegistrationApiHelper {
     @Step("API accept new terms after login")
     static void acceptNewTerms(String baseUrl, Session session) {
         ConfigManager config = ConfigManager.getInstance();
-        String termsVersion = config.get("registration.termsVersion", "16");
+        String termsVersion = config.get("registration.termsVersion", "17");
         String body = "{\"termsVersion\":\"" + termsVersion + "\"}";
         Response resp = authedRequest(session)
                 .header("X-Principle-Type", "Consumer")
