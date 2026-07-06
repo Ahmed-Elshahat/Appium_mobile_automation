@@ -13,6 +13,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -49,6 +51,9 @@ public final class RegistrationApiHelper {
 
     /** Plaintext passcode that {@link #PASSCODE_2233_BLOB} encrypts — logged so the account is usable. */
     static final String PASSCODE_PLAINTEXT = "2233";
+
+    /** Visitor (BOR) unverified date of birth used for age/validate + registration (from the BE report). */
+    private static final String VISITOR_DOB = "1994-01-22";
 
     private static final Random RANDOM = new Random();
 
@@ -112,6 +117,18 @@ public final class RegistrationApiHelper {
         return registerAndReturn(PoiType.NAT);
     }
 
+    /** Register a new Resident/Iqama (IQA) consumer and return its login credentials. */
+    @Step("Register new IQA consumer via API and return its credentials")
+    public static Provisioned registerResidentAndReturn() {
+        return registerAndReturn(PoiType.IQA);
+    }
+
+    /** Register a new Visitor (BOR) consumer and return its login credentials. */
+    @Step("Register new Visitor (BOR) consumer via API and return its credentials")
+    public static Provisioned registerVisitorAndReturn() {
+        return registerAndReturn(PoiType.BOR);
+    }
+
     /**
      * Register a new consumer of the given POI type, seed full KYC in the DB and log it in.
      *
@@ -166,8 +183,22 @@ public final class RegistrationApiHelper {
 
             seedTahaqoqInfo(poiNumber, mobile);
 
+            // Visitor (BOR) has an EXTRA step vs NAT/IQA (per BE report): POST /consumers/age/validate
+            // returns an X-Verification-Token that the registration call must carry, and the registration
+            // body includes the unverifiedDateOfBirth. NAT/IQA register without either.
+            String verificationToken = null;
+            String unverifiedDob = null;
+            if (poiType == PoiType.BOR) {
+                unverifiedDob = config.get("registration.visitor.dob", VISITOR_DOB);
+                verificationToken = validateAge(baseUrl, unverifiedDob, poiType.code(), verifyToken);
+                if (verificationToken == null) {
+                    log.warn("Registration aborted: BOR age/validate returned no X-Verification-Token");
+                    return null;
+                }
+            }
+
             Response registration = registerConsumer(baseUrl, mobile, otpReference, poiNumber,
-                    poiType.code(), verifyToken);
+                    poiType.code(), verifyToken, verificationToken, unverifiedDob);
             int regStatus = registration.getStatusCode();
             if (regStatus < 200 || regStatus >= 300) {
                 log.warn("Consumer registration failed for {} (status {}): {}",
@@ -176,15 +207,30 @@ public final class RegistrationApiHelper {
             }
             log.info("Consumer registration succeeded for {} (status {})", mobile, regStatus);
 
-            String partyId = seedConsumerInDb(poiNumber);
+            // Visitor wallets are tier 11 in the BE report; NAT/IQA are tier 5.
+            String tierId = poiType == PoiType.BOR ? "11" : "5";
+            String partyId = seedConsumerInDb(poiNumber, tierId);
             log.info("  partyId      : {}", partyId);
 
-            boolean loggedIn = loginChain(baseUrl, mobile, poiNumber, poiType.code());
+            Session session = loginAndGetSession(baseUrl, mobile, poiNumber, poiType.code());
+            if (session == null) {
+                log.warn("=== Registration incomplete for {} | mobile {} | poi {} | login FAILED ===",
+                        poiType.code(), mobile, poiNumber);
+                return null;
+            }
+
+            // Every user completes KYC + accepts the latest terms after login (BE report + Katalon
+            // RegisterUrpayUser). KYC flips the consumer INACTIVE, so re-activate it in the DB afterwards.
+            completeKyc(baseUrl, session);
+            acceptNewTerms(baseUrl, session);
+            reactivateInDb(mobile, partyId);
 
             logCredentials(poiType.code() + " CONSUMER CREDENTIALS", poiType.code(), mobile, poiNumber, partyId);
-            log.info("=== Registration complete for {} | mobile {} | poi {} | partyId {} | login {} ===",
-                    poiType.code(), mobile, poiNumber, partyId, loggedIn ? "OK" : "FAILED");
-            return loggedIn ? new Provisioned(mobile, poiNumber, poiType.code(), PASSCODE_PLAINTEXT) : null;
+            log.info("=== Registration complete for {} | mobile {} | poi {} | partyId {} | consumerId {} "
+                    + "| walletTier {} | login OK ===",
+                    poiType.code(), mobile, poiNumber, partyId, session.consumerId, session.walletTier);
+            return new Provisioned(mobile, poiNumber, poiType.code(), PASSCODE_PLAINTEXT,
+                    session.consumerId, partyId, session.walletNumber, session.walletTier, session.fullName);
         } catch (Exception e) {
             log.warn("Registration via API failed for {} ({}): {}", mobile, poiType.code(), e.getMessage());
             return null;
@@ -245,25 +291,41 @@ public final class RegistrationApiHelper {
                 .post(simBaseUrl + "/__admin/tahaqoq-info");
     }
 
-    @Step("API consumer registration")
+    /** Backwards-compatible registration (NAT/IQA): no age-verification token, no unverified DOB. */
     static Response registerConsumer(String baseUrl, String mobile, String otpReference,
                                              String poi, String poiType, String otpToken) {
+        return registerConsumer(baseUrl, mobile, otpReference, poi, poiType, otpToken, null, null);
+    }
+
+    @Step("API consumer registration")
+    static Response registerConsumer(String baseUrl, String mobile, String otpReference,
+                                             String poi, String poiType, String otpToken,
+                                             String verificationToken, String unverifiedDob) {
         ConfigManager config = ConfigManager.getInstance();
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
-        String body = "{\"mobileNumber\":\"" + mobile + "\",\"otpReference\":\"" + otpReference
-                + "\",\"passCode\":\"" + passcodeBlob + "\",\"poi\":{\"poiNumber\":\"" + poi
-                + "\",\"poiType\":\"" + poiType + "\"}}";
+        StringBuilder body = new StringBuilder("{\"mobileNumber\":\"" + mobile + "\",\"otpReference\":\""
+                + otpReference + "\",\"passCode\":\"" + passcodeBlob + "\",\"poi\":{\"poiNumber\":\"" + poi
+                + "\",\"poiType\":\"" + poiType + "\"}");
+        // Visitor (BOR) registration additionally sends the unverifiedDateOfBirth (BE report).
+        if (unverifiedDob != null) {
+            body.append(",\"unverifiedDateOfBirth\":\"").append(unverifiedDob).append("\"");
+        }
+        body.append("}");
 
         // No Thread.sleep (framework rule): instead retry to absorb the brief propagation
         // delay between the Tahaqoq seed and the registration becoming accepted.
         Response response = null;
         for (int attempt = 1; attempt <= 4; attempt++) {
-            response = baseHeaders(otpToken)
+            RequestSpecification spec = baseHeaders(otpToken)
                     .header("X-Longitude", "46.679297")
                     .header("X-Latitude", "24.705742")
                     .header("X-Forwarded-For", "1")
-                    .header("Content-Type", "application/json")
-                    .body(body)
+                    .header("Content-Type", "application/json");
+            // Visitor (BOR) carries the token returned by /consumers/age/validate.
+            if (verificationToken != null) {
+                spec = spec.header("X-Verification-Token", verificationToken);
+            }
+            response = spec.body(body.toString())
                     .post(baseUrl + "/consumers/registration");
             int status = response.getStatusCode();
             if (status >= 200 && status < 300) {
@@ -272,6 +334,28 @@ public final class RegistrationApiHelper {
             log.info("Registration attempt {} returned status {} — retrying", attempt, status);
         }
         return response;
+    }
+
+    /**
+     * Visitor (BOR) age validation — {@code POST /consumers/age/validate}. Returns the
+     * {@code X-Verification-Token} that the subsequent registration must carry (BE report step
+     * absent for NAT/IQA).
+     *
+     * @return the verification token, or {@code null} if the call failed / returned no token
+     */
+    @Step("API validate age (Visitor/BOR)")
+    static String validateAge(String baseUrl, String dateOfBirth, String poiType, String otpToken) {
+        String body = "{\"dateOfBirth\":\"" + dateOfBirth + "\",\"poiType\":\"" + poiType + "\"}";
+        Response resp = baseHeaders(otpToken)
+                .header("X-Forwarded-For", "1")
+                .header("Content-Type", "application/json")
+                .body(body)
+                .post(baseUrl + "/consumers/age/validate");
+        String token = resp.getHeader("X-Verification-Token");
+        log.info("Age validate ({}) status {} -> isAdult {} | verification token {}",
+                poiType, resp.getStatusCode(), resp.jsonPath().getString("body.isAdult"),
+                token != null ? "acquired" : "MISSING");
+        return token;
     }
 
     @Step("API device register")
@@ -380,6 +464,9 @@ public final class RegistrationApiHelper {
             String securityToken = login.getHeader(SECURITY_TOKEN_HEADER);
             String sessionId = login.getHeader("X-Session-Id");
             String consumerId = login.jsonPath().getString("body.consumerId");
+            String walletNumber = login.jsonPath().getString("body.wallets[0].walletNumber");
+            String walletTier = login.jsonPath().getString("body.wallets[0].walletTier");
+            String fullName = login.jsonPath().getString("body.consumerName.fullName");
             int status = login.getStatusCode();
             if (status >= 200 && status < 300 && securityToken != null) {
                 ConfigManager config = ConfigManager.getInstance();
@@ -387,7 +474,7 @@ public final class RegistrationApiHelper {
                 return new Session(securityToken, sessionId, deviceToken,
                         config.get("registration.deviceId", "5237008156"),
                         config.get("registration.deviceName", "test1262472071"),
-                        consumerId, verifyToken);
+                        consumerId, verifyToken, walletNumber, walletTier, fullName);
             }
             log.warn("Consumer login failed (status {}): {}", status, login.getBody().asString());
             return null;
@@ -406,9 +493,13 @@ public final class RegistrationApiHelper {
         public final String deviceName;
         public final String consumerId;
         public final String otpToken;
+        public final String walletNumber;
+        public final String walletTier;
+        public final String fullName;
 
         Session(String securityToken, String sessionId, String deviceToken,
-                String deviceId, String deviceName, String consumerId, String otpToken) {
+                String deviceId, String deviceName, String consumerId, String otpToken,
+                String walletNumber, String walletTier, String fullName) {
             this.securityToken = securityToken;
             this.sessionId = sessionId;
             this.deviceToken = deviceToken;
@@ -416,6 +507,9 @@ public final class RegistrationApiHelper {
             this.deviceName = deviceName;
             this.consumerId = consumerId;
             this.otpToken = otpToken;
+            this.walletNumber = walletNumber;
+            this.walletTier = walletTier;
+            this.fullName = fullName;
         }
     }
 
@@ -428,12 +522,47 @@ public final class RegistrationApiHelper {
         public final String poi;
         public final String poiType;
         public final String passcode;
+        public final String consumerId;
+        public final String partyId;
+        public final String walletNumber;
+        public final String walletTier;
+        public final String fullName;
 
-        Provisioned(String mobile, String poi, String poiType, String passcode) {
+        Provisioned(String mobile, String poi, String poiType, String passcode,
+                    String consumerId, String partyId, String walletNumber, String walletTier,
+                    String fullName) {
             this.mobile = mobile;
             this.poi = poi;
             this.poiType = poiType;
             this.passcode = passcode;
+            this.consumerId = consumerId;
+            this.partyId = partyId;
+            this.walletNumber = walletNumber;
+            this.walletTier = walletTier;
+            this.fullName = fullName;
+        }
+
+        /**
+         * The provisioned consumer's data as a {@code Map} (mobile / poi / poiType / passcode /
+         * consumerId / partyId / walletNumber / walletTier / fullName) so a caller can log in with
+         * these credentials. {@code null} values are returned as empty strings.
+         */
+        public Map<String, String> toMap() {
+            Map<String, String> data = new LinkedHashMap<>();
+            data.put("mobile", nullToEmpty(mobile));
+            data.put("poi", nullToEmpty(poi));
+            data.put("poiType", nullToEmpty(poiType));
+            data.put("passcode", nullToEmpty(passcode));
+            data.put("consumerId", nullToEmpty(consumerId));
+            data.put("partyId", nullToEmpty(partyId));
+            data.put("walletNumber", nullToEmpty(walletNumber));
+            data.put("walletTier", nullToEmpty(walletTier));
+            data.put("fullName", nullToEmpty(fullName));
+            return data;
+        }
+
+        private static String nullToEmpty(String s) {
+            return s == null ? "" : s;
         }
     }
 
@@ -445,8 +574,8 @@ public final class RegistrationApiHelper {
      *
      * @return the PARTY_ID, or {@code null} if the row was not found / DB unreachable
      */
-    @Step("Seed consumer KYC + activation in Oracle (poi {poiNumber})")
-    private static String seedConsumerInDb(String poiNumber) {
+    @Step("Seed consumer KYC + activation in Oracle (poi {poiNumber}, tier {tierId})")
+    private static String seedConsumerInDb(String poiNumber, String tierId) {
         try (Connection conn = openDbConnection()) {
             String partyId = lookupPartyId(conn, poiNumber);
             if (partyId == null) {
@@ -454,7 +583,7 @@ public final class RegistrationApiHelper {
                 return null;
             }
 
-            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET PRODUCT_TIER_ID = '5' "
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET PRODUCT_TIER_ID = '" + tierId + "' "
                     + "WHERE PARTY_ID = ?", partyId);
 
             executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET FULL_NAME = 'Ayman Abbas', "
@@ -482,11 +611,105 @@ public final class RegistrationApiHelper {
             executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' "
                     + "WHERE PARTY_ID = ?", partyId);
 
-            log.info("DB seeding done for partyId {} (tier 5, KYC verified, ACTIVE)", partyId);
+            log.info("DB seeding done for partyId {} (tier {}, KYC verified, ACTIVE)", partyId, tierId);
             return partyId;
         } catch (SQLException e) {
             log.warn("DB seeding failed for POI {} — continuing: {}", poiNumber, e.getMessage());
             return null;
+        }
+    }
+
+    // ── Post-login: KYC + terms + re-activation (every user) ───────
+
+    /** Build an authenticated request spec for a logged-in consumer session. */
+    static RequestSpecification authedRequest(Session session) {
+        ConfigManager config = ConfigManager.getInstance();
+        RequestSpecification spec = RestAssured.given()
+                .header("X-Session-Language", "EN")
+                .header("X-Client-Id", config.get("registration.clientId", "1278490422"))
+                .header("X-Device-Platform", config.get("registration.devicePlatform", "IOS"))
+                .header("X-App-Version", config.get("registration.appVersion", "456"))
+                .header("X-Device-Id", session.deviceId)
+                .header("X-Device-Name", session.deviceName)
+                .header("X-Security-Token", session.securityToken)
+                .header("X-Request-Id", UUID.randomUUID().toString())
+                .header("X-Forwarded-For", "51.235.115.210")
+                .header("Content-Type", "application/json");
+        if (session.sessionId != null) {
+            spec = spec.header("X-Session-Id", session.sessionId);
+        }
+        if (session.deviceToken != null) {
+            spec = spec.header(DEVICE_TOKEN_HEADER, session.deviceToken);
+        }
+        if (session.otpToken != null) {
+            spec = spec.header(OTP_TOKEN_HEADER, session.otpToken);
+        }
+        return spec;
+    }
+
+    /**
+     * Complete the consumer's KYC (income / employment) — {@code PUT /consumers/{id}/kyc}, exactly
+     * as the BE report's {@code ConsumerUpdateKYCAPI} and Katalon {@code RegisterUrpayUser}. Called
+     * for every freshly registered user. Best-effort.
+     */
+    @Step("API complete KYC for consumer {session.consumerId}")
+    static void completeKyc(String baseUrl, Session session) {
+        if (session.consumerId == null) {
+            log.warn("KYC skipped: login returned no consumerId");
+            return;
+        }
+        String body = "{"
+                + "\"additionalIncomeSource\":\"SALARY\","
+                + "\"basicIncomeSource\":\"SALARY\","
+                + "\"email\":\"email1@domain.com\","
+                + "\"employer\":\"AlRajhi Bank\","
+                + "\"employmentStatus\":\"Government Sector\","
+                + "\"incomeRange\":\"1\","
+                + "\"jobCategory\":\"21\""
+                + "}";
+        Response resp = authedRequest(session)
+                .body(body)
+                .put(baseUrl + "/consumers/" + session.consumerId + "/kyc");
+        log.info("KYC for consumer {} -> status {} body {}", session.consumerId,
+                resp.getStatusCode(), resp.getBody().asString());
+    }
+
+    /**
+     * Accept the latest terms &amp; conditions after login — {@code POST
+     * /consumers/new-terms/accept/after-login} with body {@code {termsVersion}}, as Katalon
+     * {@code RegisterUrpayUser} does for every user after registration. Best-effort.
+     */
+    @Step("API accept new terms after login")
+    static void acceptNewTerms(String baseUrl, Session session) {
+        ConfigManager config = ConfigManager.getInstance();
+        String termsVersion = config.get("registration.termsVersion", "16");
+        String body = "{\"termsVersion\":\"" + termsVersion + "\"}";
+        Response resp = authedRequest(session)
+                .header("X-Principle-Type", "Consumer")
+                .body(body)
+                .post(baseUrl + "/consumers/new-terms/accept/after-login");
+        log.info("Accept new terms (v{}) -> status {} body {}", termsVersion,
+                resp.getStatusCode(), resp.getBody().asString());
+    }
+
+    /**
+     * Re-activate a consumer after KYC. {@code /consumers/{id}/kyc} flips the consumer to INACTIVE;
+     * re-run the DB batch (PARTY + PARTY_PRODUCT STATUS = ACTIVE, Nazeer cleared) so the account is
+     * usable for login, mirroring the BE report's post-KYC queries. Best-effort.
+     */
+    @Step("DB re-activate consumer after KYC (party {partyId})")
+    static void reactivateInDb(String mobile, String partyId) {
+        if (partyId == null) {
+            return;
+        }
+        try (Connection conn = openDbConnection()) {
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE Mobile = ?", mobile);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '' "
+                    + "WHERE PARTY_ID = ?", partyId);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
+            log.info("Re-activated consumer (partyId {}) after KYC", partyId);
+        } catch (SQLException e) {
+            log.warn("Re-activation failed for partyId {} — continuing: {}", partyId, e.getMessage());
         }
     }
 
