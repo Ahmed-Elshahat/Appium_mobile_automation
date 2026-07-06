@@ -1,0 +1,22 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Default-tier Forgot Passcode — positive + login-negative, run in parallel.
+  One Maven build (single target/test-classes → no resource file-lock), two TestNG <test>
+  blocks executed concurrently. DriverFactory is ThreadLocal, so each test gets its own session.
+    positive     → ForgotPasscodeDefaultTierTest        (forgotPasscode.* — 0520627328 NAT, DOB 30/05/1999)
+    login-neg    → ForgotPasscodeDefaultTierLoginNegativeTest (forgotPasscodeDefaultNegPasscode.* — 0520835195 NAT)
+  Run: mvn test -Dsuite=suites/forgot-passcode-default-tier-parallel.xml -Dprofile=sit-wmv -Denv=SIT
+-->
+<suite name="Forgot Passcode Default Tier - Positive + Login Negative" verbose="1"
+       parallel="tests" thread-count="2">
+    <test name="ForgotPasscodeDefaultTier">
+        <classes>
+            <class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/>
+        </classes>
+    </test>
+    <test name="ForgotPasscodeDefaultTierLoginNegative">
+        <classes>
+            <class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/>
+        </classes>
+    </test>
+</suite>
