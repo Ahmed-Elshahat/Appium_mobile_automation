@@ -149,6 +149,32 @@ public final class RegistrationApiHelper {
      */
     @Step("Register new {poiType} consumer via API (full flow, returns credentials)")
     public static Provisioned registerAndReturn(PoiType poiType) {
+        return registerAndReturn(poiType, true);
+    }
+
+    /**
+     * Register a new Default-tier (NAT) consumer but STOP before completing KYC: it registers, seeds
+     * the DB and logs the user in, then returns WITHOUT calling the KYC / accept-terms APIs. Use this
+     * to provision a fresh account that still needs to go through its in-app KYC / verification journey.
+     *
+     * @return the provisioned credentials, or {@code null} if the backend chain failed
+     */
+    @Step("Register new Default-tier consumer via API (stop before KYC)")
+    public static Provisioned registerDefaultTierAndReturn() {
+        return registerAndReturn(PoiType.NAT, false);
+    }
+
+    /**
+     * Register a new consumer, seed the DB and log it in. When {@code doKyc} is {@code true} the
+     * user's KYC is completed and the latest terms accepted after login; when {@code false} the flow
+     * STOPS right after login (a Default-tier, not-yet-KYC'd account).
+     *
+     * @param poiType NAT, IQA or BOR
+     * @param doKyc   whether to complete KYC + accept terms after login
+     * @return the provisioned credentials, or {@code null} if any stage of the chain failed
+     */
+    @Step("Register new {poiType} consumer via API (doKyc {doKyc})")
+    private static Provisioned registerAndReturn(PoiType poiType, boolean doKyc) {
         ConfigManager config = ConfigManager.getInstance();
         String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
 
@@ -207,9 +233,15 @@ public final class RegistrationApiHelper {
             }
             log.info("Consumer registration succeeded for {} (status {})", mobile, regStatus);
 
-            // Visitor wallets are tier 11 in the BE report; NAT/IQA are tier 5.
-            String tierId = poiType == PoiType.BOR ? "11" : "5";
-            String partyId = seedConsumerInDb(poiNumber, tierId);
+            // Full flow seeds a verified identity + upgraded tier (5 for NAT/IQA, 11 for BOR). Default-tier
+            // provisioning only ACTIVATES the consumer and leaves it at the registration tier (3), un-KYC'd.
+            String partyId;
+            if (doKyc) {
+                String tierId = poiType == PoiType.BOR ? "11" : "5";
+                partyId = seedConsumerInDb(poiNumber, tierId);
+            } else {
+                partyId = activateOnlyInDb(poiNumber);
+            }
             log.info("  partyId      : {}", partyId);
 
             Session session = loginAndGetSession(baseUrl, mobile, poiNumber, poiType.code());
@@ -219,11 +251,16 @@ public final class RegistrationApiHelper {
                 return null;
             }
 
-            // Every user completes KYC + accepts the latest terms after login (BE report + Katalon
-            // RegisterUrpayUser). KYC flips the consumer INACTIVE, so re-activate it in the DB afterwards.
-            completeKyc(baseUrl, session);
-            acceptNewTerms(baseUrl, session);
-            reactivateInDb(mobile, partyId);
+            // Full flow completes KYC + accepts the latest terms after login (BE report + Katalon
+            // RegisterUrpayUser); KYC flips the consumer INACTIVE, so re-activate it afterwards.
+            // Default-tier provisioning STOPS before KYC so the account still needs its in-app journey.
+            if (doKyc) {
+                completeKyc(baseUrl, session);
+                acceptNewTerms(baseUrl, session);
+                reactivateInDb(mobile, partyId);
+            } else {
+                log.info("Stopping before KYC/terms (Default-tier account, not KYC-completed)");
+            }
 
             logCredentials(poiType.code() + " CONSUMER CREDENTIALS", poiType.code(), mobile, poiNumber, partyId);
             log.info("=== Registration complete for {} | mobile {} | poi {} | partyId {} | consumerId {} "
@@ -619,6 +656,35 @@ public final class RegistrationApiHelper {
         }
     }
 
+    /**
+     * Activate a freshly registered consumer WITHOUT seeding identity or bumping the tier: the
+     * consumer stays at its registration default (tier 3) and un-KYC'd. Only flips PARTY /
+     * PARTY_PRODUCT to ACTIVE and clears Nazeer (mirrors the family helper's activate-only path).
+     * Used by {@link #registerDefaultTierAndReturn()}.
+     *
+     * @return the PARTY_ID, or {@code null} if the row was not found / DB unreachable
+     */
+    @Step("DB activate-only (Default tier 3, no identity seed) for poi {poiNumber}")
+    private static String activateOnlyInDb(String poiNumber) {
+        try (Connection conn = openDbConnection()) {
+            String partyId = lookupPartyId(conn, poiNumber);
+            if (partyId == null) {
+                log.warn("Activate-only skipped: no CONSUMER row for POI_ID {}", poiNumber);
+                return null;
+            }
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY SET STATUS = 'ACTIVE' WHERE ID = ?", partyId);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.CONSUMER SET NATHEER_STATUS = '', NATHEER_REASON = '' "
+                    + "WHERE PARTY_ID = ?", partyId);
+            executeUpdate(conn, "UPDATE EPAY_PARTY.PARTY_PRODUCT SET STATUS = 'ACTIVE' WHERE PARTY_ID = ?", partyId);
+            log.info("Activate-only done for partyId {} (tier unchanged = registration default 3, no identity seed)",
+                    partyId);
+            return partyId;
+        } catch (SQLException e) {
+            log.warn("Activate-only failed for POI {} — continuing: {}", poiNumber, e.getMessage());
+            return null;
+        }
+    }
+
     // ── Post-login: KYC + terms + re-activation (every user) ───────
 
     /** Build an authenticated request spec for a logged-in consumer session. */
@@ -682,7 +748,7 @@ public final class RegistrationApiHelper {
     @Step("API accept new terms after login")
     static void acceptNewTerms(String baseUrl, Session session) {
         ConfigManager config = ConfigManager.getInstance();
-        String termsVersion = config.get("registration.termsVersion", "17");
+        String termsVersion = config.get("registration.termsVersion", "16");
         String body = "{\"termsVersion\":\"" + termsVersion + "\"}";
         Response resp = authedRequest(session)
                 .header("X-Principle-Type", "Consumer")

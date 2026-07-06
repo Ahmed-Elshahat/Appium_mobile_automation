@@ -21,6 +21,7 @@
                     <include name="provisionNationalUser"/>
                     <include name="provisionResidentUser"/>
                     <include name="provisionVisitorUser"/>
+                    <include name="provisionDefaultTierUser"/>
                     -->
                 </methods>
             </class>

@@ -1,5 +1,6 @@
 package com.urpay.tests.provisioning;
 
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
 import org.slf4j.Logger;
@@ -64,6 +65,17 @@ public class UserProvisioningTest {
         log.info("########## PROVISIONING: visitor (BOR) consumer ##########");
         assertTrue(RegistrationApiHelper.registerVisitorConsumer(),
                 "Failed to provision a visitor consumer");
+    }
+
+    @Test
+    @Story("Provision a Default-tier (NAT) consumer, stop before KYC")
+    @Severity(SeverityLevel.NORMAL)
+    @Description("Registers + activates a brand-new national URPay consumer but STOPS before KYC — the "
+            + "account stays at the registration default (tier 3), un-KYC'd, ready for its in-app journey.")
+    public void provisionDefaultTierUser() {
+        log.info("########## PROVISIONING: Default-tier (NAT) consumer, no KYC ##########");
+        assertNotNull(RegistrationApiHelper.registerDefaultTierAndReturn(),
+                "Failed to provision a Default-tier consumer");
     }
 
     @Test
