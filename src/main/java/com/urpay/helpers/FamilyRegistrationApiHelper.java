@@ -278,7 +278,8 @@ public final class FamilyRegistrationApiHelper {
         Response verify = RegistrationApiHelper.verifyOtp(baseUrl, member.mobile, otpReference, genToken);
         String verifyToken = verify.getHeader("X-OTP-Token");
         if (verifyToken == null) {
-            log.warn("{} registration aborted: OTP verification returned no token", member.role);
+            log.warn("{} registration aborted: OTP verification returned no token (status {}): {}",
+                    member.role, verify.getStatusCode(), verify.getBody().asString());
             return false;
         }
 
