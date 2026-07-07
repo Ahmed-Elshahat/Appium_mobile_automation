@@ -747,8 +747,8 @@ public final class FamilyRegistrationApiHelper {
         m.relationCode = "6";
         m.idExpiryDate = "2034-10-11T00:00:00";
         m.idExpirationDateH = "1456-07-28";
-        m.dateOfBirthH = "1437-08-15";
-        m.birthDateG = "2015-05-27";                                          // < 18
+        m.dateOfBirthH = "1430-06-06";
+        m.birthDateG = "2009-06-01";                                          // ~17 yrs (>16 and <18)
         m.gender = "M";
         m.placeOfBirth = "\u0627\u0644\u0631\u064A\u0627\u0636";            // الرياض
         m.firstName = "\u0645\u0639\u062A\u0632";                            // معتز
