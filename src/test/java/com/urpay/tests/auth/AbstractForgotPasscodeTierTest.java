@@ -12,7 +12,6 @@ import com.urpay.core.ConfigManager;
 import com.urpay.flows.ForgotPasscodeFlow;
 import com.urpay.helpers.PasscodeResetApiHelper;
 import com.urpay.pages.auth.ForgotPasscodePage;
-import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.utils.PasscodeRotation;
 
 import io.qameta.allure.Description;
@@ -326,31 +325,16 @@ public abstract class AbstractForgotPasscodeTierTest extends BaseTest {
     @Test(groups = {"auth", "passcode"}, priority = 13,
             dependsOnMethods = "testVerifyConfirmTextBelowHeader")
     @Story("Confirm New Passcode")
-    @Description("Re-enter the new passcode, verify the success toast and navigation to the Dashboard")
+    @Description("Re-enter the new passcode and verify the 'Passcode successfully updated' toast")
     @Severity(SeverityLevel.CRITICAL)
-    public void testReenterPasscodeShowsSuccessAndDashboard() {
+    public void testReenterPasscodeShowsSuccess() {
         ForgotPasscodePage page = new ForgotPasscodePage();
-        // The success toast is transient — enter the passcode and read it immediately (the per-tap
-        // error-banner poll would otherwise delay the read past the toast's lifetime). The read is
-        // best-effort: if the toast animates away mid-read, confirm success via the landing screen.
+        // Re-enter the passcode and read the transient "Passcode successfully updated" toast — the
+        // definitive success signal for the reset. The post-reset landing differs per account
+        // (login screen / dashboard / verify-identity), so success is asserted on the toast only.
         String message = page.enterPasscodeAndReadNotification(newPasscode(), 20);
-        if (!message.isEmpty()) {
-            Assert.assertEquals(message, "Passcode successfully updated",
-                    "Success toast should confirm the passcode was updated");
-        } else {
-            log.warn("Success toast not captured (transient) — confirming success via the landing screen.");
-        }
-
-        if (dobStepAvailable) {
-            DashboardPage dashboard = new DashboardPage();
-            Assert.assertTrue(dashboard.isLoaded(),
-                    "Dashboard should be displayed after the passcode reset");
-        } else {
-            // Un-KYC'd default-tier accounts land on the "You're all set!" verify-identity screen
-            // (KYC not completed) after the reset, rather than the dashboard.
-            Assert.assertTrue(page.isAccountReadyScreenDisplayed(),
-                    "The 'You're all set!' screen should be displayed after the passcode reset");
-        }
+        Assert.assertEquals(message, "Passcode successfully updated",
+                "Success toast should confirm the passcode was updated");
     }
 
     // ══════════════════════════════════════════════════

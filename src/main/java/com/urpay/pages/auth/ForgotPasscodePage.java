@@ -343,29 +343,29 @@ public class ForgotPasscodePage extends BasePage {
      * returns an empty string if the transient popup never appears within the timeout.
      */
     public String getNotificationMessage(long timeoutSec) {
-        // The toast re-renders during its show animation, so a handle returned by findQuick can go
-        // stale before its text is read. Re-find and retry a few times within the timeout budget.
-        int attempts = 3;
-        for (int i = 0; i < attempts; i++) {
-            List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MESSAGE, timeoutSec);
-            if (els.isEmpty()) {
-                log.warn("Notification message popup did not appear within {}s", timeoutSec);
-                return "";
-            }
-            try {
-                WebElement el = els.get(0);
-                String text = el.getAttribute("text");
-                if (text == null || text.isEmpty()) {
-                    text = el.getText();
+        // The toast is transient and re-renders during its show animation, so its element can be
+        // found BEFORE the text is populated (empty), or go stale mid-read. Poll until a NON-EMPTY
+        // message is read or the timeout elapses, rather than reading it once.
+        long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
+        do {
+            List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MESSAGE, 1);
+            if (!els.isEmpty()) {
+                try {
+                    WebElement el = els.get(0);
+                    String text = el.getAttribute("text");
+                    if (text == null || text.isEmpty()) {
+                        text = el.getText();
+                    }
+                    if (text != null && !text.isEmpty()) {
+                        log.info("Notification popup message: {}", text);
+                        return text;
+                    }
+                } catch (org.openqa.selenium.StaleElementReferenceException e) {
+                    log.debug("Notification toast went stale while reading \u2014 retrying");
                 }
-                log.info("Notification popup message: {}", text);
-                return text == null ? "" : text;
-            } catch (org.openqa.selenium.StaleElementReferenceException e) {
-                log.warn("Notification toast went stale while reading (attempt {}/{}), retrying",
-                        i + 1, attempts);
             }
-        }
-        log.warn("Notification toast kept going stale \u2014 could not read its text");
+        } while (System.currentTimeMillis() < deadline);
+        log.warn("Notification message popup did not yield text within {}s", timeoutSec);
         return "";
     }
 }
