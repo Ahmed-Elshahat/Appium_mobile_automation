@@ -221,6 +221,11 @@ public final class RegistrationApiHelper {
                     log.warn("Registration aborted: BOR age/validate returned no X-Verification-Token");
                     return null;
                 }
+            } else {
+                // NAT/IQA read their DOB from the national identity source, so seed it into Yakeen
+                // (birthDateG/dateOfBirthH) BEFORE registering — same identity source the family NAT
+                // members use — so the registered account carries a date of birth.
+                seedYakeenInfo(poiNumber);
             }
 
             Response registration = registerConsumer(baseUrl, mobile, otpReference, poiNumber,
@@ -326,6 +331,43 @@ public final class RegistrationApiHelper {
                 .queryParam("MobileNumber", mobile)
                 .body("{}")
                 .post(simBaseUrl + "/__admin/tahaqoq-info");
+    }
+
+    /**
+     * Seed the Yakeen simulator with the account's identity INCLUDING the date of birth, so a
+     * standalone NAT/IQA registration carries a DOB (mirrors the family-member Yakeen seed in
+     * {@code FamilyRegistrationApiHelper.seedYakeenInfo}). birthDateG {@code 1999-05-30} / Hijri
+     * {@code 1420-05-08} match {@link #seedConsumerInDb}'s DATE_OF_BIRTH ('30-MAY-99'). Both dates
+     * are configurable so a different DOB can be provisioned without a code change.
+     */
+    @Step("API seed Yakeen info (identity + DOB) for poi {poiNumber}")
+    static Response seedYakeenInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String birthDateG = config.get("registration.default.birthDateG", "1999-05-30");
+        String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
+        return baseHeaders(null)
+                .header("X-Api-Key", apiKey)
+                .header("Content-Type", "application/json")
+                .queryParam("nin", poiNumber)
+                .queryParam("firstName", "\u0645\u0639\u062A\u0632")               // معتز
+                .queryParam("fatherName", "\u0635\u0644\u0627\u062D")              // صلاح
+                .queryParam("grandFatherName", "\u0639\u0645\u0631")               // عمر
+                .queryParam("familyName", "\u0627\u0644\u063A\u0627\u0645\u062F\u064A") // الغامدي
+                .queryParam("englishFirstName", "Mutez")
+                .queryParam("englishSecondName", "Salah")
+                .queryParam("englishThirdName", "Omar")
+                .queryParam("englishLastName", "Alghamdi")
+                .queryParam("idExpiryDate", "2034-10-11T00:00:00")
+                .queryParam("dateOfBirthH", dateOfBirthH)
+                .queryParam("birthDateG", birthDateG)
+                .queryParam("gender", "M")
+                .queryParam("idExpirationDateH", "1456-07-28")
+                .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636") // الرياض
+                .post(simBaseUrl + "/__admin/yakeen-info");
     }
 
     /** Backwards-compatible registration (NAT/IQA): no age-verification token, no unverified DOB. */
@@ -660,7 +702,8 @@ public final class RegistrationApiHelper {
      * Activate a freshly registered consumer WITHOUT seeding identity or bumping the tier: the
      * consumer stays at its registration default (tier 3) and un-KYC'd. Only flips PARTY /
      * PARTY_PRODUCT to ACTIVE and clears Nazeer (mirrors the family helper's activate-only path).
-     * Used by {@link #registerDefaultTierAndReturn()}.
+     * The DOB comes from the Yakeen identity seeded before registration ({@link #seedYakeenInfo}),
+     * not a direct DB write. Used by {@link #registerDefaultTierAndReturn()}.
      *
      * @return the PARTY_ID, or {@code null} if the row was not found / DB unreachable
      */

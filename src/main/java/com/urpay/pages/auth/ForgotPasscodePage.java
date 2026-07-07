@@ -112,6 +112,11 @@ public class ForgotPasscodePage extends BasePage {
     private static final By NOTIFICATION_MESSAGE =
             AppiumBy.xpath("//*[@content-desc='testID-notification-message']");
 
+    // Post-reset landing screen shown for un-KYC'd (default-tier) accounts instead of the
+    // dashboard: "You're all set!" with a "Verify your identity" CTA (KYC not yet completed).
+    private static final By ACCOUNT_READY_SCREEN = AppiumBy.xpath(
+            "//*[contains(@text,'all set') or contains(@text,'account is ready')]");
+
     // ══════════════════════════════════════════════════
     //  PASSCODE SCREEN
     // ══════════════════════════════════════════════════
@@ -232,6 +237,14 @@ public class ForgotPasscodePage extends BasePage {
         return isPresent(CONFIRM_PASSCODE_SUBTITLE, 30);
     }
 
+    /**
+     * True when the post-reset "You're all set!" verify-identity screen is shown. Un-KYC'd
+     * (default-tier) accounts land here after a successful passcode reset instead of the dashboard.
+     */
+    public boolean isAccountReadyScreenDisplayed() {
+        return isPresent(ACCOUNT_READY_SCREEN, 30);
+    }
+
     public String getEnterNewPasscodeHeader() {
         return getText(ENTER_NEW_PASSCODE_HEADER);
     }
@@ -330,17 +343,29 @@ public class ForgotPasscodePage extends BasePage {
      * returns an empty string if the transient popup never appears within the timeout.
      */
     public String getNotificationMessage(long timeoutSec) {
-        List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MESSAGE, timeoutSec);
-        if (els.isEmpty()) {
-            log.warn("Notification message popup did not appear within {}s", timeoutSec);
-            return "";
+        // The toast re-renders during its show animation, so a handle returned by findQuick can go
+        // stale before its text is read. Re-find and retry a few times within the timeout budget.
+        int attempts = 3;
+        for (int i = 0; i < attempts; i++) {
+            List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MESSAGE, timeoutSec);
+            if (els.isEmpty()) {
+                log.warn("Notification message popup did not appear within {}s", timeoutSec);
+                return "";
+            }
+            try {
+                WebElement el = els.get(0);
+                String text = el.getAttribute("text");
+                if (text == null || text.isEmpty()) {
+                    text = el.getText();
+                }
+                log.info("Notification popup message: {}", text);
+                return text == null ? "" : text;
+            } catch (org.openqa.selenium.StaleElementReferenceException e) {
+                log.warn("Notification toast went stale while reading (attempt {}/{}), retrying",
+                        i + 1, attempts);
+            }
         }
-        WebElement el = els.get(0);
-        String text = el.getAttribute("text");
-        if (text == null || text.isEmpty()) {
-            text = el.getText();
-        }
-        log.info("Notification popup message: {}", text);
-        return text == null ? "" : text;
+        log.warn("Notification toast kept going stale \u2014 could not read its text");
+        return "";
     }
 }
