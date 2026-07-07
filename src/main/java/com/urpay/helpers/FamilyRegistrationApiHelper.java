@@ -77,8 +77,17 @@ public final class FamilyRegistrationApiHelper {
      *
      * @return {@code true} only if both registrations and the link seeding succeeded
      */
-    @Step("Register parent + kid and link them via API")
     public static boolean registerAndLinkParentChild() {
+        return provisionLinkedParentAndKid() != null;
+    }
+
+    /**
+     * Register a FRESH parent + kid (randomly generated POI/mobile on every call) and link them via
+     * the backend, returning the generated credentials so a UI test can log in as the kid. Returns
+     * {@code null} if any registration / link step failed.
+     */
+    @Step("Register parent + kid and link them via API")
+    public static LinkedPair provisionLinkedParentAndKid() {
         ConfigManager config = ConfigManager.getInstance();
         String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
 
@@ -103,21 +112,21 @@ public final class FamilyRegistrationApiHelper {
                 log.error("=== Family setup aborted: simulator seeding did not take effect, so the "
                         + "guardianship link would fail. Check the neoleap VPN + simulator ({}). ===",
                         simBaseUrl());
-                return false;
+                return null;
             }
 
             // 2. Register the PARENT fully (register → activate/seed → KYC), then the KID — BE order.
             //    Tier 5 for the parent; the kid keeps its registration-default tier 3.
             if (!registerMember(baseUrl, parent)) {
                 log.warn("Family setup aborted: parent registration failed");
-                return false;
+                return null;
             }
             parent.partyId = forceVerification(parent, true);
             completeParentKyc(baseUrl, parent);
 
             if (!registerMember(baseUrl, kid)) {
                 log.warn("Family setup aborted: kid registration failed");
-                return false;
+                return null;
             }
             // The kid MUST start BARE (tier 3, null identity, unverified) — its identity + tier-9 promotion
             // are populated by the LINK from the Yakeen guardianship seeded before registration. Pre-seeding
@@ -130,7 +139,7 @@ public final class FamilyRegistrationApiHelper {
             //    → family-member KYC (createFamilyRequest).
             if (!sendLinkRequest(baseUrl, kid, parent)) {
                 log.warn("Family setup: link request was not created");
-                return false;
+                return null;
             }
             boolean approved = approveLinkRequest(baseUrl, parent, kid);
 
@@ -150,11 +159,32 @@ public final class FamilyRegistrationApiHelper {
                     kid.poiType, kid.mobile, kid.poi, kid.partyId);
             log.info("=== Family setup complete | parent poi {} (partyId {}) linked with kid poi {} | approved {} ===",
                     parent.poi, parent.partyId, kid.poi, approved ? "YES" : "NO");
-            return approved;
+            return approved ? new LinkedPair(parent, kid) : null;
         } catch (Exception e) {
             log.warn("Family registration/link failed: {}", e.getMessage());
-            return false;
+            return null;
         }
+    }
+
+    /** The freshly generated + linked parent/kid pair returned by {@link #provisionLinkedParentAndKid()}. */
+    public static final class LinkedPair {
+        private final Member parent;
+        private final Member kid;
+
+        LinkedPair(Member parent, Member kid) {
+            this.parent = parent;
+            this.kid = kid;
+        }
+
+        /** Parent mobile in the generated {@code +966...} form. */
+        public String parentMobile() { return parent.mobile; }
+
+        public String parentPoi() { return parent.poi; }
+
+        /** Kid mobile in the generated {@code +966...} form. */
+        public String kidMobile() { return kid.mobile; }
+
+        public String kidPoi() { return kid.poi; }
     }
 
     /**

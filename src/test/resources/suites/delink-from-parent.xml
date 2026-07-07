@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Delink From Parent (registration case): provisions a FRESH linked parent + kid pair via the
+  backend (generated accounts every run), then the kid sends an unlink-from-parent request.
+
+  Requires the neoleap VPN for the provisioning APIs (SIT host / simulators / Oracle DB).
+
+  Run: mvn test -Dsuite=suites/delink-from-parent.xml -Dprofile=sit-wmv
+  (add -Dremote=true for LambdaTest)
+-->
+<suite name="Delink From Parent" verbose="1" parallel="none">
+    <test name="delink-from-parent">
+        <classes><class name="com.urpay.tests.wallet.DelinkFromParentTest"/></classes>
+    </test>
+</suite>
