@@ -390,6 +390,9 @@ public final class FamilyRegistrationApiHelper {
         // It just logs in and sends the request; its KYC is done by the parent AFTER approval
         // via /consumers/family-member/kyc. Remember the kid's consumerId for that step.
         kid.consumerId = kidSession.consumerId;
+        // Accept the latest T&C for the kid so the app does not present the terms screen on first
+        // login (the UI journeys log in as the kid and would otherwise stall on it).
+        RegistrationApiHelper.acceptNewTerms(baseUrl, kidSession);
         // Body mirrors the app's CreateFamilyRequestRq_Rule exactly: the parent (receiver) is
         // resolved by mobile only (no receiverPoi*), and the kid is named via requesterConsumerId.
         String body = "{"
@@ -571,6 +574,9 @@ public final class FamilyRegistrationApiHelper {
             return;
         }
         completeKyc(baseUrl, session);
+        // Accept the latest T&C for the parent (mirrors the main registration flow) so the app does
+        // not present the terms screen on first login.
+        RegistrationApiHelper.acceptNewTerms(baseUrl, session);
         reactivate(parent);
     }
 
