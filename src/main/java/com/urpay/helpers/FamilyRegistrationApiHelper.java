@@ -185,6 +185,40 @@ public final class FamilyRegistrationApiHelper {
         public String kidMobile() { return kid.mobile; }
 
         public String kidPoi() { return kid.poi; }
+
+        public String kidPartyId() { return kid.partyId; }
+
+        public String kidConsumerId() { return kid.consumerId; }
+    }
+
+    /**
+     * Update the kid's date of birth in the DB AFTER registration/link. Deliberately kept OUT of
+     * {@link #provisionLinkedParentAndKid()} so the kid registers young (needed for the family link
+     * to settle) and is only aged up afterwards for the scenario under test. Best-effort.
+     *
+     * @param partyId      the kid's PARTY_ID (from {@link LinkedPair#kidPartyId()})
+     * @param birthDateG   Gregorian DOB, {@code YYYY-MM-DD}
+     * @param dateOfBirthH Hijri DOB, {@code YYYY-MM-DD}
+     */
+    @Step("DB update kid DOB to {birthDateG} (post-registration)")
+    public static void updateKidDateOfBirth(String partyId, String birthDateG, String dateOfBirthH) {
+        if (partyId == null) {
+            log.warn("Update kid DOB skipped: no partyId");
+            return;
+        }
+        try (Connection conn = RegistrationApiHelper.openDbConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "UPDATE EPAY_PARTY.CONSUMER SET DATE_OF_BIRTH = TO_DATE(?, 'YYYY-MM-DD'), "
+                     + "DATE_OF_BIRTH_HIJRI = ? WHERE PARTY_ID = ?")) {
+            ps.setString(1, birthDateG);
+            ps.setString(2, dateOfBirthH);
+            ps.setString(3, partyId);
+            int rows = ps.executeUpdate();
+            log.info("Updated kid DOB (partyId {}) -> {} / Hijri {} ({} row(s))",
+                    partyId, birthDateG, dateOfBirthH, rows);
+        } catch (SQLException e) {
+            log.warn("Update kid DOB failed for partyId {} \u2014 continuing: {}", partyId, e.getMessage());
+        }
     }
 
     /**

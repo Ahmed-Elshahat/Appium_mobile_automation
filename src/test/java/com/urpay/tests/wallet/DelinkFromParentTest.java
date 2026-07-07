@@ -46,9 +46,13 @@ public class DelinkFromParentTest extends BaseTest {
         Assert.assertNotNull(pair,
                 "Provisioning a fresh linked parent + kid pair failed — cannot run the delink flow "
                 + "(requires the neoleap VPN for the SIT API / simulators / Oracle DB)");
+        // The kid registers young (so the family link settles), then it is aged up to >15 in the DB
+        // for the delink scenario. This DB update is deliberately OUTSIDE the registration flow.
+        FamilyRegistrationApiHelper.updateKidDateOfBirth(pair.kidPartyId(), "2010-06-01", "1431-06-17");
         kidMobile = toLocalMobile(pair.kidMobile());
         kidId = pair.kidPoi();
-        log.info("Delink: provisioned fresh linked pair — kid mobile {} / poi {}", kidMobile, kidId);
+        log.info("Delink: provisioned fresh linked pair — kid mobile {} / poi {} (consumerId {})",
+                kidMobile, kidId, pair.kidConsumerId());
     }
 
     @Test(groups = {"wallet", "delink", "family"}, priority = 1)
