@@ -80,7 +80,11 @@ public abstract class AbstractForgotPasscodeNegativeJourneyTest extends Abstract
     public void testEnterValidDobNavigatesToNewPasscode() {
         ForgotPasscodePage page = new ForgotPasscodePage();
         if (dobStepAvailable) {
-            page.enterDateOfBirth(dobMonth(), dobDay(), dobYear());
+            boolean advanced = page.enterDateOfBirthAndProceed(dobMonth(), dobDay(), dobYear(), 20);
+            Assert.assertTrue(advanced,
+                    "Enter New Passcode screen should be shown after entering a valid date of birth"
+                            + rejectionSuffix(page.getLastDobRejectionToast()));
+            return;
         }
 
         Assert.assertTrue(page.isEnterNewPasscodeScreenDisplayed(),

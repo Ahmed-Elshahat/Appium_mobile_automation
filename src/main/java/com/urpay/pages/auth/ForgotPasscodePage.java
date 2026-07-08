@@ -184,6 +184,56 @@ public class ForgotPasscodePage extends BasePage {
         tap(CALENDAR_NEXT_BTN);
     }
 
+    /**
+     * The last rejection toast surfaced by {@link #enterDateOfBirthAndProceed} when the Next tap did
+     * not advance to the Enter New Passcode screen. Empty when the last attempt navigated. Lets the
+     * test distinguish an environment blocker ("Service is currently unavailable") from a genuine
+     * "date does not match" without re-reading the (by-then vanished) transient toast.
+     */
+    private String lastDobRejectionToast = "";
+
+    /** @return the last DOB Next-tap rejection toast (see {@link #enterDateOfBirthAndProceed}). */
+    public String getLastDobRejectionToast() {
+        return lastDobRejectionToast;
+    }
+
+    /**
+     * Enter a VALID date of birth and proceed to the Enter New Passcode screen. Self-heals a
+     * transient Next-tap loss: the Next tap fired immediately after the native date dialog dismisses
+     * can be swallowed while the dialog is still animating away, leaving the app on the User
+     * Verification screen. The Next tap is therefore retried once — the entered date is unchanged and
+     * still valid — before giving up. Any toast surfaced instead of navigation is recorded (see
+     * {@link #getLastDobRejectionToast()}) so a backend outage is distinguishable from a missed tap.
+     *
+     * @return {@code true} once the Enter New Passcode screen is shown; {@code false} if it never appears.
+     */
+    @Step("Enter valid date of birth {month}/{day}/{year} and proceed to the Enter New Passcode screen")
+    public boolean enterDateOfBirthAndProceed(String month, String day, String year, long timeoutSec) {
+        tap(CALENDAR_OPEN_BTN);
+        new DatePickerHandler(driver).selectDate(month, day, year);
+        tap(CALENDAR_OK_BTN);
+        lastDobRejectionToast = "";
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            // Tap Next raw and read any rejection toast IMMEDIATELY (it is transient and would be
+            // gone by the time the longer navigation check below completes). A non-empty toast means
+            // the app actively rejected the date (e.g. a DOB that does not match the account) — a
+            // data issue, not a missed tap.
+            waitUtils.waitForClickable(CALENDAR_NEXT_BTN).click();
+            String toast = getNotificationMessage(3);
+            if (!toast.isEmpty()) {
+                lastDobRejectionToast = toast;
+                log.warn("Valid-DOB Next tap #{} was rejected with toast: '{}'", attempt, toast);
+            }
+            if (isEnterNewPasscodeScreenDisplayed(timeoutSec)) {
+                lastDobRejectionToast = "";
+                return true;
+            }
+            log.warn("Valid-DOB Next tap #{} did not reach Enter New Passcode \u2014 re-tapping Next.",
+                    attempt);
+        }
+        return false;
+    }
+
     @Step("Open the date-of-birth calendar and confirm the default date (no selection)")
     public void openCalendarAndConfirmDefault() {
         tap(CALENDAR_OPEN_BTN);
@@ -193,6 +243,35 @@ public class ForgotPasscodePage extends BasePage {
     @Step("Tap Next on the User Verification screen")
     public void tapUserVerificationNext() {
         tap(CALENDAR_NEXT_BTN);
+    }
+
+    /**
+     * Tap Next on the User Verification screen and immediately read the resulting toast. The
+     * shared {@code testID-notification-message} DOB-mismatch alert is transient; {@link BasePage#tap}
+     * runs a per-tap error-banner poll (~1s) that would push the first notification read past the
+     * toast's lifetime and miss it (empty alert). Next is therefore tapped raw so the read starts
+     * at once — mirroring {@link #enterPasscodeAndReadNotification}.
+     *
+     * <p>Self-heal: if the toast is not captured on the first tap (transient miss on a slow
+     * render), Next is re-tapped — the date is unchanged and still invalid, so the same mismatch
+     * alert re-fires — and the toast is read again.
+     */
+    @Step("Tap Next on the User Verification screen and read the mismatch toast")
+    public String tapUserVerificationNextAndReadNotification(long timeoutSec) {
+        String message = tapNextRawAndRead(timeoutSec);
+        if (message.isEmpty()) {
+            log.warn("DOB-mismatch toast not captured on the first Next tap \u2014 re-tapping Next "
+                    + "to re-fire the alert (date unchanged, still invalid).");
+            message = tapNextRawAndRead(timeoutSec);
+        }
+        return message;
+    }
+
+    private String tapNextRawAndRead(long timeoutSec) {
+        // Raw click without BasePage.tap's per-tap error-banner poll (~1s) so the transient
+        // rejection toast fired by the Next tap can be read immediately.
+        waitUtils.waitForClickable(CALENDAR_NEXT_BTN).click();
+        return getNotificationMessage(timeoutSec);
     }
 
     /**
@@ -230,7 +309,11 @@ public class ForgotPasscodePage extends BasePage {
     // ══════════════════════════════════════════════════
 
     public boolean isEnterNewPasscodeScreenDisplayed() {
-        return isPresent(ENTER_NEW_PASSCODE_HEADER, 30);
+        return isEnterNewPasscodeScreenDisplayed(30);
+    }
+
+    public boolean isEnterNewPasscodeScreenDisplayed(long timeoutSec) {
+        return isPresent(ENTER_NEW_PASSCODE_HEADER, timeoutSec);
     }
 
     public boolean isConfirmPasscodeScreenDisplayed() {

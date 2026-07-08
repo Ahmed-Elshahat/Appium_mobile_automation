@@ -250,7 +250,12 @@ public abstract class AbstractForgotPasscodeTierTest extends BaseTest {
     public void testEnterValidDobNavigatesToNewPasscode() {
         ForgotPasscodePage page = new ForgotPasscodePage();
         if (dobStepAvailable) {
-            page.enterDateOfBirth(dobMonth(), dobDay(), dobYear());
+            boolean advanced = page.enterDateOfBirthAndProceed(dobMonth(), dobDay(), dobYear(), 20);
+            String toast = page.getLastDobRejectionToast();
+            Assert.assertTrue(advanced,
+                    "Enter New Passcode screen should be shown after entering a valid date of birth"
+                            + (toast == null || toast.isEmpty() ? "" : " \u2014 app returned: '" + toast + "'"));
+            return;
         }
 
         Assert.assertTrue(page.isEnterNewPasscodeScreenDisplayed(),

@@ -120,9 +120,8 @@ public abstract class AbstractForgotPasscodeDobNegativeTest extends BaseTest {
             return;
         }
         page.openCalendarAndConfirmDefault();
-        page.tapUserVerificationNext();
 
-        assertDobMismatch(page);
+        assertDobMismatch(page.tapUserVerificationNextAndReadNotification(20));
     }
 
     // ── 4-6) RE-TAP NEXT (date unchanged) → SAME ALERT ──
@@ -137,9 +136,8 @@ public abstract class AbstractForgotPasscodeDobNegativeTest extends BaseTest {
         if (skipIfNoDobScreen(page)) {
             return;
         }
-        page.tapUserVerificationNext();
 
-        assertDobMismatch(page);
+        assertDobMismatch(page.tapUserVerificationNextAndReadNotification(20));
     }
 
     @Test(groups = {"auth", "passcode", "negative"}, priority = 5,
@@ -152,9 +150,8 @@ public abstract class AbstractForgotPasscodeDobNegativeTest extends BaseTest {
         if (skipIfNoDobScreen(page)) {
             return;
         }
-        page.tapUserVerificationNext();
 
-        assertDobMismatch(page);
+        assertDobMismatch(page.tapUserVerificationNextAndReadNotification(20));
     }
 
     @Test(groups = {"auth", "passcode", "negative"}, priority = 6,
@@ -167,9 +164,8 @@ public abstract class AbstractForgotPasscodeDobNegativeTest extends BaseTest {
         if (skipIfNoDobScreen(page)) {
             return;
         }
-        page.tapUserVerificationNext();
 
-        assertDobMismatch(page);
+        assertDobMismatch(page.tapUserVerificationNextAndReadNotification(20));
     }
 
     // ── 7) DRAG DOWN → BACK TO PASSCODE SCREEN ──
@@ -210,10 +206,20 @@ public abstract class AbstractForgotPasscodeDobNegativeTest extends BaseTest {
         return false;
     }
 
-    protected void assertDobMismatch(ForgotPasscodePage page) {
-        String message = page.getNotificationMessage(20);
+    protected void assertDobMismatch(String message) {
         Assert.assertTrue(message.equalsIgnoreCase(DOB_MISMATCH_ALERT),
                 "Date mismatch alert should be displayed, but was: '" + message + "'");
+    }
+
+    /**
+     * Append the app's rejection toast (if any) to a failure message so a valid-DOB step that does
+     * not advance surfaces the real reason — e.g. a backend "Service is currently unavailable" — as
+     * a clear FAILURE rather than a bare "screen not shown".
+     */
+    protected String rejectionSuffix(String rejectionToast) {
+        return (rejectionToast == null || rejectionToast.isEmpty())
+                ? ""
+                : " \u2014 app returned: '" + rejectionToast + "'";
     }
 
     @Step("Login until the passcode screen with the negative tier user")
