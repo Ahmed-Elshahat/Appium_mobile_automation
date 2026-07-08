@@ -254,4 +254,23 @@ public abstract class BasePage {
             }
         } catch (Exception ignored) {}
     }
+
+    /**
+     * Diagnostic: attach the current page source (XML) to the Allure report and log it at DEBUG.
+     * Used by page objects to capture UI state at key decision points without failing the test.
+     *
+     * @param tag short label shown in the Allure attachment name, e.g. "confirmationScreen".
+     */
+    protected void dumpPageSource(String tag) {
+        try {
+            String source = driver.getPageSource();
+            log.debug("Page source [{}]: {} chars", tag, source == null ? 0 : source.length());
+            Allure.addAttachment("pageSource-" + tag, "text/xml",
+                    new java.io.ByteArrayInputStream(
+                            source == null ? new byte[0] : source.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                    ".xml");
+        } catch (Exception e) {
+            log.warn("dumpPageSource({}) failed: {}", tag, e.getMessage());
+        }
+    }
 }
