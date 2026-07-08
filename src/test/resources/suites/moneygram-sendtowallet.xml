@@ -1,0 +1,24 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="MoneyGram Send to Wallet Only" verbose="1">
+    <!--
+        Remittance squad — MoneyGram Send-to-Wallet ONLY (single corridor, one beneficiary search).
+
+        Runs just the login anchor + the Send-to-Wallet corridor, so an account with a single
+        beneficiary is searched ONCE. ⚠ REAL MONEY.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/moneygram-sendtowallet.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="MoneyGram Send to Wallet">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods>
+                    <include name="testMoneyGramSendToWalletTransfer"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

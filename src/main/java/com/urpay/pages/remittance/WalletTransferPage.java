@@ -90,7 +90,10 @@ public class WalletTransferPage extends BasePage {
     @iOSXCUITFindBy(accessibility = "testID-Text.27cd0efa-a3c5-4ed2-954c-4a3e5e8f1513")
     private WebElement recipientNameLabel;
 
-    @AndroidFindBy(accessibility = "testID-primary-confirm-main")
+    // The Confirm button's testID is obfuscated in newer builds — match the accessibility id OR
+    // the "Confirm" text's clickable ancestor so the locator survives the testID change.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-confirm-main']"
+            + " | //android.widget.TextView[@text='Confirm']/ancestor-or-self::*[@clickable='true'][1]")
     @iOSXCUITFindBy(accessibility = "testID-primary-confirm-main")
     private WebElement confirmButton;
 

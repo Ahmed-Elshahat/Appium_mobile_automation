@@ -144,30 +144,27 @@ public class LocalTransferPage extends BasePage {
     //  ACTIONS — AMOUNT
     // ══════════════════════════════════════════════════
 
-    /** The Enter Amount editable field (Katalon EnterAmountField = //android.widget.EditText). */
-    private static final By AMOUNT_FIELD = AppiumBy.xpath("//android.widget.EditText");
-
     /**
-     * Enter the transfer amount. Mirrors Katalon (Keypad.safeSendKeys → tap field, clear, type)
-     * by typing into the Enter Amount field. Falls back to a quick-amount chip if the build
-     * renders chips (20/50/150/300) instead of an editable field.
+     * Enter the transfer amount. The amount screen is a currency display + in-app numeric keypad
+     * (NOT a plain EditText) — the same screen the validated Wallet Transfer drives with a
+     * quick-amount CHIP. Tap the chip; do NOT use an EditText+sendKeys+hideKeyboard() path here,
+     * because hideKeyboard() dismisses the in-app keypad by pressing BACK, which navigates OFF the
+     * amount screen. Non-chip amounts are typed digit-by-digit on the in-app keypad.
      */
     @Step("Enter amount: {amount}")
     public void enterAmount(String amount) {
-        if (isPresent(AMOUNT_FIELD, 3)) {
-            WebElement field = driver.findElement(AMOUNT_FIELD);
-            field.click();
-            try {
-                field.clear();
-            } catch (Exception ignored) {
-                // some builds disallow clear on the masked amount field
-            }
-            field.sendKeys(amount);
-            hideKeyboard();
+        By chip = AppiumBy.xpath("//*[@text='" + amount + "' or @label='" + amount + "']");
+        if (isPresent(chip, 5)) {
+            tap(chip);
             return;
         }
-        // Fallback: quick-amount chip matching the value exactly.
-        tap(AppiumBy.xpath("//*[@text='" + amount + "' or @label='" + amount + "']"));
+        // Non-chip amount: type each digit on the in-app keypad (still NO hideKeyboard()).
+        for (char digit : amount.toCharArray()) {
+            By key = AppiumBy.xpath("(//*[@text='" + digit + "'])[last()]");
+            if (isPresent(key, 3)) {
+                tap(key);
+            }
+        }
     }
 
     @Step("Tap Next on the amount screen")
