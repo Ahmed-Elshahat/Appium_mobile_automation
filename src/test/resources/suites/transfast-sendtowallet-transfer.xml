@@ -1,0 +1,30 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Transfast Send to Wallet Transfer Collection" verbose="1">
+    <!--
+        Remittance squad — Transfast International Transfer (MTO), Send to Wallet (Philippines).
+        Reuses the operator-agnostic InternationalTransferFlow. Transfast is provider card 2 on this
+        route (the newer Katalon setup used index 1 — adjust if the diagnostic differs); no
+        payout-bank step.
+
+        Set an account with an active Transfast Send-to-Wallet beneficiary in
+        transfast.sendToWallet.user.* (Katalon reference account = 0520378665).
+
+        One LambdaTest session, ONE pass through the flow:
+          - testTransfastSendToWalletTransfer logs in, drives to the CONFIRMATION page, validates it
+            there (no money yet), THEN confirms end-to-end. ⚠ REAL MONEY.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/transfast-sendtowallet-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Transfast Send to Wallet">
+        <groups>
+            <run><include name="transfast-sendtowallet"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.TransfastSendToWalletTest"/>
+        </classes>
+    </test>
+
+</suite>

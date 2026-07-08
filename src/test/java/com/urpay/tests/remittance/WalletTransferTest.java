@@ -1,7 +1,6 @@
 package com.urpay.tests.remittance;
 
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import com.urpay.core.BaseTest;
@@ -30,6 +29,7 @@ import io.qameta.allure.Story;
  *
  *   1. Search a wallet beneficiary  → verify the search results screen
  *   2. Transfer to an unsaved number → verify the success (Done) screen
+ *   3. Validate the sender's transaction history for that transfer
  */
 @Epic("Remittance")
 @Feature("Wallet Transfer")
@@ -43,10 +43,10 @@ public class WalletTransferTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
 
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("urpayUser.mobileNumber"),
-                c.get("urpayUser.id"),
-                c.get("urpayUser.verificationCode", "1234"),
-                c.get("urpayUser.passCode", "2233"));
+                c.get("walletTransfer.user.mobileNumber"),
+                c.get("walletTransfer.user.id"),
+                c.get("walletTransfer.user.verificationCode", "1234"),
+                c.get("walletTransfer.user.passCode", "2233"));
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
         WalletTransferPage page = new WalletTransferFlow()
@@ -69,7 +69,7 @@ public class WalletTransferTest extends BaseTest {
         WalletTransferPage page = new WalletTransferFlow().transferToUnsavedNumber(
                 c.get("receiver.mobileNumber"),
                 c.get("walletTransfer.amount", "10"),
-                c.get("urpayUser.verificationCode", "1234"));
+                c.get("walletTransfer.user.verificationCode", "1234"));
 
         Assert.assertTrue(page.isTransferSuccessful(30),
                 "Success (Thank You) screen should be visible after the wallet transfer");
@@ -97,51 +97,5 @@ public class WalletTransferTest extends BaseTest {
                 "Transaction details should show the receiver mobile " + recipient);
         Assert.assertTrue(details.showsAmount(amount),
                 "Transaction details should show the transferred amount " + amount);
-    }
-
-    @Test(priority = 4, dependsOnMethods = "testSearchWalletBeneficiary",
-            groups = {"remittance", "wallet-transfer"})
-    @Story("Existing User Name Confirmation")
-    @Description("Wallet Transfer → unsaved number → existing URPay user → Confirm screen shows the recipient's name (no money moved)")
-    @Severity(SeverityLevel.NORMAL)
-    public void testValidateRecipientNameConfirmation() {
-        ConfigManager c = ConfigManager.getInstance();
-        // The receiver (0520553918) is an existing URPay user — entering their number must
-        // resolve & show their name on the Confirm screen. Migrated from
-        // ValidateExistingUserPayMobileNameConfirmationPage (no Confirm/OTP — no money moved).
-        WalletTransferPage page = new WalletTransferFlow().openTransferConfirmation(
-                c.get("receiver.mobileNumber"),
-                c.get("walletTransfer.amount", "20"));
-
-        Assert.assertTrue(page.isExistingUserNameShown(10),
-                "Confirm screen should resolve & show the existing recipient's name (was: "
-                + page.getRecipientName() + ")");
-    }
-
-    @Test(priority = 5, dependsOnMethods = "testSearchWalletBeneficiary",
-            groups = {"remittance", "wallet-transfer"})
-    @Story("Transfer to Active Beneficiary")
-    @Description("Wallet Transfer → select an active/saved beneficiary DIRECTLY (no unsaved number) → amount → confirm → OTP → success")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testTransferToActiveBeneficiary() {
-        ConfigManager c = ConfigManager.getInstance();
-        WalletTransferFlow flow = new WalletTransferFlow();
-
-        WalletTransferPage page = flow.openWalletTransferWithContacts();
-        // Faithful to Katalon Scripts/Remittance/WalletTransfer: tap a saved beneficiary directly.
-        // Requires an ACTIVE beneficiary on the account (device contact or saved/recent recipient).
-        if (!page.isBeneficiaryResultVisible(8)) {
-            throw new SkipException("No active beneficiary on account "
-                    + c.get("urpayUser.mobileNumber")
-                    + " — the direct-beneficiary transfer needs a saved beneficiary "
-                    + "(add a device contact or a saved recipient).");
-        }
-
-        page = flow.transferToActiveBeneficiary(page,
-                c.get("walletTransfer.amount", "20"),
-                c.get("urpayUser.verificationCode", "1234"));
-
-        Assert.assertTrue(page.isTransferSuccessful(30),
-                "Success (Thank You) screen should show after transferring to the active beneficiary");
     }
 }

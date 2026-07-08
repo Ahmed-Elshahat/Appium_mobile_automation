@@ -181,7 +181,10 @@ public class WalletTransferFlow {
         page.selectFirstPurpose();
         page.tapNext();
 
-        waits.waitForVisible(AppiumBy.accessibilityId("testID-primary-confirm-main"), 15);
+        // The Confirm button's testID is obfuscated in newer builds — wait for the id OR the
+        // 'Confirm' text so we don't time out on a screen that is actually ready.
+        waits.waitForVisible(AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-confirm-main'] | //*[@text='Confirm']"), 15);
         return page;
     }
 

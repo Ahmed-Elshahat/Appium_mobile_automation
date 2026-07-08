@@ -1,0 +1,27 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Add International Beneficiary Collection" verbose="1">
+    <!--
+        Remittance squad — Add International (MoneyGram) Beneficiary: corridor + scenario coverage.
+
+        Adds Bank Deposit (PKR) / Cash Pickup (INR) / Send-to-Wallet (EGP) beneficiaries, plus a
+        "Myself"-type add, an edit, and a remove. Each add ends on the IVR "Verification Call"
+        screen (asserted here); DB activation + transfer-to-new is validated separately in a
+        DB-connected environment (suites/add-moneygram-beneficiary.xml).
+
+        One LambdaTest session (single login). Remove runs last.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/add-international-beneficiary.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Add International Beneficiary">
+        <groups>
+            <run><include name="add-international-beneficiary"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/>
+        </classes>
+    </test>
+
+</suite>

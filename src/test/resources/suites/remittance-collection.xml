@@ -1,0 +1,93 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Remittance Squad Collection — FLAT parallel suite (same pattern as
+  payments-and-cards-collection.xml).
+
+  ONE thread pool caps total concurrency. Each <test> = 1 thread = 1 LambdaTest
+  session = 1 UNIQUE account (two sessions on one account = the later login kicks
+  the first). TestNG queues any <test> beyond thread-count.
+
+  CONCURRENCY: thread-count="9" → up to 9 live sessions (9 <test> blocks).
+
+  group-by-instances="true": all methods of one class finish before the next class
+  in the SAME <test> block runs.
+
+  UNIQUE ACCOUNTS (all distinct → no session-kick collisions):
+    Local Transfer          0520281395
+    Wallet Transfer         0520515332
+    MoneyGram BankDeposit   0520543312
+    MoneyGram SendToWallet  0520581842
+    Western Union           0520182501
+    Transfast BankDeposit   0520956626
+    Transfast CashPickup    0520424777
+    H2H/Tahweel CashPickup  0520876253
+    H2H/Tahweel BankDeposit 0520926735
+  EXCLUDED (no working account yet): MoneyGram CashPickup, Transfast SendToWallet.
+
+  Run:
+    mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+        "-Dsuite=suites/remittance-collection.xml" "-Dprofile=sit-remittance"
+-->
+<suite name="Remittance Squad Collection" verbose="1"
+       parallel="tests" thread-count="9" group-by-instances="true">
+
+    <!-- Retry flaky failures inline (transient login/element timeouts) so a real
+         infra hiccup recovers instead of cascade-failing. -->
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <!-- ── Local Transfer (urpayUser 0520281395) ── -->
+    <test name="Local Transfer">
+        <classes><class name="com.urpay.tests.remittance.LocalTransferTest"/></classes>
+    </test>
+
+    <!-- ── Wallet Transfer (own account 0520515332) ── -->
+    <test name="Wallet Transfer">
+        <classes><class name="com.urpay.tests.remittance.WalletTransferTest"/></classes>
+    </test>
+
+    <!-- ── MoneyGram — Bank Deposit (own account 0520543312, benef "Ahmed") ── -->
+    <test name="MoneyGram Bank Deposit">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods><include name="testMoneyGramBankDepositToIndia"/></methods>
+            </class>
+        </classes>
+    </test>
+
+    <!-- ── MoneyGram — Send to Wallet (own account 0520581842, benef "Mohamed") ── -->
+    <test name="MoneyGram Send to Wallet">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods><include name="testMoneyGramSendToWalletTransfer"/></methods>
+            </class>
+        </classes>
+    </test>
+
+    <!-- ── Western Union — Cash Pickup ── -->
+    <test name="Western Union International Transfer">
+        <classes><class name="com.urpay.tests.remittance.WesternUnionTransferTest"/></classes>
+    </test>
+
+    <!-- ── Transfast — Bank Deposit ── -->
+    <test name="Transfast Bank Deposit">
+        <classes><class name="com.urpay.tests.remittance.TransfastBankDepositTest"/></classes>
+    </test>
+
+    <!-- ── Transfast — Cash Pickup ── -->
+    <test name="Transfast Cash Pickup">
+        <classes><class name="com.urpay.tests.remittance.TransfastCashPickupTest"/></classes>
+    </test>
+
+    <!-- ── H2H / Tahweel AlRajhi — Cash Pickup (0520876253) ── -->
+    <test name="H2H Tahweel Cash Pickup">
+        <classes><class name="com.urpay.tests.remittance.TahweelTransferTest"/></classes>
+    </test>
+
+    <!-- ── H2H / Tahweel AlRajhi — Bank Deposit / Account Deposit (0520926735) ── -->
+    <test name="H2H Tahweel Bank Deposit">
+        <classes><class name="com.urpay.tests.remittance.TahweelBankDepositTest"/></classes>
+    </test>
+
+</suite>

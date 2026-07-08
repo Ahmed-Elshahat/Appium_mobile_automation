@@ -1,0 +1,29 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Tahweel AlRajhi (H2H) International Transfer Collection" verbose="1">
+    <!--
+        Remittance squad — Tahweel AlRajhi (H2H) International Transfer (MTO), Cash Pickup.
+
+        Reuses the operator-agnostic InternationalTransferFlow (built for MoneyGram / Western Union).
+        Tahweel AlRajhi is the "H2H" provider in Katalon; its Cash Pickup route uniquely requires a
+        payout-bank selection step on the provider screen (handled by the flow's bank gate).
+
+        One LambdaTest session, ONE pass through the flow:
+          - testTahweelCashPickupTransfer logs in, drives to the CONFIRMATION page, validates it
+            there (no money yet), THEN confirms end-to-end. The beneficiary→confirm steps run ONCE.
+            ⚠ REAL MONEY (small amount from sit-remittance).
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/tahweel-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Tahweel AlRajhi Cash Pickup">
+        <groups>
+            <run><include name="tahweel"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.TahweelTransferTest"/>
+        </classes>
+    </test>
+
+</suite>

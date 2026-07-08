@@ -45,3 +45,10 @@ ajcore.*
 Drivers/
 Katalon/
 logs-wmv/
+
+# -- Temporary page-source debug dumps (investigation artefacts, not source code) --
+nb-*.xml
+
+# -- Python bytecache & LambdaTest log downloads --
+tools/__pycache__/
+tools/lt-logs/

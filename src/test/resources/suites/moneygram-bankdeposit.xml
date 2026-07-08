@@ -1,0 +1,25 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="MoneyGram Bank Deposit Only" verbose="1">
+    <!--
+        Remittance squad — MoneyGram Bank Deposit ONLY (single corridor, one beneficiary search).
+
+        Runs just the login anchor + the Bank Deposit corridor, so an account with a single
+        beneficiary is searched ONCE (the full moneygram-transfer.xml runs all three corridors and
+        therefore searches three times). ⚠ REAL MONEY.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/moneygram-bankdeposit.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="MoneyGram Bank Deposit">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods>
+                    <include name="testMoneyGramBankDepositToIndia"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

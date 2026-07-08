@@ -1,0 +1,31 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Add MoneyGram Beneficiary Collection" verbose="1">
+    <!--
+        Remittance squad — Add MoneyGram (international) Beneficiary + transfer to it.
+
+        Adding an MTO beneficiary ends on an IVR "Verification Call"; the PENDING beneficiary is
+        then activated directly in the wallet DB (IVR skip), exactly like Add Local Beneficiary.
+
+        ⚠ REQUIRES SIT WALLET DB ACCESS (beneficiary.db.url) — run where the DB is reachable.
+        ⚠ The transfer step (priority 2) moves REAL money (small amount from sit-remittance).
+
+        One LambdaTest session:
+          - testAddMoneyGramBeneficiary logs in, adds + DB-activates a uniquely named beneficiary.
+          - testTransferToNewMoneyGramBeneficiary reuses the session (dependsOnMethods) and
+            transfers to the newly activated beneficiary.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/add-moneygram-beneficiary.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Add MoneyGram Beneficiary">
+        <groups>
+            <run><include name="add-moneygram-beneficiary"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/>
+        </classes>
+    </test>
+
+</suite>

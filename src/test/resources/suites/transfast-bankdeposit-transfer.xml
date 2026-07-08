@@ -1,0 +1,29 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Transfast Bank Deposit Transfer Collection" verbose="1">
+    <!--
+        Remittance squad — Transfast International Transfer (MTO), Bank Deposit. Reuses the
+        operator-agnostic InternationalTransferFlow. Transfast is provider card 3 on this route and
+        has NO payout-bank step (unlike Tahweel/H2H).
+
+        Uses its OWN account (0520956626, poi 2153491614 IQA) with an active Bank-Deposit
+        beneficiary — standalone class/suite.
+
+        One LambdaTest session, ONE pass through the flow:
+          - testTransfastBankDepositTransfer logs in, drives to the CONFIRMATION page, validates it
+            there (no money yet), THEN confirms end-to-end. ⚠ REAL MONEY (small amount).
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/transfast-bankdeposit-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Transfast Bank Deposit">
+        <groups>
+            <run><include name="transfast-bankdeposit"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.TransfastBankDepositTest"/>
+        </classes>
+    </test>
+
+</suite>
