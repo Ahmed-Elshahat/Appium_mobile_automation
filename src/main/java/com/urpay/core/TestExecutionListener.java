@@ -114,6 +114,36 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 log.debug("Health check unavailable: {}", healthEx.getMessage());
             }
 
+            // Full device logcat from the Appium server buffer (NOT the LambdaTest API, which caps
+            // at 1MB = session start). This holds the crash tail (FATAL EXCEPTION / native signal /
+            // ANR) for offline tracing. Requires devicelog=true so logcat capture isn't skipped.
+            try {
+                org.openqa.selenium.logging.LogEntries entries = driver.manage().logs().get("logcat");
+                if (entries != null) {
+                    Path lcDir = Paths.get("logcat");
+                    Files.createDirectories(lcDir);
+                    Path lcFile = lcDir.resolve(testName + "-" + System.currentTimeMillis() + ".log");
+                    StringBuilder all = new StringBuilder();
+                    int fatal = 0;
+                    int lines = 0;
+                    for (org.openqa.selenium.logging.LogEntry entry : entries) {
+                        String m = entry.getMessage();
+                        all.append(m).append('\n');
+                        lines++;
+                        if (m != null && (m.contains("FATAL EXCEPTION") || m.contains("FATAL SIGNAL")
+                                || m.contains("ANR in") || m.contains("beginning of crash"))) {
+                            fatal++;
+                            log.error("CRASH> {}", m);
+                        }
+                    }
+                    Files.writeString(lcFile, all.toString(), StandardCharsets.UTF_8);
+                    log.error("⚑ Full logcat saved for {}: {} ({} lines, {} fatal markers)",
+                            testName, lcFile.toAbsolutePath(), lines, fatal);
+                }
+            } catch (Exception lcEx) {
+                log.warn("Logcat capture failed for {}: {}", testName, lcEx.getMessage());
+            }
+
             // Screenshot → allure-results/ (linked to the failed test via the onFinish JSON patch)
             byte[] screenshotBytes = ScreenshotUtils.takeScreenshotAsBytes(driver);
             if (screenshotBytes.length > 0) {

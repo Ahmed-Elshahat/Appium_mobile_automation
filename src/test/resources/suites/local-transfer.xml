@@ -1,0 +1,28 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Local Transfer Collection" verbose="1">
+<!--
+        Remittance squad — Local Transfer (bank / IBAN transfer to a local beneficiary).
+
+        One LambdaTest session (single device, single login). By request this suite STOPS
+        after validating the transaction history — it runs ONE local transfer then verifies
+        it in history, and does NOT perform the extra with-fees / edit-transaction transactions.
+        Those variant tests remain in LocalTransferTest and can be re-enabled by adding them
+        back to the <methods> include below (or switching to <groups><include name="local-transfer"/>).
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/local-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Local Transfer">
+        <classes>
+            <class name="com.urpay.tests.remittance.LocalTransferTest">
+                <methods>
+                    <include name="testLocalTransfer"/>
+                    <include name="testValidateLocalTransactionHistory"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

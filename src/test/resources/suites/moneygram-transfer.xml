@@ -1,0 +1,29 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="MoneyGram International Transfer Collection" verbose="1">
+    <!--
+        Remittance squad — MoneyGram International Transfer (MTO).
+
+        Each corridor logs in with its OWN account (moneygram.bankDeposit.user.* /
+        moneygram.cashPickup.user.* / moneygram.sendToWallet.user.*), so the three are independent
+        and can run in parallel. Bank Deposit / Cash Pickup / Send to Wallet each drive to the
+        CONFIRMATION page, validate it there, THEN confirm end-to-end. ⚠ REAL MONEY (small amounts).
+
+        The shared classes (InternationalTransferPage / AddInternationalBeneficiaryPage /
+        InternationalTransferFlow / InternationalTransferData) are operator-agnostic, so
+        Western Union / Tahweel / Transfast / H2H can be added later by supplying their data.
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/moneygram-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="MoneyGram International Transfer">
+        <groups>
+            <run><include name="moneygram"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest"/>
+        </classes>
+    </test>
+
+</suite>

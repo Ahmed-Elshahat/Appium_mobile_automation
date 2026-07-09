@@ -8,6 +8,7 @@ import com.urpay.core.ConfigManager;
 import com.urpay.flows.LoginFlow;
 import com.urpay.flows.WalletTransferFlow;
 import com.urpay.pages.dashboard.DashboardPage;
+import com.urpay.pages.remittance.WalletTransactionDetailsPage;
 import com.urpay.pages.remittance.WalletTransferPage;
 
 import io.qameta.allure.Description;
@@ -28,6 +29,7 @@ import io.qameta.allure.Story;
  *
  *   1. Search a wallet beneficiary  → verify the search results screen
  *   2. Transfer to an unsaved number → verify the success (Done) screen
+ *   3. Validate the sender's transaction history for that transfer
  */
 @Epic("Remittance")
 @Feature("Wallet Transfer")
@@ -41,10 +43,10 @@ public class WalletTransferTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
 
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("urpayUser.mobileNumber"),
-                c.get("urpayUser.id"),
-                c.get("urpayUser.verificationCode", "1234"),
-                c.get("urpayUser.passCode", "2233"));
+                c.get("walletTransfer.user.mobileNumber"),
+                c.get("walletTransfer.user.id"),
+                c.get("walletTransfer.user.verificationCode", "1234"),
+                c.get("walletTransfer.user.passCode", "2233"));
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
         WalletTransferPage page = new WalletTransferFlow()
@@ -67,9 +69,33 @@ public class WalletTransferTest extends BaseTest {
         WalletTransferPage page = new WalletTransferFlow().transferToUnsavedNumber(
                 c.get("receiver.mobileNumber"),
                 c.get("walletTransfer.amount", "10"),
-                c.get("urpayUser.verificationCode", "1234"));
+                c.get("walletTransfer.user.verificationCode", "1234"));
 
-        Assert.assertTrue(page.isDoneVisible(30),
-                "Done / success screen should be visible after the wallet transfer");
+        Assert.assertTrue(page.isTransferSuccessful(30),
+                "Success (Thank You) screen should be visible after the wallet transfer");
+    }
+
+    @Test(priority = 3, dependsOnMethods = "testWalletTransferToUnsavedNumber",
+            groups = {"remittance", "wallet-transfer", "smoke"})
+    @Story("Validate Sender Transaction History")
+    @Description("After transfer → Transactions → open latest → verify Send money type, receiver mobile & amount")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testValidateSenderTransactionHistory() {
+        ConfigManager c = ConfigManager.getInstance();
+        String recipient = c.get("receiver.mobileNumber");
+        // Significant digits: KSA numbers show as +966XXXXXXXXX (leading 0 dropped).
+        String significantDigits = recipient.startsWith("0") ? recipient.substring(1) : recipient;
+        String amount = c.get("walletTransfer.amount", "20");
+
+        WalletTransactionDetailsPage details = new WalletTransferFlow().openLastTransaction();
+
+        Assert.assertTrue(details.isLoaded(), "Transaction details should load");
+        Assert.assertTrue(details.isWalletTransferTransaction(10),
+                "Latest transaction should be a wallet transfer (first row was: "
+                + details.getFirstDetail() + ")");
+        Assert.assertTrue(details.showsReceiverMobile(significantDigits),
+                "Transaction details should show the receiver mobile " + recipient);
+        Assert.assertTrue(details.showsAmount(amount),
+                "Transaction details should show the transferred amount " + amount);
     }
 }

@@ -1,0 +1,31 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Add Local Beneficiary Collection" verbose="1">
+<!--
+        Remittance squad — Add Local Beneficiary + transfer to the newly added beneficiary.
+
+        Migrated from Katalon:
+          Scripts/Remittance/LocalTran/AddLocalBeneficiary
+          Scripts/Remittance/LocalTran/LocalTransferNewTransfer
+
+        IMPORTANT — requires DB access:
+          Adding a new local beneficiary triggers an IVR phone verification that cannot be driven
+          on LambdaTest. The beneficiary is instead activated directly in the wallet DB (IVR skip),
+          exactly as Katalon does. This suite therefore needs NETWORK ACCESS to the SIT wallet DB
+          (beneficiary.db.url). Run it from an environment / runner that can reach that DB.
+
+        One LambdaTest session (single login):
+          - testAddLocalBeneficiary: add a new beneficiary (UI) then activate it in the DB.
+          - testLocalTransferToNewBeneficiary: transfer to it (dependsOnMethods).
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/add-local-beneficiary.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Add Local Beneficiary">
+        <classes>
+            <class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/>
+        </classes>
+    </test>
+
+</suite>

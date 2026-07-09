@@ -2,8 +2,10 @@ package com.urpay.utils;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -33,6 +35,21 @@ public class WaitUtils {
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds));
     }
 
+    /**
+     * Run a throwing wait; if it times out, ask {@link CrashGuard} whether the app actually died.
+     * If it did, a categorised {@code AppCrashException} is thrown (fast, accurate triage) instead
+     * of the misleading element {@link TimeoutException}; if the app is alive the original timeout
+     * is rethrown unchanged. Zero cost on success — the crash check only runs on the failure path.
+     */
+    private <T> T guardCrash(Supplier<T> waitAction) {
+        try {
+            return waitAction.get();
+        } catch (TimeoutException timeout) {
+            CrashGuard.assertAppAlive(driver); // throws AppCrashException if the app is gone
+            throw timeout;                      // app alive → genuine element timeout
+        }
+    }
+
     // ── Visibility ─────────────────────────────────────────────────
 
     /**
@@ -43,7 +60,7 @@ public class WaitUtils {
      */
     public WebElement waitForVisible(WebElement element) {
         log.debug("Waiting for element to be visible: {}", element);
-        return wait.until(ExpectedConditions.visibilityOf(element));
+        return guardCrash(() -> wait.until(ExpectedConditions.visibilityOf(element)));
     }
 
     /**
@@ -54,7 +71,7 @@ public class WaitUtils {
      */
     public WebElement waitForVisible(By locator) {
         log.debug("Waiting for element to be visible: {}", locator);
-        return wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        return guardCrash(() -> wait.until(ExpectedConditions.visibilityOfElementLocated(locator)));
     }
 
     /**
@@ -65,8 +82,8 @@ public class WaitUtils {
      * @return the visible WebElement
      */
     public WebElement waitForVisible(WebElement element, long timeoutInSeconds) {
-        return new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
-                .until(ExpectedConditions.visibilityOf(element));
+        return guardCrash(() -> new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                .until(ExpectedConditions.visibilityOf(element)));
     }
 
     /**
@@ -77,8 +94,8 @@ public class WaitUtils {
      * @return the visible WebElement
      */
     public WebElement waitForVisible(By locator, long timeoutInSeconds) {
-        return new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
-                .until(ExpectedConditions.visibilityOfElementLocated(locator));
+        return guardCrash(() -> new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                .until(ExpectedConditions.visibilityOfElementLocated(locator)));
     }
 
     // ── Clickable ──────────────────────────────────────────────────
@@ -91,7 +108,7 @@ public class WaitUtils {
      */
     public WebElement waitForClickable(WebElement element) {
         log.debug("Waiting for element to be clickable: {}", element);
-        return wait.until(ExpectedConditions.elementToBeClickable(element));
+        return guardCrash(() -> wait.until(ExpectedConditions.elementToBeClickable(element)));
     }
 
     /**
@@ -102,7 +119,7 @@ public class WaitUtils {
      */
     public WebElement waitForClickable(By locator) {
         log.debug("Waiting for element to be clickable: {}", locator);
-        return wait.until(ExpectedConditions.elementToBeClickable(locator));
+        return guardCrash(() -> wait.until(ExpectedConditions.elementToBeClickable(locator)));
     }
 
     /**
@@ -113,8 +130,8 @@ public class WaitUtils {
      * @return the clickable WebElement
      */
     public WebElement waitForClickable(WebElement element, long timeoutInSeconds) {
-        return new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
-                .until(ExpectedConditions.elementToBeClickable(element));
+        return guardCrash(() -> new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                .until(ExpectedConditions.elementToBeClickable(element)));
     }
 
     /**
@@ -125,8 +142,8 @@ public class WaitUtils {
      * @return the clickable WebElement
      */
     public WebElement waitForClickable(By locator, long timeoutInSeconds) {
-        return new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
-                .until(ExpectedConditions.elementToBeClickable(locator));
+        return guardCrash(() -> new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                .until(ExpectedConditions.elementToBeClickable(locator)));
     }
 
     // ── Invisibility ───────────────────────────────────────────────
@@ -189,7 +206,7 @@ public class WaitUtils {
      * @return the present WebElement
      */
     public WebElement waitForPresence(By locator) {
-        return wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+        return guardCrash(() -> wait.until(ExpectedConditions.presenceOfElementLocated(locator)));
     }
 
     /**
@@ -199,10 +216,40 @@ public class WaitUtils {
      * @return list of present WebElements
      */
     public List<WebElement> waitForAllPresent(By locator) {
-        return wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(locator));
+        return guardCrash(() -> wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(locator)));
     }
 
     // ── Boolean checks (no exception on timeout) ──────────────────
+
+    /**
+     * Run a boolean probe with the implicit wait dropped to ZERO (restored afterwards) so the
+     * explicit timeout is authoritative and the wait polls finely. Without this, a short probe on
+     * an absent element blocks the full global implicit wait, and all polling is coarse.
+     */
+    private boolean probeQuick(java.util.function.BooleanSupplier probe) {
+        Duration restore = driver.manage().timeouts().getImplicitWaitTimeout();
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+        try {
+            return probe.getAsBoolean();
+        } finally {
+            driver.manage().timeouts().implicitlyWait(restore);
+        }
+    }
+
+    /**
+     * Check if element located by locator is VISIBLE within timeout — returns false instead of throwing.
+     */
+    public boolean isVisible(By locator, long timeoutInSeconds) {
+        return probeQuick(() -> {
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                        .until(ExpectedConditions.visibilityOfElementLocated(locator));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        });
+    }
 
     /**
      * Check if element is displayed within timeout — returns false instead of throwing.
@@ -229,13 +276,15 @@ public class WaitUtils {
      * @return true if present, false if timeout
      */
     public boolean isPresent(By locator, long timeoutInSeconds) {
-        try {
-            new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
-                    .until(ExpectedConditions.presenceOfElementLocated(locator));
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return probeQuick(() -> {
+            try {
+                new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds))
+                        .until(ExpectedConditions.presenceOfElementLocated(locator));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        });
     }
 
     /**

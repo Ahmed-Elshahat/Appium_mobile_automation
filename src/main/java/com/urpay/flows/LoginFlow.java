@@ -62,7 +62,16 @@ public class LoginFlow {
     // so DIGIT_x key events register. Pick the clickable node (the inner one).
     private static final By PASSCODE_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
-    private static final By DASHBOARD_MARKER = AppiumBy.accessibilityId("testID-master-amount-main");
+    // Dashboard "logged-in" marker. Some builds/accounts don't expose the balance amount
+    // (testID-master-amount-main) on first paint, but the dashboard root container
+    // (testID-DashboardHome) is always present — match EITHER so passcode entry doesn't
+    // needlessly retry after a successful login.
+    private static final By DASHBOARD_MARKER = AppiumBy.xpath(
+            "//*[@content-desc='testID-master-amount-main' "
+            + "or @content-desc='testID-DashboardHome']");
+
+    /** Settled login-screen states after onboarding-skip. */
+    private enum LoginState { CREDENTIALS, PASSCODE, DASHBOARD, LANDING, UNKNOWN }
 
     public LoginFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
@@ -98,40 +107,32 @@ public class LoginFlow {
     public DashboardPage loginWith(String mobile, String id, String otp, String passcode) {
         skipOnboarding();
 
-        // Cold start of this FLAG_SECURE banking app is slow and the hidden mobile input sits
-        // in the DOM behind the splash/landing, so the discriminating checks below can run
-        // before the real screen has rendered. Block until a genuinely-visible, interactive
-        // screen has settled (passcode re-login, dashboard, or the landing "Login" button)
-        // before deciding which login path to take.
-        By settled = AppiumBy.xpath(
-                "//*[contains(@content-desc,'testID-passCode.screen') "
-                + "or @text='Enter your passcode' or @text='Passcode' "
-                + "or @content-desc='testID-master-amount-main' "
-                + "or @content-desc='testID-secondary-login-main']");
-        waits.isPresent(settled, 60);
-
-        // If passcode screen already visible (app remembers login), just enter passcode.
-        if (waits.isPresent(PASSCODE_SCREEN, 5)) {
-            log.info("Passcode screen detected — entering passcode directly");
-            enterLoginPasscode(passcode);
-            dismissPostLoginPopups();
-            return new DashboardPage();
-        }
-        // If dashboard already visible, no login needed
-        if (waits.isPresent(DASHBOARD_MARKER, 5)) {
-            log.info("Dashboard already visible — skipping login");
-            dismissPostLoginPopups();
-            return new DashboardPage();
-        }
-
-        // Landing screen (fully logged out, e.g. after a passcode change): the credentials
-        // form is reached only by tapping the "Login" button. The onboarding-skip loop runs
-        // too fast to reliably catch it, and the mobile field exists in the DOM behind this
-        // overlay (present but NOT clickable), so tap Login explicitly here before entering
-        // credentials. Wait for it to be clickable to ride out the slow landing render.
-        if (waits.isPresent(LANDING_LOGIN, 10)) {
-            log.info("Landing screen detected — tapping Login to open the credentials form");
-            waits.waitForClickable(LANDING_LOGIN, 20).click();
+        // Determine the settled login screen in ONE combined probe, then branch — no long
+        // back-to-back isPresent() waits. Previously the "settled" gate omitted the credentials-
+        // form marker, so when the app opened the credentials form directly the flow idled ~60s
+        // here (plus ~20s more on the passcode/dashboard/landing probes that could never match)
+        // — the "freeze with no action" the login showed on screen.
+        LoginState state = waitForLoginState(60);
+        switch (state) {
+            case PASSCODE:
+                log.info("Passcode screen detected — entering passcode directly");
+                enterLoginPasscode(passcode);
+                dismissPostLoginPopups();
+                return new DashboardPage();
+            case DASHBOARD:
+                log.info("Dashboard already visible — skipping login");
+                dismissPostLoginPopups();
+                return new DashboardPage();
+            case LANDING:
+                // Fully logged out: the credentials form is reached only by tapping "Login".
+                log.info("Landing screen detected — tapping Login to open the credentials form");
+                waits.waitForClickable(LANDING_LOGIN, 20).click();
+                break;
+            case CREDENTIALS:
+                log.info("Credentials form already visible — entering credentials");
+                break;
+            default:
+                log.warn("Login screen state UNKNOWN after skip — attempting the credentials path");
         }
 
         selectEnvironment();
@@ -156,26 +157,19 @@ public class LoginFlow {
     public void loginUntilPasscodeScreen(String mobile, String id, String otp) {
         skipOnboarding();
 
-        By settled = AppiumBy.xpath(
-                "//*[contains(@content-desc,'testID-passCode.screen') "
-                + "or @text='Enter your passcode' or @text='Passcode' "
-                + "or @content-desc='testID-master-amount-main' "
-                + "or @content-desc='testID-secondary-login-main']");
-        waits.isPresent(settled, 60);
-
-        // App remembers the login → already on the passcode screen, nothing more to do.
-        if (waits.isPresent(PASSCODE_SCREEN, 5)) {
+        // Same one-probe screen classification as loginWith (no long sequential idle waits).
+        LoginState state = waitForLoginState(60);
+        if (state == LoginState.PASSCODE) {
             log.info("Passcode screen already visible — ready for Forgot Passcode");
             return;
         }
-        // Already authenticated (no passcode screen). The Forgot-Passcode flow needs the passcode
-        // screen, so log a warning — the caller's screen check will surface the real failure.
-        if (waits.isPresent(DASHBOARD_MARKER, 5)) {
+        if (state == LoginState.DASHBOARD) {
+            // Already authenticated. The Forgot-Passcode flow needs the passcode screen, so warn —
+            // the caller's screen check will surface the real failure.
             log.warn("Dashboard already visible — Forgot Passcode flow expected the passcode screen");
             return;
         }
-        // Fully logged out (landing) → open the credentials form.
-        if (waits.isPresent(LANDING_LOGIN, 10)) {
+        if (state == LoginState.LANDING) {
             log.info("Landing screen detected — tapping Login to open the credentials form");
             waits.waitForClickable(LANDING_LOGIN, 20).click();
         }
@@ -221,6 +215,39 @@ public class LoginFlow {
 
     // ── Private Steps ──────────────────────────────────
 
+    /**
+     * Wait (once) for ANY settled login screen — credentials form, passcode, dashboard or the
+     * logged-out landing — then classify it with instant checks. Folding the wait into one probe
+     * avoids the long back-to-back isPresent() waits that made the login sit idle on screen when
+     * the app opened the credentials form directly (its marker was missing from the old gate).
+     */
+    private LoginState waitForLoginState(long timeoutSec) {
+        By anySettled = AppiumBy.xpath(
+                "//*[@content-desc='testID-input-direct-mobile' "
+                + "or contains(@content-desc,'testID-passCode.screen') "
+                + "or @text='Enter your passcode' or @text='Passcode' "
+                + "or @content-desc='testID-master-amount-main' "
+                + "or @content-desc='testID-DashboardHome' "
+                + "or @content-desc='testID-secondary-login-main']");
+        waits.isPresent(anySettled, timeoutSec);
+
+        // Classify: post-login states first, then landing (its Login button), then the
+        // credentials form. Use VISIBILITY for landing/mobile because the mobile input also
+        // exists in the DOM *behind* the landing overlay (present but not displayed).
+        if (waits.isPresent(PASSCODE_SCREEN, 1)) {
+            return LoginState.PASSCODE;
+        }
+        if (waits.isPresent(DASHBOARD_MARKER, 1)) {
+            return LoginState.DASHBOARD;
+        }
+        if (waits.isVisible(LANDING_LOGIN, 2)) {
+            return LoginState.LANDING;
+        }
+        if (waits.isVisible(MOBILE, 2)) {
+            return LoginState.CREDENTIALS;
+        }
+        return LoginState.UNKNOWN;
+    }
 
     @Step("Select environment from login dropdown")
     private void selectEnvironment() {
@@ -229,22 +256,20 @@ public class LoginFlow {
         // Its testID is not stable across builds, so locate by visible text and treat this as
         // BEST-EFFORT: if the dropdown/option is absent, skip and continue — the SIT build
         // defaults to the SIT backend, so login still proceeds.
+        // Use a SINGLE explicit waitForClickable (not isPresent + driver.findElement) so a still-
+        // settling login form does not trigger a ~10s implicit-wait retry on the click.
         By envDropdown = AppiumBy.xpath(
                 "//*[@content-desc='testID-env-dropdown' or @text='Environment' "
                 + "or @content-desc='Environment']");
-        if (!waits.isPresent(envDropdown, 5)) {
-            log.warn("Environment dropdown not found — skipping env selection (defaulting to {})", env);
-            return;
-        }
         try {
-            driver.findElement(envDropdown).click();
+            waits.waitForClickable(envDropdown, 8).click();
             log.info("Opened environment dropdown");
             By option = AppiumBy.xpath(
                     "//*[@text='" + env + "' or @content-desc='" + env + "' or @label='" + env + "']");
-            waits.waitForClickable(option, 6).click();
+            waits.waitForClickable(option, 5).click();
             log.info("Environment selected: {}", env);
         } catch (Exception e) {
-            log.warn("Environment selection incomplete for '{}' — continuing to credentials: {}",
+            log.warn("Environment dropdown not selected (defaulting to {}) — continuing: {}",
                     env, e.getMessage());
         }
     }
@@ -268,10 +293,6 @@ public class LoginFlow {
             if (waits.isPresent(DASHBOARD_MARKER, 1)) {
                 return; // already authenticated
             }
-            // The app requests location then notifications at runtime; the notifications
-            // dialog can render a few seconds late — i.e. during passcode entry — and overlay
-            // the boxes. Clear any permission dialog that is currently up before typing.
-            dismissPermissionDialogs(1);
             // The passcode boxes have a hidden input that is NOT auto-focused (unlike the
             // OTP screen). Without focus, DIGIT_x key events are dropped and the boxes stay
             // empty. Tap the boxes region first to focus the input, then press the digits.
@@ -334,49 +355,13 @@ public class LoginFlow {
         }
     }
 
-    /**
-     * Dismiss the Android runtime permission dialogs this app raises after the "Enable Your
-     * Location" button is tapped. autoGrantPermissions pre-grants manifest permissions at session
-     * start, but the app requests permissions explicitly at runtime, so the system
-     * permissioncontroller dialogs can still appear on top of the passcode screen. The app chains
-     * TWO dialogs in sequence — location ("While using the app") then notifications
-     * ("Allow ... to send you notifications?") — and the second only renders a few seconds after
-     * the first is granted, so the loop keeps checking long enough to bridge that gap. Matched by
-     * the stable Android system resource-ids first (immune to the app's testID obfuscation), with
-     * visible-text fallbacks across OEM/locale variants. Best-effort and idempotent.
-     */
-    @Step("Dismiss system permission dialogs")
-    private void dismissPermissionDialogs(long firstWaitSec) {
-        By allow = AppiumBy.xpath(
-                "//*[@resource-id='com.android.permissioncontroller:id/permission_allow_foreground_only_button' "
-                + "or @resource-id='com.android.permissioncontroller:id/permission_allow_one_time_button' "
-                + "or @resource-id='com.android.permissioncontroller:id/permission_allow_button' "
-                + "or @text='While using the app' or @text='Only this time' "
-                + "or @text='Allow' or @text='ALLOW' or @text='Allow only while using the app']");
-        long wait = firstWaitSec;
-        for (int i = 0; i < 4; i++) {
-            var els = waits.findQuick(allow, wait);
-            if (els.isEmpty()) {
-                break;
-            }
-            try {
-                els.get(0).click();
-                log.info("Dismissed system permission dialog ({})", i + 1);
-            } catch (Exception e) {
-                log.warn("Could not dismiss permission dialog: {}", e.getMessage());
-                break;
-            }
-            wait = 4; // a chained dialog (e.g. notifications after location) renders shortly after
-        }
-    }
-
     @Step("Skip onboarding screens")
     private void skipOnboarding() {
         // Wait for ANY first screen element (app loaded)
         By anyFirst = AppiumBy.xpath(
                 "//*[@text='Skip' or @text='No thanks' or @text='Allow' "
                 + "or @text='Later' or @text='Passcode' or @text='Enter your passcode' "
-                + "or @text='Login' or @text='Register' or @text='Enable Your Location' "
+                + "or @text='Login' or @text='LOGIN' or @text='Register' "
                 + "or @content-desc='testID-secondary-login-main' "
                 + "or @content-desc='testID-secondary-g35-main' "
                 + "or @content-desc='testID-primary-register-main' "
@@ -398,13 +383,14 @@ public class LoginFlow {
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main']");
 
-        // Login button on the welcome screen (tap it to go to login form). Verified live: the
-        // welcome screen exposes content-desc testID-secondary-login-main. Keep it a SINGLE simple
-        // OR-xpath (no union '|' / relative './/' predicate, which UiAutomator2's XPath engine can
-        // throw on — that exception is swallowed by findQuick and looks like "button never found").
+        // Login button on the welcome screen (tap it to go to login form). Covers multiple builds:
+        // testID-secondary-login-main / g35-main (obfuscated) / text "Login"/"LOGIN".
         By loginBtn = AppiumBy.xpath(
                 "//*[@content-desc='testID-secondary-login-main' "
-                + "or @content-desc='testID-secondary-g35-main']");
+                + "or @content-desc='testID-secondary-g35-main' "
+                + "or @content-desc='testID-primary-login-main' "
+                + "or @content-desc='testID-primary-loginBtn-main' "
+                + "or @text='Login' or @text='LOGIN' or @text='Log in']");
 
         // True terminal = dashboard or passcode screen (NOT mobile field — it exists in DOM behind onboarding)
         By realTerminal = AppiumBy.xpath(
@@ -423,6 +409,17 @@ public class LoginFlow {
                 }
             } catch (Exception ignored) {}
 
+            // Credentials form already open (mobile field VISIBLE, not merely present in the DOM
+            // behind the landing overlay)? Stop here — do NOT let the Login-button matcher tap the
+            // form's own "Login" submit with empty fields. Credential entry follows in loginWith.
+            try {
+                var mobileEls = driver.findElements(MOBILE);
+                if (!mobileEls.isEmpty() && mobileEls.get(0).isDisplayed()) {
+                    log.info("Credentials form visible — onboarding skip complete after {} iteration(s)", i);
+                    break;
+                }
+            } catch (Exception ignored) {}
+
             // Try Login button (last onboarding step → goes to login form). Give the welcome
             // screen up to 2s per iteration to render the button before falling through; the
             // previous 0ms probe could spin through every iteration before the button mounted.
@@ -432,31 +429,6 @@ public class LoginFlow {
                     loginEls.get(0).click();
                     log.info("Tapped Login button — onboarding complete");
                     break;
-                }
-            } catch (Exception ignored) {}
-
-            // "Enable Your Location" screen: its only action button carries a build-specific
-            // testID (clean=testID-primary-enableLocation-main, obfuscated builds hash the
-            // middle segment → e.g. testID-primary-sCV-main) and has NO visible text. Detect the
-            // screen by its stable title text, then tap the single primary-*-main button on it —
-            // a hybrid locator that resolves on clean, obfuscated (local) and cloud builds alike.
-            try {
-                var locScreen = waits.findQuick(
-                        AppiumBy.xpath("//*[@text='Enable Your Location']"), 1);
-                if (!locScreen.isEmpty()) {
-                    var locBtn = driver.findElements(AppiumBy.xpath(
-                            "//*[@content-desc='testID-primary-enableLocation-main' "
-                            + "or (starts-with(@content-desc,'testID-primary-') "
-                            + "and substring(@content-desc,string-length(@content-desc)-4)='-main')]"));
-                    if (!locBtn.isEmpty()) {
-                        locBtn.get(0).click();
-                        log.info("Tapped Enable-Location button (hybrid locator)");
-                        // Tapping Enable triggers the Android runtime location-permission
-                        // dialog (and a chained notifications dialog), which overlay the next
-                        // screen (passcode) and block input.
-                        dismissPermissionDialogs(6);
-                        continue;
-                    }
                 }
             } catch (Exception ignored) {}
 
@@ -504,28 +476,7 @@ public class LoginFlow {
         log.info("OTP entered: {}", otp);
     }
 
-    @Step("Enter passcode")
-    private void enterPasscode(String passcode) {
-        boolean passcodeVisible = waits.isPresent(PASSCODE_SCREEN, 3);
-        if (!passcodeVisible) {
-            otpPage.isVisible(0); // Quick check — OTP should have transitioned
-        }
-        passcodePage.enterPasscode(passcode);
-        log.info("Passcode entered");
-    }
-
     // ── Helpers ────────────────────────────────────────
-
-    private boolean quickTap(By loc) {
-        try {
-            var els = driver.findElements(loc);
-            if (!els.isEmpty() && els.get(0).isDisplayed()) {
-                els.get(0).click();
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
-    }
 
     private void dismissKeyboard() {
         common.dismissKeyboard();

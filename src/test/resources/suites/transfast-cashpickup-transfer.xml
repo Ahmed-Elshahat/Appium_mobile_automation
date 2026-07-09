@@ -1,0 +1,29 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Transfast Cash Pickup Transfer Collection" verbose="1">
+    <!--
+        Remittance squad — Transfast International Transfer (MTO), Cash Pickup (India). Reuses the
+        operator-agnostic InternationalTransferFlow. Transfast is provider card 3 on this route and
+        has NO payout-bank step (unlike Tahweel/H2H).
+
+        Set an account with an active Transfast Cash Pickup beneficiary in
+        transfast.cashPickup.user.* (Katalon reference account = 0520378665).
+
+        One LambdaTest session, ONE pass through the flow:
+          - testTransfastCashPickupTransfer logs in, drives to the CONFIRMATION page, validates it
+            there (no money yet), THEN confirms end-to-end. ⚠ REAL MONEY (small amount).
+
+        Run:
+          mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^
+              "-Dsuite=suites/transfast-cashpickup-transfer.xml" "-Dprofile=sit-remittance"
+    -->
+
+    <test name="Transfast Cash Pickup">
+        <groups>
+            <run><include name="transfast-cashpickup"/></run>
+        </groups>
+        <classes>
+            <class name="com.urpay.tests.remittance.TransfastCashPickupTest"/>
+        </classes>
+    </test>
+
+</suite>
