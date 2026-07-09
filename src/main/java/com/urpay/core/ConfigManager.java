@@ -39,20 +39,35 @@ public class ConfigManager {
     }
 
     /**
-     * Reload with a different profile.
+     * Reload with a different profile. Accepts a single profile ("sit-wmv") or a
+     * comma-separated list ("sit-wmv,sit-cards,sit-remittance") — later profiles
+     * override earlier ones on a key clash.
      */
     public static synchronized void reloadProfile(String profileName) {
         getInstance().properties.clear();
         getInstance().loadFile("default");
-        if (!"default".equals(profileName)) {
-            getInstance().loadFile(profileName);
-        }
+        getInstance().loadProfiles(profileName);
     }
 
     private void loadDefaults() {
         loadFile("default");
-        if (!"default".equals(profileName)) {
-            loadFile(profileName);
+        loadProfiles(profileName);
+    }
+
+    /**
+     * Load one or more profiles (comma-separated) on top of the already-loaded
+     * defaults. Blank entries and "default" are skipped; loading order is preserved,
+     * so a later profile's value wins on a key clash.
+     */
+    private void loadProfiles(String profileSpec) {
+        if (profileSpec == null) {
+            return;
+        }
+        for (String name : profileSpec.split(",")) {
+            String trimmed = name.trim();
+            if (!trimmed.isEmpty() && !"default".equals(trimmed)) {
+                loadFile(trimmed);
+            }
         }
     }
 

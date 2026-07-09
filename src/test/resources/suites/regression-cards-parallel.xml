@@ -1,0 +1,81 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  CARDS & PAYMENTS PARALLEL REGRESSION — up to 4 devices.  Profile: sit-cards
+  ══════════════════════════════════════════════════════════════════════════════
+
+  parallel="tests" thread-count="4": each <test> = 1 device = 1 unique account.
+
+  DEVICE BUDGET: 4 here + 12 (wmv) + 4 (remittance) = 20 = LambdaTest cap, so all
+  three can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
+
+  Run:
+    mvn clean test "-Dsuite=suites/regression-cards-parallel.xml" "-Dprofile=sit-cards" -Dremote=true
+
+  NOTE: mada-cards / signature-cards run the WHOLE test class, which already covers
+  the change-pin / card-replacement / cancel-card-steps / validate-card-removed /
+  physical-card method-groups — those subset suites are NOT repeated here (they
+  reuse the same card account and would collide in parallel).
+-->
+<suite name="URPay Cards &amp; Payments Parallel Regression" verbose="1"
+       parallel="tests" thread-count="4" group-by-instances="true">
+
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <!-- ── Cards (whole-class = full card journey) ────────────── -->
+    <test name="Mada Card">
+        <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
+    </test>
+    <test name="AlAhli Card">
+        <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
+    </test>
+    <test name="Platinum Card">
+        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
+    </test>
+    <test name="Signature Card">
+        <classes><class name="com.urpay.tests.payments.SignatureCardTest"/></classes>
+    </test>
+
+    <!-- ── Government Services ────────────────────────────────── -->
+    <test name="Government Services - Single">
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesTest"/></classes>
+    </test>
+    <test name="Government Services - Multi">
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesMultiTest"/></classes>
+    </test>
+
+    <!-- ── Telecom Recharge (one class, group per operator) ───── -->
+    <test name="Telecom - STC">
+        <groups><run><include name="stc"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Telecom - Mobily">
+        <groups><run><include name="mobily"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Telecom - Zain">
+        <groups><run><include name="zain"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+
+    <!-- ── SADAD / eSIM / Top-up ──────────────────────────────── -->
+    <test name="SADAD Bills">
+        <groups><run><include name="sadad-bills"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.SadadBillsTest"/></classes>
+    </test>
+    <test name="SADAD Payment">
+        <groups><run><include name="sadad-payment"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.SadadBillPaymentTest"/></classes>
+    </test>
+    <test name="Travel eSIM">
+        <groups><run><include name="travel-esim"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TravelEsimTest"/></classes>
+    </test>
+    <test name="Top-up Bank Card">
+        <groups><run><include name="topup-bankcard"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TopUpBankCardTest"/></classes>
+    </test>
+
+</suite>

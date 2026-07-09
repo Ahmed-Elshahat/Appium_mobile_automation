@@ -1,0 +1,137 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  MASTER REGRESSION SUITE — every standalone feature suite in the framework.
+  ══════════════════════════════════════════════════════════════════════════════
+
+  This is a "suite of suites": it references each individual suite file via
+  <suite-files>. TestNG loads every referenced suite and runs it WITH ITS OWN
+  settings (its own parallel / thread-count / listeners / account setup). The
+  referenced suites run one after another (sequentially), which also keeps their
+  dedicated test accounts from colliding across features.
+
+  Run (adjust profile per squad — some suites need sit-remittance):
+    mvn clean test "-Dsuite=suites/regression-all.xml" "-Dprofile=sit-wmv"
+
+  SCOPE — INCLUDED: one entry per feature (auth, settings, wallet, qatta, cards,
+  payments, telecom, government, remittance).
+
+  DELIBERATELY EXCLUDED (would double-run or clash):
+    • Meta-collections that just bundle the suites below:
+        all-wallet-settings.xml, payments-and-cards-collection.xml,
+        remittance-collection.xml, new-suites-parallel.xml, all-cards.xml,
+        telecom-recharge.xml, esim-sadad.xml, government-services.xml
+    • Duplicate / method-split variants:
+        forgot-passcode-default-tier-parallel.xml (dup of default-tier),
+        moneygram-bankdeposit.xml + moneygram-sendtowallet.xml
+        (method subsets of moneygram-transfer.xml)
+    • Retest / scratch suites:  retest-fixes.xml, retest-permission.xml
+    • Provisioning (setup, not tests):  provision-users.xml, provision-family-pair.xml
+    • smoke.xml (quick subset of the below — run on its own for fast checks)
+
+  NOTE: family-wallet.xml is a multi-class suite but is KEPT — it is the only
+  suite covering Send Gift, Direct Top-up, Permission Control and Family Request
+  Money (no standalone equivalents exist).
+-->
+<suite name="URPay Full Regression (All Suites)" verbose="1">
+
+    <suite-files>
+
+        <!-- ── Auth: Change Passcode ─────────────────────────────── -->
+        <suite-file path="change-passcode-default-tier.xml"/>
+        <suite-file path="change-passcode-default-tier-negative.xml"/>
+        <suite-file path="change-passcode-family-tier.xml"/>
+        <suite-file path="change-passcode-family-tier-negative.xml"/>
+        <suite-file path="change-passcode-full-tier.xml"/>
+        <suite-file path="change-passcode-full-tier-negative.xml"/>
+        <suite-file path="change-passcode-visitor-tier.xml"/>
+        <suite-file path="change-passcode-visitor-tier-negative.xml"/>
+
+        <!-- ── Auth: Forgot Passcode ─────────────────────────────── -->
+        <suite-file path="forgot-passcode-default-tier.xml"/>
+        <suite-file path="forgot-passcode-default-tier-negative.xml"/>
+        <suite-file path="forgot-passcode-default-tier-negative-02.xml"/>
+        <suite-file path="forgot-passcode-family-tier.xml"/>
+        <suite-file path="forgot-passcode-family-tier-negative.xml"/>
+        <suite-file path="forgot-passcode-family-tier-negative-02.xml"/>
+        <suite-file path="forgot-passcode-full-tier.xml"/>
+        <suite-file path="forgot-passcode-full-tier-negative.xml"/>
+        <suite-file path="forgot-passcode-full-tier-negative-02.xml"/>
+        <suite-file path="forgot-passcode-visitor-tier.xml"/>
+        <suite-file path="forgot-passcode-visitor-tier-negative.xml"/>
+        <suite-file path="forgot-passcode-visitor-tier-negative-02.xml"/>
+
+        <!-- ── Auth: Registration / Phone ────────────────────────── -->
+        <suite-file path="registration-invitation-code.xml"/>
+        <suite-file path="change-phone-number-full-tier.xml"/>
+
+        <!-- ── Settings & Account ────────────────────────────────── -->
+        <suite-file path="account-details.xml"/>
+        <suite-file path="account-statement.xml"/>
+        <suite-file path="change-app-language.xml"/>
+        <suite-file path="rating.xml"/>
+        <suite-file path="privacy-and-terms.xml"/>
+        <suite-file path="validate-notifications.xml"/>
+
+        <!-- ── Wallet & Money ────────────────────────────────────── -->
+        <suite-file path="wallet-balance.xml"/>
+        <suite-file path="send-money-request-approve.xml"/>
+        <suite-file path="reject-money-request.xml"/>
+        <suite-file path="invite-friends.xml"/>
+        <suite-file path="auto-topup.xml"/>
+        <suite-file path="delink-from-parent.xml"/>
+        <suite-file path="family-wallet.xml"/>
+        <suite-file path="family-mission-suite.xml"/>
+
+        <!-- ── Qatta ─────────────────────────────────────────────── -->
+        <suite-file path="edit-group-qatta-details.xml"/>
+        <suite-file path="pay-group-qatta-suite.xml"/>
+        <suite-file path="pay-quick-qatta-suite.xml"/>
+        <suite-file path="reject-group-qatta-suite.xml"/>
+        <suite-file path="reject-quick-qatta-suite.xml"/>
+
+        <!-- ── Cards ─────────────────────────────────────────────── -->
+        <suite-file path="alahli-cards.xml"/>
+        <suite-file path="mada-cards.xml"/>
+        <suite-file path="platinum-cards.xml"/>
+        <suite-file path="signature-cards.xml"/>
+        <suite-file path="physical-card.xml"/>
+        <suite-file path="change-pin.xml"/>
+        <suite-file path="card-replacement.xml"/>
+        <suite-file path="cancel-card-steps.xml"/>
+        <suite-file path="validate-card-removed.xml"/>
+        <suite-file path="topup-bankcard.xml"/>
+
+        <!-- ── Payments (SADAD / eSIM) ───────────────────────────── -->
+        <suite-file path="sadad-bills.xml"/>
+        <suite-file path="sadad-payment.xml"/>
+        <suite-file path="travel-esim.xml"/>
+
+        <!-- ── Telecom Recharge ──────────────────────────────────── -->
+        <suite-file path="stc-only.xml"/>
+        <suite-file path="mobily-only.xml"/>
+        <suite-file path="zain-only.xml"/>
+
+        <!-- ── Government Services ───────────────────────────────── -->
+        <suite-file path="gov-single.xml"/>
+        <suite-file path="gov-multi.xml"/>
+
+        <!-- ── Remittance: Beneficiaries ─────────────────────────── -->
+        <suite-file path="add-local-beneficiary.xml"/>
+        <suite-file path="add-international-beneficiary.xml"/>
+        <suite-file path="add-moneygram-beneficiary.xml"/>
+
+        <!-- ── Remittance: Transfers ─────────────────────────────── -->
+        <suite-file path="local-transfer.xml"/>
+        <suite-file path="wallet-transfer.xml"/>
+        <suite-file path="moneygram-transfer.xml"/>
+        <suite-file path="western-union-transfer.xml"/>
+        <suite-file path="transfast-bankdeposit-transfer.xml"/>
+        <suite-file path="transfast-cashpickup-transfer.xml"/>
+        <suite-file path="transfast-sendtowallet-transfer.xml"/>
+        <suite-file path="tahweel-transfer.xml"/>
+        <suite-file path="tahweel-bankdeposit-transfer.xml"/>
+
+    </suite-files>
+
+</suite>

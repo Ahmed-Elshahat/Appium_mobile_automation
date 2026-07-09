@@ -187,9 +187,17 @@ public class RatingTest extends BaseTest {
     @Step("Login with the freshly registered rating user")
     private DashboardPage login() {
         return new LoginFlow().loginWith(
-                freshUser.mobile,
+                toLocalMobile(freshUser.mobile),
                 freshUser.poi,
                 ConfigManager.getInstance().get("rating.verificationCode", "1234"),
                 freshUser.passcode);
+    }
+
+    /** Convert the generated {@code +966XXXXXXXXX} mobile to the local {@code 05XXXXXXXX} login form. */
+    private static String toLocalMobile(String intlMobile) {
+        if (intlMobile != null && intlMobile.startsWith("+966")) {
+            return "0" + intlMobile.substring(4);
+        }
+        return intlMobile;
     }
 }

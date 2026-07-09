@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Invite Friends share journey (More → Invite Friends → share invitation).
+  Account: 0577977177 (inviteFriends.* in sit-wmv.properties).
+  Run: mvn test -Dsuite=suites/invite-friends.xml -Dprofile=sit-wmv
+-->
+<suite name="Invite Friends" verbose="1">
+    <test name="invite-friends">
+        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
+    </test>
+</suite>

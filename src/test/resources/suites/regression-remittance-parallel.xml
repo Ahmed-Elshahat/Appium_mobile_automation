@@ -1,0 +1,79 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  REMITTANCE PARALLEL REGRESSION — up to 4 devices.  Profile: sit-remittance
+  ══════════════════════════════════════════════════════════════════════════════
+
+  Mirrors the validated remittance-collection.xml groupings (each corridor logs in
+  with its OWN account → parallel-safe) bumped to an 18-device cap, plus the
+  Add-Beneficiary suites.  ⚠ Some corridors move REAL money (small amounts).
+
+  parallel="tests" thread-count="4": each <test> = 1 device = 1 unique account.
+
+  DEVICE BUDGET: 4 here + 12 (wmv) + 4 (cards) = 20 = LambdaTest cap, so all three
+  can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
+
+  Run:
+    mvn clean test "-Dsuite=suites/regression-remittance-parallel.xml" "-Dprofile=sit-remittance" -Dremote=true
+
+  EXCLUDED (no working account yet, per remittance-collection): MoneyGram Cash
+  Pickup, Transfast Send-to-Wallet. Enable them once accounts exist.
+-->
+<suite name="URPay Remittance Parallel Regression" verbose="1"
+       parallel="tests" thread-count="4" group-by-instances="true">
+
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <!-- ── Beneficiaries ─────────────────────────────────────── -->
+    <test name="Add Local Beneficiary">
+        <classes><class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/></classes>
+    </test>
+    <test name="Add International Beneficiary">
+        <groups><run><include name="add-international-beneficiary"/></run></groups>
+        <classes><class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/></classes>
+    </test>
+    <test name="Add MoneyGram Beneficiary">
+        <groups><run><include name="add-moneygram-beneficiary"/></run></groups>
+        <classes><class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/></classes>
+    </test>
+
+    <!-- ── Transfers ─────────────────────────────────────────── -->
+    <test name="Local Transfer">
+        <classes><class name="com.urpay.tests.remittance.LocalTransferTest"/></classes>
+    </test>
+    <test name="Wallet Transfer">
+        <classes><class name="com.urpay.tests.remittance.WalletTransferTest"/></classes>
+    </test>
+    <test name="MoneyGram Bank Deposit">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods><include name="testMoneyGramBankDepositToIndia"/></methods>
+            </class>
+        </classes>
+    </test>
+    <test name="MoneyGram Send to Wallet">
+        <classes>
+            <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
+                <methods><include name="testMoneyGramSendToWalletTransfer"/></methods>
+            </class>
+        </classes>
+    </test>
+    <test name="Western Union International Transfer">
+        <classes><class name="com.urpay.tests.remittance.WesternUnionTransferTest"/></classes>
+    </test>
+    <test name="Transfast Bank Deposit">
+        <classes><class name="com.urpay.tests.remittance.TransfastBankDepositTest"/></classes>
+    </test>
+    <test name="Transfast Cash Pickup">
+        <classes><class name="com.urpay.tests.remittance.TransfastCashPickupTest"/></classes>
+    </test>
+    <test name="H2H Tahweel Cash Pickup">
+        <classes><class name="com.urpay.tests.remittance.TahweelTransferTest"/></classes>
+    </test>
+    <test name="H2H Tahweel Bank Deposit">
+        <classes><class name="com.urpay.tests.remittance.TahweelBankDepositTest"/></classes>
+    </test>
+
+</suite>

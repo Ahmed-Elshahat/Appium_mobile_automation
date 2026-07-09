@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Wallet balance visibility (reveal/hide via eye icon, pull-to-refresh).
+  Account: 0529193979 (walletBalance.* in sit-wmv.properties).
+  Run: mvn test -Dsuite=suites/wallet-balance.xml -Dprofile=sit-wmv
+-->
+<suite name="Wallet Balance" verbose="1">
+    <test name="wallet-balance">
+        <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
+    </test>
+</suite>
