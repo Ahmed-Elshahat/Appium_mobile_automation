@@ -263,10 +263,9 @@ public class CardsFlow {
         // Small delay to ensure the DB record is committed before querying
         try { Thread.sleep(3000); } catch (Exception ignored) {}
 
-        String consumerId = c.get(cardPrefix + ".consumerId",
-                c.get(cardPrefix + ".id"));
-        log.info("Attempting IVR skip for consumer: {}", consumerId);
-        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(consumerId);
+        String userId = c.get(cardPrefix + ".userId");
+        log.info("Attempting IVR skip for userId: {}", userId);
+        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
         log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
 
         // ── Step 7: Wait for success screen after IVR ──

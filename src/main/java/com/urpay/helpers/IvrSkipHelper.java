@@ -34,14 +34,14 @@ public class IvrSkipHelper {
     /**
      * Complete IVR skip: query DB for request ID, then call callback API.
      *
-     * @param consumerId the consumer/party ID (e.g., from GlobalVariable.urpayUser["consumerId"])
+     * @param userId the internal UserId from the card issuance API body
      * @return true if IVR was successfully skipped
      */
-    @Step("Skip IVR verification for card issuance — consumer: {consumerId}")
-    public static boolean skipCardIssuanceIvr(String consumerId) {
-        String requestId = getCardIssuanceRequestId(consumerId);
+    @Step("Skip IVR verification for card issuance — userId: {userId}")
+    public static boolean skipCardIssuanceIvr(String userId) {
+        String requestId = getCardIssuanceRequestId(userId);
         if (requestId == null || requestId.isEmpty()) {
-            log.error("Failed to get card issuance request ID from DB for consumer: {}", consumerId);
+            log.error("Failed to get card issuance request ID from DB for userId: {}", userId);
             return false;
         }
 
@@ -52,9 +52,9 @@ public class IvrSkipHelper {
     /**
      * Query Oracle DB (EAIR.EAI_MESSAGE_DUMP) for the x-request-id
      * of the most recent CardIssuanceInitiateRq_Rule flow.
-     * Searches by consumerId/partyId in the JSON message body.
+     * Searches by UserId in the JSON message body (new API structure).
      */
-    @Step("Query DB for card issuance request ID — identifier: {identifier}")
+    @Step("Query DB for card issuance request ID — userId: {identifier}")
     public static String getCardIssuanceRequestId(String identifier) {
         ConfigManager config = ConfigManager.getInstance();
         String dbUrl = config.get("ivr.db.url", "jdbc:oracle:thin:@//192.168.100.101:1521/ESBAUDIT_DBSIT");
@@ -67,14 +67,12 @@ public class IvrSkipHelper {
         log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
         log.info("===========================================");
 
-        // Optimized: no TRUNC (Katalon uses TRUNC which rounds to midnight = searches ALL of today).
-        // We only need the last 3 minutes since we just triggered the card issuance.
+        // New API structure: body has UserId (internal ID), not partyId
         String query = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
-                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '3' MINUTE "
+                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '5' MINUTE "
                 + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
-                + "AND (JSON_EXISTS(md_msg_data, '$.body?(@.partyId == \"" + identifier + "\")') "
-                + "  OR JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")')) "
+                + "AND JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")') "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
 
         log.info("========== DB QUERY ==========");
