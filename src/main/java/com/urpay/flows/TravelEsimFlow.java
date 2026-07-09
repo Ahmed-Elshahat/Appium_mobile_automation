@@ -97,6 +97,7 @@ public class TravelEsimFlow {
         TravelEsimPage page = navigateToTravelEsim();
         openPlanSelection(page);
         page.selectGlobalTab();
+        page.selectFirstCountry();
         page.selectFirstPackage();
         page.tapNext();
 

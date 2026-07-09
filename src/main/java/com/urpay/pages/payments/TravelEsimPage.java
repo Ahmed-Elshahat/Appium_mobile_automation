@@ -91,7 +91,12 @@ public class TravelEsimPage extends BasePage {
         tap(globalTab);
         waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
     }
-
+    @Step("Select first country from list")
+    public void selectFirstCountry() {
+        tap(firstGlobalOption);  // testID-data-0 = first item in country list
+        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
+        log.info("Selected first country — waiting for packages");
+    }
     @Step("Select Local tab")
     public void selectLocalTab() {
         tap(localTab);

@@ -67,22 +67,50 @@ public class IvrSkipHelper {
         log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
         log.info("===========================================");
 
-        // New API structure: body has UserId (internal ID), not partyId
+        // Diagnostic query: find the most recent CardIssuance record and print its content
+        String diagQuery = "SELECT md_creation_tmstmp, MD_FLOW_ID, SUBSTR(md_msg_data, 1, 500) AS msg_preview "
+                + "FROM EAIR.EAI_MESSAGE_DUMP "
+                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
+                + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
+                + "ORDER BY md_creation_tmstmp DESC";
+
+        // Main query: search by UserId in body
         String query = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
-                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '5' MINUTE "
+                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
                 + "AND JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")') "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
 
         log.info("========== DB QUERY ==========");
-        log.info("Query: {}", query);
+        log.info("Main Query: {}", query);
         log.info("==============================");
 
         try {
             log.info("Connecting to Oracle DB...");
             Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
             log.info("DB connection established successfully");
+
+            // Run diagnostic query first to see what's in the DB
+            log.info("========== DIAGNOSTIC: Recent CardIssuance records ==========");
+            try (Statement diagStmt = conn.createStatement();
+                 ResultSet diagRs = diagStmt.executeQuery(diagQuery)) {
+                int rowCount = 0;
+                while (diagRs.next()) {
+                    rowCount++;
+                    log.info("Row {}: timestamp={}, flowId={}, preview={}",
+                            rowCount,
+                            diagRs.getString("md_creation_tmstmp"),
+                            diagRs.getString("MD_FLOW_ID"),
+                            diagRs.getString("msg_preview"));
+                }
+                if (rowCount == 0) {
+                    log.warn("NO CardIssuanceInitiateRq_Rule records found in last 10 minutes!");
+                } else {
+                    log.info("Found {} record(s)", rowCount);
+                }
+            }
+            log.info("=============================================================");
             Statement stmt = conn.createStatement();
             log.info("Executing query...");
             ResultSet rs = stmt.executeQuery(query);
