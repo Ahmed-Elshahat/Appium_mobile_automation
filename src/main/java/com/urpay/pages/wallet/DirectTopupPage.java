@@ -49,8 +49,11 @@ public class DirectTopupPage extends BasePage {
             "//*[@content-desc='testID-primary-onSubmit-main' or @text='Done' or "
             + "(starts-with(@content-desc,'testID-primary-') and "
             + "substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
+    // The shared rejection toast is transient. It is exposed via content-desc; the xpath form
+    // (used by ForgotPasscode/ChangePasscode/MoneyRequest) matches over the page source, unlike the
+    // native accessibility-id selector which intermittently misses it during its show animation.
     private static final By NOTIFICATION_MSG =
-            AppiumBy.accessibilityId("testID-notification-message");
+            AppiumBy.xpath("//*[@content-desc='testID-notification-message']");
     private static final By EXIT_BTN =
             AppiumBy.accessibilityId("testID-right-icon-0");
 
@@ -65,6 +68,36 @@ public class DirectTopupPage extends BasePage {
         type(ADD_AMOUNT_INPUT, amount);
         platformActions.dismissKeyboard();
         tap(NEXT_BTN);
+    }
+
+    /**
+     * Enter an over-limit amount, tap Next and immediately read the resulting rejection toast.
+     *
+     * <p>The shared {@code testID-notification-message} toast is transient and unmounts from the
+     * accessibility tree within a couple of seconds (it lingers visually longer). {@link BasePage#tap}
+     * runs a per-tap error-banner poll (~1s) before returning, which pushes the first notification
+     * read past the toast's readable window and misses it. Next is therefore tapped raw (no per-tap
+     * poll) so the read starts at once. Self-heals: if the first read is empty the amount is still
+     * over the limit, so re-tapping Next re-fires the toast and it is read again. Mirrors the proven
+     * ForgotPasscode DOB-alert fix.
+     */
+    @Step("Enter over-limit amount {amount}, tap Next and read the rejection notification")
+    public String enterAmountAndReadNotification(String amount, long timeoutSec) {
+        tap(ADD_MONEY_BTN);
+        type(ADD_AMOUNT_INPUT, amount);
+        platformActions.dismissKeyboard();
+        String message = tapNextRawAndRead(timeoutSec);
+        if (message.isEmpty()) {
+            message = tapNextRawAndRead(timeoutSec);
+        }
+        return message;
+    }
+
+    private String tapNextRawAndRead(long timeoutSec) {
+        // Raw click without BasePage.tap's per-tap error-banner poll (~1s) so the transient
+        // over-limit toast fired by Next can be read immediately.
+        waitUtils.waitForClickable(NEXT_BTN).click();
+        return getNotificationMessage(timeoutSec);
     }
 
     @Step("Add {amount} to the kid wallet, confirm and enter the OTP")
@@ -91,16 +124,30 @@ public class DirectTopupPage extends BasePage {
 
     @Step("Read the notification (error) message")
     public String getNotificationMessage(long timeoutSec) {
-        List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MSG, timeoutSec);
-        if (els.isEmpty()) {
-            log.warn("Notification message did not appear within {}s", timeoutSec);
-            return "";
-        }
-        String text = els.get(0).getAttribute("text");
-        if (text == null || text.isEmpty()) {
-            text = els.get(0).getText();
-        }
-        return text == null ? "" : text;
+        // The toast re-renders during its show animation, so its element can be found BEFORE the text
+        // is populated (empty) or go stale mid-read. Poll until a NON-EMPTY message is read or the
+        // timeout elapses, rather than reading it once. Mirrors ForgotPasscodePage.getNotificationMessage.
+        long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
+        do {
+            List<WebElement> els = waitUtils.findQuick(NOTIFICATION_MSG, 1);
+            if (!els.isEmpty()) {
+                try {
+                    WebElement el = els.get(0);
+                    String text = el.getAttribute("text");
+                    if (text == null || text.isEmpty()) {
+                        text = el.getText();
+                    }
+                    if (text != null && !text.isEmpty()) {
+                        log.info("Notification popup message: {}", text);
+                        return text;
+                    }
+                } catch (org.openqa.selenium.StaleElementReferenceException e) {
+                    log.debug("Notification toast went stale while reading \u2014 retrying");
+                }
+            }
+        } while (System.currentTimeMillis() < deadline);
+        log.warn("Notification message did not yield text within {}s", timeoutSec);
+        return "";
     }
 
     @Step("Exit the kid profile")

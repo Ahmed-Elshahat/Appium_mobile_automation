@@ -48,9 +48,10 @@ public class DirectTopupNegativeTest extends BaseTest {
         family.tapFirstFamilyMember();
 
         DirectTopupPage topup = new DirectTopupPage();
-        topup.enterAmountAndNext(c.get("directTopup.exceedAmount", "2000"));
+        String message = topup.enterAmountAndReadNotification(
+                c.get("directTopup.exceedAmount", "2000"), 20);
 
-        Assert.assertEquals(topup.getNotificationMessage(20),
+        Assert.assertEquals(message,
                 c.get("directTopup.exceedError"),
                 "The exceeded-limit error message should be displayed");
     }

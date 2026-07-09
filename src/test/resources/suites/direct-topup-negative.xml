@@ -1,0 +1,12 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Direct Top-up NEGATIVE — single-test suite for focused runs / self-healing.
+
+  Run: mvn test -Dsuite=suites/direct-topup-negative.xml -Dprofile=sit-wmv
+  (remote=true default → LambdaTest)
+-->
+<suite name="Direct Topup Negative" verbose="1" parallel="none">
+    <test name="direct-topup-negative">
+        <classes><class name="com.urpay.tests.wallet.DirectTopupNegativeTest"/></classes>
+    </test>
+</suite>
