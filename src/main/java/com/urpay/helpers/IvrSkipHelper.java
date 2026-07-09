@@ -1,13 +1,19 @@
 package com.urpay.helpers;
 
-import com.urpay.core.ConfigManager;
-import io.qameta.allure.Step;
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import com.urpay.core.ConfigManager;
+
+import io.qameta.allure.Step;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
 
 /**
  * IVR Skip Helper — bypasses the phone verification call during card issuance.
@@ -55,6 +61,12 @@ public class IvrSkipHelper {
         String dbUser = config.get("ivr.db.user", "ESBQA");
         String dbPassword = config.get("ivr.db.password", "YFnK#9qy2");
 
+        log.info("========== DB CONNECTION CONFIG ==========");
+        log.info("DB URL: {}", dbUrl);
+        log.info("DB User: {}", dbUser);
+        log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
+        log.info("===========================================");
+
         // Search by partyId (consumerId) — also try matching as UserId
         String query = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
@@ -64,21 +76,35 @@ public class IvrSkipHelper {
                 + "  OR JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")')) "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
 
-        log.info("Querying DB for card issuance request ID...");
-        log.debug("Query: {}", query);
+        log.info("========== DB QUERY ==========");
+        log.info("Query: {}", query);
+        log.info("==============================");
 
-        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+        try {
+            log.info("Connecting to Oracle DB...");
+            Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
+            log.info("DB connection established successfully");
+            Statement stmt = conn.createStatement();
+            log.info("Executing query...");
+            ResultSet rs = stmt.executeQuery(query);
 
+            String requestId = null;
             if (rs.next()) {
-                String requestId = rs.getString("x_request_id");
-                log.info("Found card issuance request ID: {}", requestId);
-                return requestId;
+                requestId = rs.getString("x_request_id");
+                log.info("========== DB QUERY RESULT ==========");
+                log.info("x_request_id (CardResourceID): {}", requestId);
+                log.info("=====================================");
             } else {
-                log.warn("No card issuance record found in DB for identifier: {}", identifier);
-                return null;
+                log.warn("========== DB QUERY RESULT ==========");
+                log.warn("No rows returned — no card issuance record found for identifier: {}", identifier);
+                log.warn("=====================================");
             }
+
+            rs.close();
+            stmt.close();
+            conn.close();
+            log.info("DB connection closed");
+            return requestId;
         } catch (SQLException e) {
             log.error("DB query failed: {}", e.getMessage());
             return null;
@@ -101,7 +127,10 @@ public class IvrSkipHelper {
                 + "}";
 
         log.info("Calling IVR callback API: {}", callbackUrl);
-        log.debug("Request body: {}", body);
+        log.info("========== IVR CALLBACK REQUEST ==========");
+        log.info("Request body: {}", body);
+        log.info("Headers: X-Request-Id={}, x-consumer-app-id=WALLET_IVR_APP, x-consumer-org-id=IVR", requestId);
+        log.info("===========================================");
 
         try {
             // Disable SSL verification for internal SIT endpoints
@@ -125,10 +154,16 @@ public class IvrSkipHelper {
             int statusCode = response.getStatusCode();
             String responseBody = response.getBody().asString();
 
-            log.info("IVR callback response: status={}, body={}", statusCode, responseBody);
+            log.info("========== IVR CALLBACK RESPONSE ==========");
+            log.info("Response Code: {}", statusCode);
+            log.info("Response Body: {}", responseBody);
+            log.info("============================================");
 
             if (statusCode >= 200 && statusCode < 300) {
-                log.info("IVR skip successful");
+                log.info("**********Initiate IVR EXECUTION ENDED — SUCCESS**********");
+                // Match Katalon: Thread.sleep(20000) after successful IVR callback
+                log.info("Waiting 20 seconds after IVR callback (matching Katalon behavior)...");
+                try { Thread.sleep(20000); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                 return true;
             } else {
                 log.error("IVR callback failed with status: {}", statusCode);
