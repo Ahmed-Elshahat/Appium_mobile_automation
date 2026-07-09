@@ -67,10 +67,11 @@ public class IvrSkipHelper {
         log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
         log.info("===========================================");
 
-        // Search by partyId (consumerId) — also try matching as UserId
+        // Optimized: no TRUNC (Katalon uses TRUNC which rounds to midnight = searches ALL of today).
+        // We only need the last 3 minutes since we just triggered the card issuance.
         String query = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
-                + "WHERE md_creation_tmstmp >= TRUNC(SYSDATE - INTERVAL '10' MINUTE) "
+                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '3' MINUTE "
                 + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
                 + "AND (JSON_EXISTS(md_msg_data, '$.body?(@.partyId == \"" + identifier + "\")') "
                 + "  OR JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")')) "
