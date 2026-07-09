@@ -40,6 +40,19 @@ Write-Host "Maven: $mvn`n"
 $logDir = Join-Path $repo 'logs-regression'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
+# ── Preflight: compile once so a build error fails fast with a clear message
+#    (instead of three silent "(no test summary)" FAILUREs).
+Write-Host "Preflight: mvn clean test-compile ..."
+$preLog = Join-Path $logDir '_preflight.log'
+& cmd /c "`"$mvn`" -q clean test-compile > `"$preLog`" 2>&1"
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "`nPREFLIGHT COMPILE FAILED - fix this before running. Last 30 lines:`n" -ForegroundColor Red
+  Get-Content $preLog -Tail 30 | Write-Host
+  Write-Host "`nFull preflight log: $preLog"
+  exit 1
+}
+Write-Host "Preflight OK.`n"
+
 $remoteFlag = if ($Remote) { 'true' } else { 'false' }
 
 # name | suite file | profile
@@ -76,6 +89,10 @@ foreach ($r in $runs) {
              else { 'UNKNOWN' }
     $summary = if ($res) { $res.Trim() } else { '(no test summary)' }
     ("{0,-12} {1,-8} {2}" -f $r.Name, $build, $summary) | Tee-Object -FilePath $summaryFile -Append
+    if ($build -ne 'SUCCESS') {
+      Write-Host "`n----- $($r.Name): last 25 lines of $log -----" -ForegroundColor Yellow
+      Get-Content $log -Tail 25 | Write-Host
+    }
   }
   else { ("{0,-12} NO-LOG" -f $r.Name) | Tee-Object -FilePath $summaryFile -Append }
 }

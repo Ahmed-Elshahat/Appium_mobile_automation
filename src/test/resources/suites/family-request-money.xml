@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Family Request Money — single-test suite for focused runs / self-healing.
+
+  Three driver-shared phases (kid requests → parent approves → kid confirms), chained by
+  priority + dependsOnMethods; must run SEQUENTIALLY (parallel="none").
+
+  Run: mvn test -Dsuite=suites/family-request-money.xml -Dprofile=sit-wmv
+  (remote=true default → LambdaTest)
+-->
+<suite name="Family Request Money" verbose="1" parallel="none">
+    <test name="family-request-money">
+        <classes><class name="com.urpay.tests.wallet.FamilyRequestMoneyTest"/></classes>
+    </test>
+</suite>

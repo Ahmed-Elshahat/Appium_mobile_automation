@@ -324,6 +324,12 @@ public class MoneyRequestPage extends BasePage {
      */
     @Step("Kid requests {amount} from the linked parent")
     public void kidRequestFromParent(String amount) {
+        if (!isPresent(KID_REQUEST_MONEY_BTN, 5)) {
+            new com.urpay.pages.dashboard.DashboardPage().dismissPopups();
+        }
+        if (!isPresent(KID_REQUEST_MONEY_BTN, 5)) {
+            dumpPageSource("kid-dashboard-no-request-money");
+        }
         tap(KID_REQUEST_MONEY_BTN);
         for (char ch : amount.toCharArray()) {
             if (Character.isDigit(ch)) {
