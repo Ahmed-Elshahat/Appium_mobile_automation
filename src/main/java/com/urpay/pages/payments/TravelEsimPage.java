@@ -44,6 +44,11 @@ public class TravelEsimPage extends BasePage {
     @iOSXCUITFindBy(accessibility = "Regional")
     private WebElement regionalTab;
 
+    // First country in the alphabetical list (e.g. "Aruba")
+    @AndroidFindBy(xpath = "//*[@text='Aruba']")
+    @iOSXCUITFindBy(xpath = "//*[@label='Aruba']")
+    private WebElement firstCountryItem;
+
     // ── Global Profile Page ───────────────────────────
 
     @AndroidFindBy(accessibility = "testID-data-0")
@@ -77,7 +82,7 @@ public class TravelEsimPage extends BasePage {
     @Step("Tap 'New E-Sim' button")
     public void tapNewEsim() {
         tap(newEsimButton);
-        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
+        waitUtils.waitForVisible(AppiumBy.xpath("//*[@text='Global' or @text='Select a country']"), 15);
     }
 
     public boolean isMyOrdersPageLoaded() {
@@ -89,11 +94,12 @@ public class TravelEsimPage extends BasePage {
     @Step("Select Global tab")
     public void selectGlobalTab() {
         tap(globalTab);
-        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
+        waitUtils.waitForVisible(AppiumBy.xpath("//*[@text='Select a country' or @text='Aruba']"), 15);
     }
+
     @Step("Select first country from list")
     public void selectFirstCountry() {
-        tap(firstGlobalOption);  // testID-data-0 = first item in country list
+        tap(firstCountryItem);
         waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
         log.info("Selected first country — waiting for packages");
     }

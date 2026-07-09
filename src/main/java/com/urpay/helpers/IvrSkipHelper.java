@@ -67,31 +67,31 @@ public class IvrSkipHelper {
         log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
         log.info("===========================================");
 
-        // Diagnostic query: find the most recent CardIssuance record and print its content
+        // Diagnostic query: prints all recent CardIssuance records
         String diagQuery = "SELECT md_creation_tmstmp, MD_FLOW_ID, SUBSTR(md_msg_data, 1, 500) AS msg_preview "
                 + "FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
                 + "ORDER BY md_creation_tmstmp DESC";
 
-        // Main query: search by UserId in body
-        String query = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
+        // Main query: get x-request-id from the most recent CardIssuance record
+        String mainQuery = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
-                + "AND JSON_EXISTS(md_msg_data, '$.body?(@.UserId == \"" + identifier + "\")') "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
 
-        log.info("========== DB QUERY ==========");
-        log.info("Main Query: {}", query);
-        log.info("==============================");
+        log.info("========== DB QUERIES ==========");
+        log.info("Diagnostic: {}", diagQuery);
+        log.info("Main: {}", mainQuery);
+        log.info("================================");
 
         try {
             log.info("Connecting to Oracle DB...");
             Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
             log.info("DB connection established successfully");
 
-            // Run diagnostic query first to see what's in the DB
+            // Run diagnostic query first
             log.info("========== DIAGNOSTIC: Recent CardIssuance records ==========");
             try (Statement diagStmt = conn.createStatement();
                  ResultSet diagRs = diagStmt.executeQuery(diagQuery)) {
@@ -111,9 +111,11 @@ public class IvrSkipHelper {
                 }
             }
             log.info("=============================================================");
+
+            // Run main query to get x-request-id
+            log.info("Executing main query...");
             Statement stmt = conn.createStatement();
-            log.info("Executing query...");
-            ResultSet rs = stmt.executeQuery(query);
+            ResultSet rs = stmt.executeQuery(mainQuery);
 
             String requestId = null;
             if (rs.next()) {
@@ -123,7 +125,7 @@ public class IvrSkipHelper {
                 log.info("=====================================");
             } else {
                 log.warn("========== DB QUERY RESULT ==========");
-                log.warn("No rows returned — no card issuance record found for identifier: {}", identifier);
+                log.warn("No rows returned for identifier: {}", identifier);
                 log.warn("=====================================");
             }
 
