@@ -248,6 +248,15 @@ public class FamilyMissionPage extends BasePage {
             "//*[starts-with(@content-desc,'testID-viewElemen')]"
             + " | //*[starts-with(@name,'testID-viewElemen')]");
 
+    // ── Home bottom-nav tab (returns to the dashboard root) and in-app back button ──
+    // The kid login can leave the app on a pushed sub-screen (e.g. Transactions) because the
+    // passcode-retry focus tap lands on the freshly-loaded dashboard; these let us pop back to
+    // the dashboard root before searching the Services carousel for the Missions tile.
+    private static final By HOME_TAB =
+            AppiumBy.accessibilityId("testID-dashboard");
+    private static final By INAPP_BACK_BUTTON =
+            AppiumBy.accessibilityId("testID-left-icon-back");
+
     // ── Kid's "I'm Done" button ───────────────────────
     // testID is build-specific (hashed on the LT build); match by the visible "I'm Done!" label with
     // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
@@ -348,11 +357,19 @@ public class FamilyMissionPage extends BasePage {
     public void scrollAndConfirm() {
         waitUtils.waitForVisible(CONFIRMATION_TEXT, 15);
         // The Confirm button sits below the fold on the review screen; how far down it is varies
-        // with device resolution across the LT device pool, and an occasional swipe can no-op, so
-        // scroll until the button is actually present rather than relying on a fixed number of
-        // blind swipes. It anchors at the bottom of the screen, so extra swipes cannot overshoot.
-        for (int i = 0; i < 6 && !isPresent(CONFIRM_BUTTON, 1); i++) {
-            swipeUp();
+        // with device resolution across the LT device pool. Blind swipeUp() gestures on this
+        // React-Native ScrollView overscroll-bounce back to the top, so the button may never
+        // settle on screen. UiScrollable.scrollTextIntoView("Confirm") scrolls the exact button
+        // label into view and STOPS on it (no bounce). Fall back to swipe-scrolling only if no
+        // scrollable container is reported.
+        if (!isPresent(CONFIRM_BUTTON, 1)) {
+            try {
+                scrollToText("Confirm");
+            } catch (Exception e) {
+                for (int i = 0; i < 6 && !isPresent(CONFIRM_BUTTON, 1); i++) {
+                    swipeUp();
+                }
+            }
         }
         tap(confirmButton);
     }
@@ -424,14 +441,18 @@ public class FamilyMissionPage extends BasePage {
 
     @Step("Navigate to Missions from Kid dashboard")
     public void navigateToMissionsFromKidDashboard() {
-        // The Missions tile (testID-viewElemenMissionsLogo) lives on a later HORIZONTAL page of the
-        // dashboard Services carousel, and React Native does NOT render off-page tiles into the
-        // accessibility tree. The Services grid is the dashboard's bottom section, so it is usually
-        // already on screen — we must NOT drag it into the upper half (that just scrolls the page to
-        // the very bottom). Confirmed-on-device sequence: (1) make sure the Services row is visible,
-        // then (2) swipe the grid LEFT page-by-page until the Missions tile renders, then tap.
+        // Kid path (as per the flow that works for other accounts): scroll VERTICALLY down until the
+        // dashboard Services menu is rendered, then scroll the Services carousel HORIZONTALLY (left)
+        // page-by-page until the Missions tile (testID-viewElemenMissionsLogo) renders, then tap it.
+        // React Native does NOT render off-page carousel tiles into the accessibility tree, so the
+        // horizontal paging is required to surface the Missions tile.
 
-        // 1. Ensure the Services row is on screen (only scroll down if it isn't rendered yet).
+        // 0. The kid login can leave the app on a pushed sub-screen (e.g. Transactions) — its
+        //    passcode-retry focus tap lands on the freshly-loaded dashboard. Return to the dashboard
+        //    root first so the Services menu is reachable (otherwise we scroll a transactions list).
+        returnToDashboardRoot();
+
+        // 1. Scroll down until the Services grid is rendered on screen.
         for (int i = 0; i < 8 && firstServiceTile() == null; i++) {
             shortScrollDown();
         }
@@ -447,6 +468,20 @@ public class FamilyMissionPage extends BasePage {
         }
         throw new org.openqa.selenium.NoSuchElementException(
                 "Could not find the Missions tile on the kid dashboard after scrolling");
+    }
+
+    /**
+     * Ensure the kid dashboard ROOT is showing before searching the Services carousel. Pops any
+     * pushed sub-screen (e.g. Transactions) via its in-app back button, then taps the Home bottom-nav
+     * tab so the dashboard root is selected. Idempotent — a no-op when already on the dashboard root.
+     */
+    private void returnToDashboardRoot() {
+        for (int i = 0; i < 3 && isPresent(INAPP_BACK_BUTTON, 2); i++) {
+            tap(INAPP_BACK_BUTTON);
+        }
+        if (isPresent(HOME_TAB, 3)) {
+            tap(HOME_TAB);
+        }
     }
 
     /** First dashboard service tile currently rendered, or null if the Services grid isn't in view. */
