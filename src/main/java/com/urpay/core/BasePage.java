@@ -140,26 +140,6 @@ public abstract class BasePage {
         return waitUtils.isPresent(locator, timeoutSec);
     }
 
-    /**
-     * Dump the current page source to {@code target/diag/<tag>_<HHmmss>.xml}. Diagnostic aid for
-     * capturing ground-truth XML while stabilising locators (used by the remittance pages).
-     */
-    protected void dumpPageSource(String tag) {
-        try {
-            String src = driver.getPageSource();
-            String ts = new java.text.SimpleDateFormat("HHmmss").format(new java.util.Date());
-            java.io.File dir = new java.io.File("target/diag");
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            java.io.File out = new java.io.File(dir, tag + "_" + ts + ".xml");
-            java.nio.file.Files.write(out.toPath(), src.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            log.warn("DIAG[{}] page source -> {}", tag, out.getAbsolutePath());
-        } catch (Exception e) {
-            log.warn("DIAG[{}] dump failed: {}", tag, e.getMessage());
-        }
-    }
-
     // ── Navigation ─────────────────────────────────────────────────
 
     protected void pressBack() {
@@ -273,5 +253,24 @@ public abstract class BasePage {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Diagnostic: attach the current page source (XML) to the Allure report and log it at DEBUG.
+     * Used by page objects to capture UI state at key decision points without failing the test.
+     *
+     * @param tag short label shown in the Allure attachment name, e.g. "confirmationScreen".
+     */
+    protected void dumpPageSource(String tag) {
+        try {
+            String source = driver.getPageSource();
+            log.debug("Page source [{}]: {} chars", tag, source == null ? 0 : source.length());
+            Allure.addAttachment("pageSource-" + tag, "text/xml",
+                    new java.io.ByteArrayInputStream(
+                            source == null ? new byte[0] : source.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                    ".xml");
+        } catch (Exception e) {
+            log.warn("dumpPageSource({}) failed: {}", tag, e.getMessage());
+        }
     }
 }
