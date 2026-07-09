@@ -243,7 +243,26 @@ public class CardsFlow {
         try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
         enterVerificationCode();
 
-        // ── Step 6: IVR Skip — bypass verification call via backend API ──
+        // ── Step 6: Wait for IVR "Verification Call" screen, then skip via backend API ──
+        // The app shows a "Verification Call" screen after OTP. We must wait for it before
+        // calling the IVR skip API — otherwise the DB record doesn't exist yet.
+        By verificationCallScreen = AppiumBy.xpath(
+                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
+                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
+        log.info("Waiting for IVR 'Verification Call' screen...");
+        setImplicitWait(0);
+        for (int wait = 0; wait < 15; wait++) {
+            if (quickFind(verificationCallScreen)) {
+                log.info("IVR 'Verification Call' screen detected");
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+
+        // Small delay to ensure the DB record is committed before querying
+        try { Thread.sleep(3000); } catch (Exception ignored) {}
+
         String consumerId = c.get(cardPrefix + ".consumerId",
                 c.get(cardPrefix + ".id"));
         log.info("Attempting IVR skip for consumer: {}", consumerId);
