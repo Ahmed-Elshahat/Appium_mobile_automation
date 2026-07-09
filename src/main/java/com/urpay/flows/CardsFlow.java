@@ -48,6 +48,11 @@ public class CardsFlow {
     private final DashboardPage dashboardPage;
     private final PasscodePage passcodePage;
 
+    /** Tracks whether the last issueNewDigitalCard call found an existing card (vs creating a new one). */
+    private boolean existingCardDetected;
+
+    public boolean isExistingCardDetected() { return existingCardDetected; }
+
     public CardsFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
@@ -156,6 +161,7 @@ public class CardsFlow {
         // If existing card detected, return immediately
         if (hasExistingCard && !hasAddNewCard) {
             setImplicitWait(10);
+            existingCardDetected = true;
             log.info("User already has card — no 'Add new card' found, card ready for management");
             return page;
         }
@@ -177,6 +183,7 @@ public class CardsFlow {
             }
             if (hasExistingCard) {
                 setImplicitWait(10);
+                existingCardDetected = true;
                 log.info("User already has card — no 'Add new card' found, card ready for management");
                 return page;
             }

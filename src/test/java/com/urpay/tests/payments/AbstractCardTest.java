@@ -80,9 +80,12 @@ public abstract class AbstractCardTest extends BaseTest {
         captureScreenshot("After Login");
 
         CardsFlow flow = new CardsFlow();
-        flow.issueNewDigitalCard(getCardPrefix());
-        // Ensure card is unlocked (may have been left locked by previous run)
-        flow.ensureCardUnlocked();
+        boolean isNewCard = flow.issueNewDigitalCard(getCardPrefix()) != null 
+                && !flow.isExistingCardDetected();
+        if (!isNewCard) {
+            // Only check lock state for existing cards — new cards are always unlocked
+            flow.ensureCardUnlocked();
+        }
         captureScreenshot("On Card Products Page");
     }
 
