@@ -56,7 +56,7 @@ public class FamilyRequestMoneyTest extends BaseTest {
         MoneyRequestFlow flow = new MoneyRequestFlow();
         flow.kidRequestFromParent(c.get("familyRequestMoney.amount", "5"));
 
-        MoneyRequestPage page = flow.openRequestList();
+        MoneyRequestPage page = flow.openSentRequestList();
         Assert.assertEquals(page.getLatestStatus(),
                 c.get("familyRequestMoney.expectedStatusBefore", "Requested"),
                 "Kid's request status should be 'Requested' before parent approval");
@@ -104,7 +104,7 @@ public class FamilyRequestMoneyTest extends BaseTest {
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after kid re-login");
 
         MoneyRequestFlow flow = new MoneyRequestFlow();
-        MoneyRequestPage page = flow.openRequestList();
+        MoneyRequestPage page = flow.openSentRequestList();
 
         Assert.assertEquals(page.getLatestStatus(),
                 c.get("familyRequestMoney.expectedStatusAfter", "Approved"),

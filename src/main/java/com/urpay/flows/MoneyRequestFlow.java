@@ -71,6 +71,12 @@ public class MoneyRequestFlow {
         return moneyRequestPage;
     }
 
+    @Step("Open the kid's Sent money-request list (More → Request List → Money Request → Sent)")
+    public MoneyRequestPage openSentRequestList() {
+        moneyRequestPage.openSentRequestList();
+        return moneyRequestPage;
+    }
+
     @Step("Logout: deep link to Settings → Logout → confirm")
     public void logout() {
         settingsPage.openViaDeepLink();

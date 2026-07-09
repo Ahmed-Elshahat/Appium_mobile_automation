@@ -287,6 +287,14 @@ public class MoneyRequestPage extends BasePage {
         tap(MONEY_REQ_LIST);
     }
 
+    @Step("Open the kid's Sent money-request list (More → Request List → Money Request → Sent)")
+    public void openSentRequestList() {
+        // A kid's own request appears in the SENT tab of the Money Request list (Katalon
+        // KidValidationTCs/ToValidatetheSentRequestintheList taps sentTab before reading the status).
+        openRequestList();
+        tap(SENT_TAB);
+    }
+
     @Step("Open the Received tab")
     public void openReceivedTab() {
         tap(RECEIVED_TAB);
@@ -310,27 +318,43 @@ public class MoneyRequestPage extends BasePage {
     //  KID → PARENT (family wallet request money)
     // ══════════════════════════════════════════════════
 
-    // The kid's dashboard "Request Money" shortcut (Katalon WalletVas/MoneyRequest/requestMoneyBtn).
-    private static final By KID_REQUEST_MONEY_BTN =
-            AppiumBy.accessibilityId("testID-PlusWithCircle-Request Money");
-    // The primary action button (Next / Confirm / Done share this testID across the request screens).
-    private static final By PRIMARY_ACTION_BTN =
-            AppiumBy.accessibilityId("testID-primary-action-main");
+    // Kid money-request entry (current build, user-confirmed): tap "Top Up" on the dashboard, then
+    // enter the amount — for a linked kid, Top Up IS the request-from-parent flow.
+    private static final By KID_TOP_UP_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-PlusWithCircle-Top Up' or @text='Top Up']");
+    // The primary wizard button (Next / Confirm / Done). Its testID middle segment is OBFUSCATED on
+    // the LambdaTest build (e.g. testID-primary-Yb0-main), so match the exact id OR any clickable
+    // testID-primary-…-main wrapper structurally (there is a single primary button per wizard screen).
+    private static final By PRIMARY_ACTION_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-action-main'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc, string-length(@content-desc) - 4) = '-main')]");
+
+    // Home bottom-nav tab + in-app back button (mirrors FamilyMissionPage). The kid login can leave
+    // the app on a pushed sub-screen (e.g. Transactions) because the passcode-retry focus tap lands
+    // on the freshly-loaded dashboard; these pop back to the dashboard ROOT before navigating.
+    private static final By HOME_TAB =
+            AppiumBy.accessibilityId("testID-dashboard");
+    private static final By INAPP_BACK_BUTTON =
+            AppiumBy.accessibilityId("testID-left-icon-back");
 
     /**
-     * Kid requests money from the linked parent: tap Request Money, enter the amount on the on-screen
-     * keypad ({@code testID-keyboard-element-N} per digit), then Next → Confirm → Done. There is no
-     * recipient selection — a kid's request always targets the linked parent.
+     * Kid requests money from the linked parent. Current-build navigation (user-confirmed):
+     * tap "Top Up" on the dashboard, then enter the amount on the keypad and complete the wizard
+     * (Next → Confirm → Done). For a linked kid, Top Up IS the request-from-parent flow — there is no
+     * recipient selection.
      */
     @Step("Kid requests {amount} from the linked parent")
     public void kidRequestFromParent(String amount) {
-        if (!isPresent(KID_REQUEST_MONEY_BTN, 5)) {
-            new com.urpay.pages.dashboard.DashboardPage().dismissPopups();
-        }
-        if (!isPresent(KID_REQUEST_MONEY_BTN, 5)) {
-            dumpPageSource("kid-dashboard-no-request-money");
-        }
-        tap(KID_REQUEST_MONEY_BTN);
+        // The kid login can land on a pushed sub-screen (e.g. Transactions); clear any popup and
+        // return to the dashboard root first (mirrors FamilyMissionPage's kid navigation).
+        new com.urpay.pages.dashboard.DashboardPage().dismissPopups();
+        returnToDashboardRoot();
+
+        // Current build: a kid requests money from the parent by tapping "Top Up" on the dashboard.
+        tap(KID_TOP_UP_BTN);
+
+        // Enter the amount on the keypad, then Next → Confirm → Done.
         for (char ch : amount.toCharArray()) {
             if (Character.isDigit(ch)) {
                 tap(AppiumBy.accessibilityId("testID-keyboard-element-" + ch));
@@ -339,6 +363,20 @@ public class MoneyRequestPage extends BasePage {
         tap(PRIMARY_ACTION_BTN);   // Next
         tap(PRIMARY_ACTION_BTN);   // Confirm
         tap(PRIMARY_ACTION_BTN);   // Done
+    }
+
+    /**
+     * Ensure the kid dashboard ROOT is showing before looking for the Request Money quick-action.
+     * Pops any pushed sub-screen (e.g. Transactions) via its in-app back button, then taps the Home
+     * bottom-nav tab so the dashboard root is selected. Idempotent — a no-op when already on the root.
+     */
+    private void returnToDashboardRoot() {
+        for (int i = 0; i < 3 && isPresent(INAPP_BACK_BUTTON, 2); i++) {
+            tap(INAPP_BACK_BUTTON);
+        }
+        if (isPresent(HOME_TAB, 3)) {
+            tap(HOME_TAB);
+        }
     }
 
     @Step("Enter the verification code")
