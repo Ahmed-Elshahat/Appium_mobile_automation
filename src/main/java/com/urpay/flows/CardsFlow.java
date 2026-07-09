@@ -268,23 +268,34 @@ public class CardsFlow {
         boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
         log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
 
-        // ── Step 7: Wait for success screen after IVR ──
-        By backToCards = AppiumBy.xpath(
-                "//*[@text='Back to cards' or @content-desc='testID-primary-backToCardsDB-main']");
+        // ── Step 7: Wait for success screen after IVR, then tap to proceed ──
+        By successBtn = AppiumBy.xpath(
+                "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
+                + "@content-desc='testID-primary-backToCardsDB-main' or @content-desc='testID-primary--main']");
 
         setImplicitWait(0);
         for (int i = 0; i < 15; i++) {
-            if (quickFind(backToCards)) {
+            if (quickFind(successBtn)) {
                 setImplicitWait(10);
-                waits.waitForClickable(backToCards, 5).click();
-                log.info("Tapped 'Back to cards'");
+                // Prefer "Done" or "View Card" over "Back to cards"
+                By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+                setImplicitWait(2);
+                var doneBtns = driver.findElements(doneBtn);
+                if (!doneBtns.isEmpty()) {
+                    doneBtns.get(0).click();
+                    log.info("Tapped '{}' on success screen", doneBtns.get(0).getText());
+                } else {
+                    waits.waitForClickable(successBtn, 5).click();
+                    log.info("Tapped success screen button");
+                }
+                setImplicitWait(10);
                 break;
             }
             try { Thread.sleep(2000); } catch (Exception ignored) {}
         }
         setImplicitWait(10);
 
-        log.info("Digital Mada card issued");
+        log.info("Digital card issued for: {}", cardPrefix);
         return page;
     }
 
