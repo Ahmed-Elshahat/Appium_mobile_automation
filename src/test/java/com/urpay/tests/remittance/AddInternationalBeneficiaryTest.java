@@ -7,6 +7,7 @@ import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
 import com.urpay.flows.InternationalTransferFlow;
 import com.urpay.flows.LoginFlow;
+import com.urpay.helpers.BeneficiaryActivationHelper;
 import com.urpay.model.InternationalTransferData;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.utils.LocalBeneficiaryGenerator;
@@ -40,6 +41,12 @@ import io.qameta.allure.Story;
 public class AddInternationalBeneficiaryTest extends BaseTest {
 
     private static final String OTP_KEY = "moneygram.user.verificationCode";
+
+    /** Store generated names so DB activation can target them. */
+    private String bankDepositName;
+    private String cashPickupName;
+    private String sendToWalletName;
+    private String myselfName;
 
     private DashboardPage login() {
         ConfigManager c = ConfigManager.getInstance();
@@ -92,12 +99,18 @@ public class AddInternationalBeneficiaryTest extends BaseTest {
         DashboardPage dashboard = login();
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
+        InternationalTransferData data = addData("moneygram.addBankDeposit", "Others");
+        bankDepositName = data.getBeneficiaryName();
+
         boolean submitted = new InternationalTransferFlow()
-                .addBeneficiary(addData("moneygram.addBankDeposit", "Others"),
-                        ConfigManager.getInstance().get(OTP_KEY, "1234"));
+                .addBeneficiary(data, ConfigManager.getInstance().get(OTP_KEY, "1234"));
 
         Assert.assertTrue(submitted,
                 "Add Bank Deposit beneficiary should reach the IVR 'Verification Call' screen");
+
+        int activated = BeneficiaryActivationHelper.activate(bankDepositName);
+        Assert.assertTrue(activated > 0,
+                "Beneficiary '" + bankDepositName + "' should be activated in DB (rows=" + activated + ")");
     }
 
     @Test(priority = 2, dependsOnMethods = "testAddBankDepositBeneficiary",
@@ -107,11 +120,17 @@ public class AddInternationalBeneficiaryTest extends BaseTest {
             + "OTP → IVR Verification Call.")
     @Severity(SeverityLevel.CRITICAL)
     public void testAddCashPickupBeneficiary() {
+        InternationalTransferData data = addData("moneygram.addCashPickup", "Others");
+        cashPickupName = data.getBeneficiaryName();
+
         boolean submitted = new InternationalTransferFlow()
-                .addBeneficiary(addData("moneygram.addCashPickup", "Others"),
-                        ConfigManager.getInstance().get(OTP_KEY, "1234"));
+                .addBeneficiary(data, ConfigManager.getInstance().get(OTP_KEY, "1234"));
         Assert.assertTrue(submitted,
                 "Add Cash Pickup beneficiary should reach the IVR 'Verification Call' screen");
+
+        int activated = BeneficiaryActivationHelper.activate(cashPickupName);
+        Assert.assertTrue(activated > 0,
+                "Beneficiary '" + cashPickupName + "' should be activated in DB (rows=" + activated + ")");
     }
 
     @Test(priority = 3, dependsOnMethods = "testAddBankDepositBeneficiary",
@@ -121,11 +140,17 @@ public class AddInternationalBeneficiaryTest extends BaseTest {
             + "confirm → OTP → IVR Verification Call.")
     @Severity(SeverityLevel.NORMAL)
     public void testAddSendToWalletBeneficiary() {
+        InternationalTransferData data = addData("moneygram.addSendToWallet", "Others");
+        sendToWalletName = data.getBeneficiaryName();
+
         boolean submitted = new InternationalTransferFlow()
-                .addBeneficiary(addData("moneygram.addSendToWallet", "Others"),
-                        ConfigManager.getInstance().get(OTP_KEY, "1234"));
+                .addBeneficiary(data, ConfigManager.getInstance().get(OTP_KEY, "1234"));
         Assert.assertTrue(submitted,
                 "Add Send-to-Wallet beneficiary should reach the IVR 'Verification Call' screen");
+
+        int activated = BeneficiaryActivationHelper.activate(sendToWalletName);
+        Assert.assertTrue(activated > 0,
+                "Beneficiary '" + sendToWalletName + "' should be activated in DB (rows=" + activated + ")");
     }
 
     @Test(priority = 4, dependsOnMethods = "testAddBankDepositBeneficiary",
@@ -135,11 +160,17 @@ public class AddInternationalBeneficiaryTest extends BaseTest {
             + "→ confirm → OTP → IVR Verification Call.")
     @Severity(SeverityLevel.NORMAL)
     public void testAddMyselfBeneficiary() {
+        InternationalTransferData data = addData("moneygram.addCashPickup", "Myself");
+        myselfName = data.getBeneficiaryName();
+
         boolean submitted = new InternationalTransferFlow()
-                .addBeneficiary(addData("moneygram.addCashPickup", "Myself"),
-                        ConfigManager.getInstance().get(OTP_KEY, "1234"));
+                .addBeneficiary(data, ConfigManager.getInstance().get(OTP_KEY, "1234"));
         Assert.assertTrue(submitted,
                 "Add 'Myself' beneficiary should reach the IVR 'Verification Call' screen");
+
+        int activated = BeneficiaryActivationHelper.activate(myselfName);
+        Assert.assertTrue(activated > 0,
+                "Beneficiary '" + myselfName + "' should be activated in DB (rows=" + activated + ")");
     }
 
     @Test(priority = 5, dependsOnMethods = "testAddBankDepositBeneficiary",
