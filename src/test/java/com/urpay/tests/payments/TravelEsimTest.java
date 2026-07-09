@@ -70,9 +70,8 @@ public class TravelEsimTest extends BaseTest {
             log.info("Already on plan selection page (fresh user)");
         }
 
-        // Step 3: Select "Global" → first country → first package → "Next"
+        // Step 3: Select "Global" → first package (7 Days) → "Next"
         page.selectGlobalTab();
-        page.selectFirstCountry();
         page.selectFirstPackage();
         page.tapNext();
 

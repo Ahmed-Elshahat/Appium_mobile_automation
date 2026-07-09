@@ -67,18 +67,20 @@ public class IvrSkipHelper {
         log.info("DB Password: {}", dbPassword.replaceAll(".", "*"));
         log.info("===========================================");
 
-        // Diagnostic query: prints all recent CardIssuance records
-        String diagQuery = "SELECT md_creation_tmstmp, MD_FLOW_ID, SUBSTR(md_msg_data, 1, 500) AS msg_preview "
+        // Diagnostic query: find recent card issuance records by URL path (not flow ID — may have changed)
+        String diagQuery = "SELECT md_creation_tmstmp, MD_FLOW_ID, SUBSTR(md_msg_data, 1, 1000) AS msg_preview "
                 + "FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
-                + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
+                + "AND md_msg_data LIKE '%/v1/cards/issuance/initiate%' "
                 + "ORDER BY md_creation_tmstmp DESC";
 
-        // Main query: get x-request-id from the most recent CardIssuance record
+        // Main query: get x-request-id from the most recent card issuance record
+        // Searches by URL path + UserId in the body
         String mainQuery = "SELECT JSON_VALUE(md_msg_data, '$.headers.\"x-request-id\"') AS x_request_id "
                 + "FROM (SELECT md_msg_data, md_creation_tmstmp FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
-                + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
+                + "AND md_msg_data LIKE '%/v1/cards/issuance/initiate%' "
+                + "AND md_msg_data LIKE '%\"UserId\":\"" + identifier + "\"%' "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
 
         log.info("========== DB QUERIES ==========");

@@ -94,7 +94,8 @@ public class TravelEsimPage extends BasePage {
     @Step("Select Global tab")
     public void selectGlobalTab() {
         tap(globalTab);
-        waitUtils.waitForVisible(AppiumBy.xpath("//*[@text='Select a country' or @text='Aruba']"), 15);
+        // Wait for plans list to load after tab switch (network call)
+        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
     }
 
     @Step("Select first country from list")
@@ -119,14 +120,21 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Select first package (7 Days)")
     public void selectFirstPackage() {
-        tap(firstGlobalOption);
-        log.info("Selected first package via testID-data-0");
+        // Use UiAutomator for reliable React Native card tap
+        driver.findElement(AppiumBy.androidUIAutomator(
+                "new UiSelector().textContains(\"1GB 7Days\").instance(0)")).click();
+        log.info("Selected first package: 1GB 7Days");
     }
 
     @Step("Tap Next button")
     public void tapNext() {
-        platformActions.scrollToText("Next");
-        tap(nextButton);
+        // Use UiScrollable to scroll Next into full view, then tap
+        org.openqa.selenium.WebElement nextBtn = driver.findElement(
+                AppiumBy.androidUIAutomator(
+                        "new UiScrollable(new UiSelector().scrollable(true))"
+                        + ".scrollIntoView(new UiSelector().text(\"Next\"))"));
+        nextBtn.click();
+        log.info("Tapped Next button");
         waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
         log.info("Confirmation page loaded");
     }
@@ -150,21 +158,16 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Tap Confirm button")
     public void tapConfirm() {
-        // The confirmation CTA sits below the fold; scroll it into view first.
-        try {
-            platformActions.scrollToText("Confirm");
-        } catch (Exception ignored) {
-            // label may differ or already be visible — continue
-        }
-        // Prefer the testID, but fall back to the clickable element bearing the
-        // Confirm/Pay label — the confirm button's testID is not stable on the
-        // current build (testID-primary-onConfirm-main was never clickable in the run).
-        org.openqa.selenium.By confirm = AppiumBy.xpath(
-                "//*[@content-desc='testID-primary-onConfirm-main']"
-                + " | //*[@text='Confirm' or @text='Confirm Purchase' or @text='Pay' or @text='Pay Now']"
-                + "/ancestor-or-self::*[@clickable='true'][1]");
-        waitUtils.waitForClickable(confirm, 15).click();
+        // Use UiAutomator for reliable React Native button tap
+        driver.findElement(AppiumBy.androidUIAutomator(
+                "new UiScrollable(new UiSelector().scrollable(true))" +
+                ".scrollIntoView(new UiSelector().text(\"Confirm\"))")).click();
         log.info("Tapped Confirm button");
+        // Wait for OTP screen or result screen to appear
+        waitUtils.waitForVisible(AppiumBy.xpath(
+                "//*[@content-desc='testID-OTP-Input-Field-0']"
+                + " | //*[@content-desc='testID-primary-action-main']"
+                + " | //*[contains(@text,'error') or contains(@text,'Error')]"), 20);
     }
 
     public boolean isConfirmationPageLoaded() {
