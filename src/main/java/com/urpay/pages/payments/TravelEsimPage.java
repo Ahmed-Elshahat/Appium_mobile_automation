@@ -158,16 +158,13 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Tap Confirm button")
     public void tapConfirm() {
-        // Use UiAutomator for reliable React Native button tap
-        driver.findElement(AppiumBy.androidUIAutomator(
-                "new UiScrollable(new UiSelector().scrollable(true))" +
-                ".scrollIntoView(new UiSelector().text(\"Confirm\"))")).click();
+        // Find and tap the Confirm button directly (exact text match, not "Confirmation" header)
+        org.openqa.selenium.WebElement btn = waitUtils.waitForClickable(
+                AppiumBy.androidUIAutomator(
+                        "new UiSelector().className(\"android.view.ViewGroup\")"
+                        + ".childSelector(new UiSelector().text(\"Confirm\"))"), 15);
+        btn.click();
         log.info("Tapped Confirm button");
-        // Wait for OTP screen or result screen to appear
-        waitUtils.waitForVisible(AppiumBy.xpath(
-                "//*[@content-desc='testID-OTP-Input-Field-0']"
-                + " | //*[@content-desc='testID-primary-action-main']"
-                + " | //*[contains(@text,'error') or contains(@text,'Error')]"), 20);
     }
 
     public boolean isConfirmationPageLoaded() {
