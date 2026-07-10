@@ -413,9 +413,26 @@ public class CardsFlow {
         replacementPage.tapNext();
         log.info("Tapped Next after city selection");
 
-        // Step 6: STOP before confirmation — do NOT confirm (card still needed)
-        log.info("Card replacement flow validated up to confirmation screen — stopping here (card preserved)");
-        AppGuard.safeBack(driver);
+        // Step 6: Card Replacement Fees screen — tap Confirm
+        By confirmBtn = AppiumBy.xpath("//*[@text='Confirm']");
+        waits.waitForClickable(confirmBtn, 15).click();
+        log.info("Tapped Confirm on Card Replacement Fees screen");
+
+        // Step 7: Wait for success screen (Thank You / Done)
+        By successScreen = AppiumBy.xpath(
+                "//*[@text='Thank You!'] | //*[@text='Done'] | //*[@text='View Card']");
+        waits.waitForVisible(successScreen, 15);
+        log.info("Card replacement success screen visible");
+
+        // Tap Done to return
+        By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+        setImplicitWait(2);
+        var doneBtns = driver.findElements(doneBtn);
+        if (!doneBtns.isEmpty()) {
+            doneBtns.get(0).click();
+            log.info("Tapped Done after card replacement");
+        }
+        setImplicitWait(10);
     }
 
     /**
