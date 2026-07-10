@@ -35,8 +35,10 @@ public class GovernmentServicesTest extends BaseTest {
     public void testSingleTrafficViolationPayment() {
         ConfigManager c = ConfigManager.getInstance();
 
+        String mobile = c.get("gov.mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("gov.mobileNumber"),
+                mobile,
                 c.get("gov.id"),
                 c.get("gov.verificationCode", "1234"),
                 c.get("gov.passCode", "2233"));

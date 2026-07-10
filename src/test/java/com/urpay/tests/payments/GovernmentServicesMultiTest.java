@@ -35,8 +35,10 @@ public class GovernmentServicesMultiTest extends BaseTest {
     public void testMultipleTrafficViolationsPayment() {
         ConfigManager c = ConfigManager.getInstance();
 
+        String mobile = c.get("gov.multi.mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("gov.multi.mobileNumber"),
+                mobile,
                 c.get("gov.multi.id"),
                 c.get("gov.multi.verificationCode", "1234"),
                 c.get("gov.multi.passCode", "2233"));

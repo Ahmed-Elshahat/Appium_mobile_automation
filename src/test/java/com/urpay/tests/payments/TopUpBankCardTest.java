@@ -60,8 +60,10 @@ public class TopUpBankCardTest extends BaseTest {
     @Severity(SeverityLevel.BLOCKER)
     public void testLoginForTopUp() {
         ConfigManager c = ConfigManager.getInstance();
+        String mobile = c.get("topup.mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("topup.mobileNumber"),
+                mobile,
                 c.get("topup.id"),
                 c.get("topup.verificationCode", "1234"),
                 c.get("topup.passCode", "2233"));

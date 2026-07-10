@@ -9,6 +9,7 @@ import com.urpay.core.ConfigManager;
 import com.urpay.flows.CardsFlow;
 import com.urpay.flows.LoginFlow;
 import com.urpay.helpers.RegistrationApiHelper;
+import com.urpay.helpers.WalletBalanceHelper;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.payments.CardBenefitsPage;
 import com.urpay.pages.payments.CardInfoPage;
@@ -78,6 +79,12 @@ public abstract class AbstractCardTest extends BaseTest {
                     provisionedUser.mobile, provisionedUser.poi,
                     provisionedUser.consumerId, provisionedUser.walletTier);
 
+            // Top up wallet balance to 20,000 SAR for card issuance fees and operations
+            if (provisionedUser.walletNumber != null && !provisionedUser.walletNumber.isEmpty()) {
+                boolean topped = WalletBalanceHelper.topUp(provisionedUser.walletNumber);
+                log.info("Wallet balance top-up result: {}", topped ? "SUCCESS" : "FAILED");
+            }
+
             // Convert mobile format: API returns +966520XXXXXX → UI needs 0520XXXXXX
             String mobile = provisionedUser.mobile;
             if (mobile.startsWith("+966")) {
@@ -91,9 +98,11 @@ public abstract class AbstractCardTest extends BaseTest {
                     "1234",  // default OTP
                     provisionedUser.passcode);
         }
-        // Default: use config credentials
+        // Default: use config credentials + top up balance for old users
+        String mobile = cardConfig("mobileNumber");
+        topUpBalanceByMobile(mobile);
         return new LoginFlow().loginWith(
-                cardConfig("mobileNumber"),
+                mobile,
                 cardConfig("id"),
                 cardConfig("verificationCode", "1234"),
                 cardConfig("passCode", "2233"));
