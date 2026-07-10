@@ -334,6 +334,7 @@ public class CardsFlow {
 
     @Step("Request physical card copy")
     public CardsPage requestPhysicalCard(String cardPrefix) {
+        navigateToCardSettings();
         RequestPhysicalCardPage physicalPage = new RequestPhysicalCardPage();
         physicalPage.tapRequestPhysicalCopy();
 
