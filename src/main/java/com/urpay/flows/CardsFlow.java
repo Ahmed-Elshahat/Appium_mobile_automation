@@ -290,7 +290,7 @@ public class CardsFlow {
                 var doneBtns = driver.findElements(doneBtn);
                 if (!doneBtns.isEmpty()) {
                     doneBtns.get(0).click();
-                    log.info("Tapped '{}' on success screen", doneBtns.get(0).getText());
+                    log.info("Tapped Done/View Card on success screen");
                 } else {
                     waits.waitForClickable(successBtn, 5).click();
                     log.info("Tapped success screen button");
