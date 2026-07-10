@@ -1,0 +1,17 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="MTO Corridor Refresh" verbose="1">
+    <!--
+        MTO Code Table Refresh & Discovery — NO Appium/UI needed.
+        Triggers MQ jobs to refresh MTO provider data, then queries DB for available corridors.
+        Run on DB machine (needs MQ + Oracle access).
+
+        Run:
+          mvn clean test "-Dsuite=suites/mto-corridor-refresh.xml" "-Dprofile=sit-remittance"
+              -Denv=SIT -Dremote=false
+    -->
+    <test name="MTO Code Table Refresh">
+        <classes>
+            <class name="com.urpay.tests.remittance.MTOCorridorRefreshTest"/>
+        </classes>
+    </test>
+</suite>
