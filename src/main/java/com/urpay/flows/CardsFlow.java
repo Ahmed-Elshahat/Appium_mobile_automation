@@ -454,22 +454,43 @@ public class CardsFlow {
         enterVerificationCode(verificationCode);
         log.info("Entered activation verification code");
 
-        // Step 3: Wait for success + Back to cards
-        By backBtn = AppiumBy.xpath(
-                "//*[@content-desc='testID-primary-backToCards-main'] | //*[@text='Back to cards']");
-        setImplicitWait(3);
-        var backBtns = driver.findElements(backBtn);
-        if (!backBtns.isEmpty()) {
-            backBtns.get(0).click();
-            log.info("Tapped Back to Cards after activation");
-        } else {
-            // Fallback: try Done or View Card
-            By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
-            var doneBtns = driver.findElements(doneBtn);
-            if (!doneBtns.isEmpty()) {
-                doneBtns.get(0).click();
-                log.info("Tapped Done/View Card after activation");
+        // Step 3: Wait for IVR "Verification Call" screen, then skip via backend API
+        By verificationCallScreen = AppiumBy.xpath(
+                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
+                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
+        log.info("Waiting for IVR 'Verification Call' screen after activation...");
+        setImplicitWait(0);
+        for (int wait = 0; wait < 15; wait++) {
+            if (quickFind(verificationCallScreen)) {
+                log.info("IVR 'Verification Call' screen detected after activation");
+                break;
             }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+
+        // Small delay to ensure the DB record is committed
+        try { Thread.sleep(3000); } catch (Exception ignored) {}
+
+        // IVR skip: query DB for x-request-id and call callback API
+        String userId = c.get(cardPrefix + ".userId", "");
+        log.info("Attempting IVR skip for activation, userId: {}", userId);
+        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
+        log.info("Activation IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
+
+        // Step 4: Wait for success screen + tap Back to Cards / Done
+        By successBtn = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-backToCards-main'] | //*[@text='Back to cards'] | " +
+                "//*[@text='Done'] | //*[@text='View Card']");
+        setImplicitWait(0);
+        for (int i = 0; i < 15; i++) {
+            if (quickFind(successBtn)) {
+                setImplicitWait(10);
+                driver.findElements(successBtn).get(0).click();
+                log.info("Tapped success button after activation");
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
         }
         setImplicitWait(10);
         log.info("Replacement card activated for: {}", cardPrefix);
