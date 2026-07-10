@@ -587,7 +587,7 @@ public class CardsFlow {
         setImplicitWait(10);
 
         By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
-        setImplicitWait(3);
+        setImplicitWait(0);
         var unlockEls = driver.findElements(unlockText);
         setImplicitWait(10);
         if (!unlockEls.isEmpty()) {
@@ -646,11 +646,11 @@ public class CardsFlow {
                 log.info("Tapped Yes on unlock confirmation");
             }
             setImplicitWait(10);
-            if (common.isNotificationVisible(5)) {
+            if (common.isNotificationVisible(2)) {
                 log.info("Unlock notification: {}", common.getNotificationMessage());
             }
             if (common.isNotificationVisible(1)) {
-                try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+                try { common.waitForNotificationToDismiss(2); } catch (Exception ignored) {}
             }
         } else {
             log.info("Card is already unlocked");
@@ -660,7 +660,6 @@ public class CardsFlow {
     @Step("Lock card")
     public CardSettingsPage lockCard() {
         CardSettingsPage settings = new CardSettingsPage();
-        ensureCardUnlocked();
 
         // Tap lock toggle via preceding sibling
         tapCardToggle("Lock Card");
