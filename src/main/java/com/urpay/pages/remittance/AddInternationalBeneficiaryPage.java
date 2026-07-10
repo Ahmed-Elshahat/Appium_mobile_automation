@@ -190,6 +190,14 @@ public class AddInternationalBeneficiaryPage extends BasePage {
 
     @Step("Tap Next on the beneficiary details screen")
     public void tapNextAtDetails() {
+        // Bank Deposit forms can be long — scroll down to make Next visible
+        By nextLoc = AppiumBy.xpath("//*[@content-desc='testID-primary--main' or @text='Next']");
+        if (!isDisplayed(nextAtDetailsButton, 2)) {
+            new com.urpay.utils.SwipeUtils(getDriver(), 0.30).swipeUp();
+            if (!isDisplayed(nextAtDetailsButton, 2)) {
+                new com.urpay.utils.SwipeUtils(getDriver(), 0.30).swipeUp();
+            }
+        }
         tap(nextAtDetailsButton);
     }
 
