@@ -16,4 +16,7 @@ public class MadaCardTest extends AbstractCardTest {
     protected String getCardPrefix() {
         return "madaCard";
     }
+
+    @Override
+    protected boolean useRegistration() { return true; }
 }
