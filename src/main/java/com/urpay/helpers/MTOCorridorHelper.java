@@ -137,10 +137,10 @@ public class MTOCorridorHelper {
      * Map DB DELIVERY_OPTION_CODE to the text shown in the app UI.
      */
     public static String deliveryCodeToAppText(String deliveryOptionCode) {
-        if (deliveryOptionCode == null) return "Cash Pickup";
+        if (deliveryOptionCode == null) return "Cash pickup";
         switch (deliveryOptionCode) {
             case "BANK_DEPOSIT": return "Bank Deposit";
-            case "WILL_CALL": return "Cash Pickup";
+            case "WILL_CALL": return "Cash pickup";
             case "DIRECT_TO_ACCT": return "Send to Wallet";
             default: return deliveryOptionCode;
         }

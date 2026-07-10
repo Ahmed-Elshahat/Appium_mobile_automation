@@ -170,7 +170,7 @@ public class MoneyGramDynamicBeneficiaryTest extends BaseTest {
                 .accountNumber(accountNumber)
                 .routingNumber("")
                 .city("")
-                .purposeOfFunds("")
+                .purposeOfFunds("Family Support")
                 .build();
 
         boolean submitted = new InternationalTransferFlow()
