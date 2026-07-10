@@ -78,9 +78,15 @@ public abstract class AbstractCardTest extends BaseTest {
                     provisionedUser.mobile, provisionedUser.poi,
                     provisionedUser.consumerId, provisionedUser.walletTier);
 
+            // Convert mobile format: API returns +966520XXXXXX → UI needs 0520XXXXXX
+            String mobile = provisionedUser.mobile;
+            if (mobile.startsWith("+966")) {
+                mobile = "0" + mobile.substring(4); // +966520... → 0520...
+            }
+
             // Login with the freshly provisioned credentials
             return new LoginFlow().loginWith(
-                    provisionedUser.mobile,
+                    mobile,
                     provisionedUser.poi,
                     "1234",  // default OTP
                     provisionedUser.passcode);
