@@ -237,8 +237,10 @@ public class TelecomRechargeTest extends BaseTest {
     // ═══════════════════════════════════════════════════
 
     private DashboardPage loginForProvider(String provider, ConfigManager c) {
+        String mobile = c.get(provider + ".mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get(provider + ".mobileNumber"),
+                mobile,
                 c.get(provider + ".id"),
                 c.get("urpayUser.verificationCode", "1234"),
                 c.get("urpayUser.passCode", "2233"));

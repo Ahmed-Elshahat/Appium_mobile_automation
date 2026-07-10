@@ -43,8 +43,10 @@ public class TravelEsimTest extends BaseTest {
     @Severity(SeverityLevel.BLOCKER)
     public void testLoginForTravelEsim() {
         ConfigManager c = ConfigManager.getInstance();
+        String mobile = c.get("travelEsim.mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("travelEsim.mobileNumber"),
+                mobile,
                 c.get("travelEsim.id"),
                 c.get("travelEsim.verificationCode", "1234"),
                 c.get("travelEsim.passCode", "2233"));

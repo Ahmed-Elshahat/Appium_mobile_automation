@@ -10,6 +10,8 @@ import org.testng.annotations.Listeners;
 
 import com.urpay.platform.health.AppHealthChecker;
 import com.urpay.platform.health.AppHealthCheckerFactory;
+import com.urpay.helpers.RegistrationApiHelper;
+import com.urpay.helpers.WalletBalanceHelper;
 import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
 
@@ -115,6 +117,51 @@ public abstract class BaseTest {
             DriverFactory.getInstance().quitDriver();
             DriverFactory.getInstance().initDriver();
         }
+    }
+
+    /**
+     * Top up wallet balance to 20,000 SAR for any user (old or new).
+     * Call in @BeforeSuite or login method to ensure sufficient balance for P&C tests.
+     * @param walletNumber the wallet number from config or provisioned user
+     */
+    protected void topUpBalance(String walletNumber) {
+        if (walletNumber != null && !walletNumber.isEmpty()) {
+            boolean ok = WalletBalanceHelper.topUp(walletNumber);
+            if (ok) {
+                log.info("Wallet {} topped up to 20,000 SAR", walletNumber);
+            } else {
+                log.warn("Failed to top up wallet {}", walletNumber);
+            }
+        }
+    }
+
+    /**
+     * Top up wallet balance by mobile number (for old/existing users in P&C config).
+     * @param mobileNumber the mobile number (05XXXXXXXX format)
+     */
+    protected void topUpBalanceByMobile(String mobileNumber) {
+        if (mobileNumber != null && !mobileNumber.isEmpty()) {
+            boolean ok = WalletBalanceHelper.topUpByMobile(mobileNumber);
+            if (ok) {
+                log.info("Wallet for mobile {} topped up to 20,000 SAR", mobileNumber);
+            } else {
+                log.warn("Failed to top up wallet for mobile {}", mobileNumber);
+            }
+        }
+    }
+
+    /**
+     * Register a fresh NAT user via API and top up balance. Returns provisioned credentials.
+     * Use for tests that need a brand-new account with funds.
+     */
+    protected RegistrationApiHelper.Provisioned registerFreshUserWithBalance() {
+        RegistrationApiHelper.Provisioned user = RegistrationApiHelper.registerNationalAndReturn();
+        if (user == null) {
+            throw new RuntimeException("Failed to provision a new user via API — check VPN/backend access");
+        }
+        log.info("User provisioned: mobile={}, poi={}, wallet={}", user.mobile, user.poi, user.walletNumber);
+        topUpBalance(user.walletNumber);
+        return user;
     }
 
     /**

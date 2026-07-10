@@ -131,17 +131,21 @@ public class AddInternationalBeneficiaryPage extends BasePage {
 
     @Step("Select delivery option: {deliveryOption}")
     public void selectDeliveryOption(String deliveryOption) {
-        // The label may vary ("Bank Deposit" vs "Account Deposit"); match the exact text, else a
-        // row whose text contains the same trailing keyword (Deposit / Pickup / Wallet).
+        // The label may vary ("Bank Deposit" vs "Account Deposit", "Cash pickup - Cebuana & others");
+        // match exact text first, then contains (case-insensitive via translate).
         By exact = AppiumBy.xpath("//android.widget.TextView[@text='" + deliveryOption + "']");
         if (isPresent(exact, 4)) {
             tap(exact);
             return;
         }
+        // Fallback: contains the last word (case-insensitive)
         String last = deliveryOption.contains(" ")
                 ? deliveryOption.substring(deliveryOption.lastIndexOf(' ') + 1)
                 : deliveryOption;
-        tap(AppiumBy.xpath("//android.widget.TextView[contains(@text,'" + last + "')]"));
+        By caseInsensitive = AppiumBy.xpath(
+                "//android.widget.TextView[contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'"
+                + last.toLowerCase() + "')]");
+        tap(caseInsensitive);
     }
 
     @Step("Select the first currency option")
@@ -186,6 +190,13 @@ public class AddInternationalBeneficiaryPage extends BasePage {
 
     @Step("Tap Next on the beneficiary details screen")
     public void tapNextAtDetails() {
+        // Bank Deposit forms can be long — scroll down to make Next visible
+        if (!isDisplayed(nextAtDetailsButton, 2)) {
+            new com.urpay.utils.SwipeUtils(driver, 0.30).swipeUp();
+            if (!isDisplayed(nextAtDetailsButton, 2)) {
+                new com.urpay.utils.SwipeUtils(driver, 0.30).swipeUp();
+            }
+        }
         tap(nextAtDetailsButton);
     }
 

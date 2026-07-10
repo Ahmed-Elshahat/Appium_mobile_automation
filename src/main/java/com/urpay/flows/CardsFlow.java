@@ -48,6 +48,11 @@ public class CardsFlow {
     private final DashboardPage dashboardPage;
     private final PasscodePage passcodePage;
 
+    /** Tracks whether the last issueNewDigitalCard call found an existing card (vs creating a new one). */
+    private boolean existingCardDetected;
+
+    public boolean isExistingCardDetected() { return existingCardDetected; }
+
     public CardsFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
@@ -156,6 +161,7 @@ public class CardsFlow {
         // If existing card detected, return immediately
         if (hasExistingCard && !hasAddNewCard) {
             setImplicitWait(10);
+            existingCardDetected = true;
             log.info("User already has card — no 'Add new card' found, card ready for management");
             return page;
         }
@@ -177,6 +183,7 @@ public class CardsFlow {
             }
             if (hasExistingCard) {
                 setImplicitWait(10);
+                existingCardDetected = true;
                 log.info("User already has card — no 'Add new card' found, card ready for management");
                 return page;
             }
@@ -243,30 +250,59 @@ public class CardsFlow {
         try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
         enterVerificationCode();
 
-        // ── Step 6: IVR Skip — bypass verification call via backend API ──
-        String consumerId = c.get(cardPrefix + ".consumerId",
-                c.get(cardPrefix + ".id"));
-        log.info("Attempting IVR skip for consumer: {}", consumerId);
-        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(consumerId);
-        log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
-
-        // ── Step 7: Wait for success screen after IVR ──
-        By backToCards = AppiumBy.xpath(
-                "//*[@text='Back to cards' or @content-desc='testID-primary-backToCardsDB-main']");
-
+        // ── Step 6: Wait for IVR "Verification Call" screen, then skip via backend API ──
+        // The app shows a "Verification Call" screen after OTP. We must wait for it before
+        // calling the IVR skip API — otherwise the DB record doesn't exist yet.
+        By verificationCallScreen = AppiumBy.xpath(
+                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
+                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
+        log.info("Waiting for IVR 'Verification Call' screen...");
         setImplicitWait(0);
-        for (int i = 0; i < 15; i++) {
-            if (quickFind(backToCards)) {
-                setImplicitWait(10);
-                waits.waitForClickable(backToCards, 5).click();
-                log.info("Tapped 'Back to cards'");
+        for (int wait = 0; wait < 15; wait++) {
+            if (quickFind(verificationCallScreen)) {
+                log.info("IVR 'Verification Call' screen detected");
                 break;
             }
             try { Thread.sleep(2000); } catch (Exception ignored) {}
         }
         setImplicitWait(10);
 
-        log.info("Digital Mada card issued");
+        // Small delay to ensure the DB record is committed before querying
+        try { Thread.sleep(3000); } catch (Exception ignored) {}
+
+        String userId = c.get(cardPrefix + ".userId");
+        log.info("Attempting IVR skip for userId: {}", userId);
+        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
+        log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
+
+        // ── Step 7: Wait for success screen after IVR, then tap to proceed ──
+        By successBtn = AppiumBy.xpath(
+                "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
+                + "@content-desc='testID-primary-backToCardsDB-main' or @content-desc='testID-primary--main']");
+
+        setImplicitWait(0);
+        for (int i = 0; i < 15; i++) {
+            if (quickFind(successBtn)) {
+                setImplicitWait(10);
+                // Prefer "Done" or "View Card" over "Back to cards"
+                By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+                setImplicitWait(2);
+                var doneBtns = driver.findElements(doneBtn);
+                if (!doneBtns.isEmpty()) {
+                    doneBtns.get(0).click();
+                    log.info("Tapped Done/View Card on success screen");
+                } else {
+                    waits.waitForClickable(successBtn, 5).click();
+                    log.info("Tapped success screen button");
+                }
+                setImplicitWait(10);
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+
+        log.info("Digital card issued for: {}", cardPrefix);
         return page;
     }
 
@@ -298,6 +334,7 @@ public class CardsFlow {
 
     @Step("Request physical card copy")
     public CardsPage requestPhysicalCard(String cardPrefix) {
+        navigateToCardSettings();
         RequestPhysicalCardPage physicalPage = new RequestPhysicalCardPage();
         physicalPage.tapRequestPhysicalCopy();
 
@@ -376,9 +413,26 @@ public class CardsFlow {
         replacementPage.tapNext();
         log.info("Tapped Next after city selection");
 
-        // Step 6: STOP before confirmation — do NOT confirm (card still needed)
-        log.info("Card replacement flow validated up to confirmation screen — stopping here (card preserved)");
-        AppGuard.safeBack(driver);
+        // Step 6: Card Replacement Fees screen — tap Confirm
+        By confirmBtn = AppiumBy.xpath("//*[@text='Confirm']");
+        waits.waitForClickable(confirmBtn, 15).click();
+        log.info("Tapped Confirm on Card Replacement Fees screen");
+
+        // Step 7: Wait for success screen (Thank You / Done)
+        By successScreen = AppiumBy.xpath(
+                "//*[@text='Thank You!'] | //*[@text='Done'] | //*[@text='View Card']");
+        waits.waitForVisible(successScreen, 15);
+        log.info("Card replacement success screen visible");
+
+        // Tap Done to return
+        By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+        setImplicitWait(2);
+        var doneBtns = driver.findElements(doneBtn);
+        if (!doneBtns.isEmpty()) {
+            doneBtns.get(0).click();
+            log.info("Tapped Done after card replacement");
+        }
+        setImplicitWait(10);
     }
 
     /**
@@ -391,18 +445,55 @@ public class CardsFlow {
                 new com.urpay.pages.payments.CardReplacementPage();
         ConfigManager c = ConfigManager.getInstance();
 
-        // Step 1: Tap Activate
+        // Step 1: Tap Activate (on card products page after replacement)
         replacementPage.tapActivate();
         log.info("Tapped Activate replacement card");
 
-        // Step 2: Enter verification code via keypad
+        // Step 2: Enter verification code (OTP-style, matching Katalon fillVerificationCode)
         String verificationCode = c.get(cardPrefix + ".verificationCode", "1234");
-        passcodePage.enterPasscode(verificationCode);
+        enterVerificationCode(verificationCode);
         log.info("Entered activation verification code");
 
-        // Step 3: Back to cards
-        replacementPage.tapBackToCards();
-        log.info("Replacement card activated — back to cards");
+        // Step 3: Wait for IVR "Verification Call" screen, then skip via backend API
+        By verificationCallScreen = AppiumBy.xpath(
+                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
+                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
+        log.info("Waiting for IVR 'Verification Call' screen after activation...");
+        setImplicitWait(0);
+        for (int wait = 0; wait < 15; wait++) {
+            if (quickFind(verificationCallScreen)) {
+                log.info("IVR 'Verification Call' screen detected after activation");
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+
+        // Small delay to ensure the DB record is committed
+        try { Thread.sleep(3000); } catch (Exception ignored) {}
+
+        // IVR skip: query DB for x-request-id and call callback API
+        String userId = c.get(cardPrefix + ".userId", "");
+        log.info("Attempting IVR skip for activation, userId: {}", userId);
+        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
+        log.info("Activation IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
+
+        // Step 4: Wait for success screen + tap Back to Cards / Done
+        By successBtn = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-backToCards-main'] | //*[@text='Back to cards'] | " +
+                "//*[@text='Done'] | //*[@text='View Card']");
+        setImplicitWait(0);
+        for (int i = 0; i < 15; i++) {
+            if (quickFind(successBtn)) {
+                setImplicitWait(10);
+                driver.findElements(successBtn).get(0).click();
+                log.info("Tapped success button after activation");
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+        log.info("Replacement card activated for: {}", cardPrefix);
     }
 
     // ══════════════════════════════════════════════════
@@ -551,7 +642,7 @@ public class CardsFlow {
         setImplicitWait(10);
 
         By unlockText = AppiumBy.xpath("//*[@text='Unlock Card']");
-        setImplicitWait(3);
+        setImplicitWait(0);
         var unlockEls = driver.findElements(unlockText);
         setImplicitWait(10);
         if (!unlockEls.isEmpty()) {
@@ -601,20 +692,22 @@ public class CardsFlow {
                 }
             }
 
-            // Check for confirmation popup
+            // Check for confirmation popup (new UI: "Unlock Card" button, old: testID-primary-callAPI-main)
             setImplicitWait(3);
-            By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
-            var yesBtns = driver.findElements(yesBtn);
-            if (!yesBtns.isEmpty()) {
-                yesBtns.get(0).click();
+            By unlockConfirm = AppiumBy.xpath(
+                    "//*[@content-desc='testID-primary-callAPI-main'] | " +
+                    "//*[@text='Unlock Card' and @clickable='true']");
+            var confirmBtns = driver.findElements(unlockConfirm);
+            if (!confirmBtns.isEmpty()) {
+                confirmBtns.get(confirmBtns.size() - 1).click();
                 log.info("Tapped Yes on unlock confirmation");
             }
             setImplicitWait(10);
-            if (common.isNotificationVisible(5)) {
+            if (common.isNotificationVisible(2)) {
                 log.info("Unlock notification: {}", common.getNotificationMessage());
             }
             if (common.isNotificationVisible(1)) {
-                try { common.waitForNotificationToDismiss(3); } catch (Exception ignored) {}
+                try { common.waitForNotificationToDismiss(2); } catch (Exception ignored) {}
             }
         } else {
             log.info("Card is already unlocked");
@@ -624,7 +717,6 @@ public class CardsFlow {
     @Step("Lock card")
     public CardSettingsPage lockCard() {
         CardSettingsPage settings = new CardSettingsPage();
-        ensureCardUnlocked();
 
         // Tap lock toggle via preceding sibling
         tapCardToggle("Lock Card");
@@ -672,12 +764,37 @@ public class CardsFlow {
             driver.findElement(textLocator).click();
             log.info("Tapped '{}' text directly", label);
         }
-        // Confirm popup if present
+        // Confirm popup if present (new UI shows a popup with "Lock Card"/"Unlock Card" + "No, thanks")
         setImplicitWait(3);
-        var yesBtns = driver.findElements(AppiumBy.accessibilityId("testID-primary-callAPI-main"));
-        if (!yesBtns.isEmpty()) {
-            yesBtns.get(0).click();
-            log.info("Tapped Yes on confirmation popup");
+        // Check if popup appeared by looking for "No, thanks"
+        By noThanks = AppiumBy.xpath("//*[@text='No, thanks']");
+        var noThanksBtns = driver.findElements(noThanks);
+        if (!noThanksBtns.isEmpty()) {
+            // Popup is open — the confirm button is the LAST element with the label text
+            // (first one is the products page label, second is the popup button)
+            By popupBtn = AppiumBy.xpath("(//*[@text='" + label + "'])[last()]");
+            try {
+                var btn = driver.findElement(popupBtn);
+                btn.click();
+                log.info("Tapped '{}' popup confirmation button", label);
+            } catch (Exception e) {
+                // Fallback: tap the parent of the text (clickable ViewGroup wrapping non-clickable TextView)
+                try {
+                    var btn = driver.findElement(AppiumBy.xpath(
+                            "(//*[@text='" + label + "'])[last()]/ancestor::*[@clickable='true'][1]"));
+                    btn.click();
+                    log.info("Tapped '{}' popup button via clickable ancestor", label);
+                } catch (Exception e2) {
+                    log.warn("Could not tap popup confirmation: {}", e2.getMessage());
+                }
+            }
+        } else {
+            // Old UI: try testID-primary-callAPI-main
+            var oldBtns = driver.findElements(AppiumBy.accessibilityId("testID-primary-callAPI-main"));
+            if (!oldBtns.isEmpty()) {
+                oldBtns.get(0).click();
+                log.info("Tapped old-style confirmation popup");
+            }
         }
         setImplicitWait(10);
     }
@@ -728,7 +845,7 @@ public class CardsFlow {
         log.info("Thank You / Done page visible — PIN change confirmed");
         // Tap Done button (use waitForClickable to ensure it's interactable)
         By doneBtnLocator = AppiumBy.xpath("//*[@text='Done']");
-        setImplicitWait(3);
+        setImplicitWait(0);
         var doneBtns = driver.findElements(doneBtnLocator);
         if (!doneBtns.isEmpty()) {
             try {
@@ -742,7 +859,7 @@ public class CardsFlow {
         }
         setImplicitWait(10);
         // Ensure we're back on card products page (not still on Thank You)
-        setImplicitWait(3);
+        setImplicitWait(0);
         boolean onProducts = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
                 || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"));
         if (!onProducts) {
@@ -763,6 +880,8 @@ public class CardsFlow {
 
     /** Tap "Next" button after PIN entry (Katalon: NextButton → //*[@text="Next"]) */
     private void tapNextButton() {
+        // Brief pause to let the PIN input register the last digit
+        try { Thread.sleep(500); } catch (Exception ignored) {}
         By nextBtn = AppiumBy.xpath("//*[@text='Next']");
         waits.waitForClickable(nextBtn, 10).click();
         log.info("Tapped Next button");
@@ -788,7 +907,7 @@ public class CardsFlow {
         // Enter wrong confirmation
         passcodePage.enterPasscode("9999");
         // Notification may auto-dismiss quickly
-        if (common.isNotificationVisible(5)) {
+        if (common.isNotificationVisible(3)) {
             log.info("Invalid PIN mismatch notification: {}", common.getNotificationMessage());
         } else {
             log.warn("PIN mismatch notification not captured — may have auto-dismissed");

@@ -31,8 +31,10 @@ public class CardReplacementPage extends BasePage {
     private static final By DONE_BTN = AppiumBy.accessibilityId("testID-primary-close-main");
 
     // ── Activation locators ──
-    private static final By ACTIVATE_BTN = AppiumBy.accessibilityId("testID-primary-activate-main");
-    private static final By BACK_TO_CARDS_BTN = AppiumBy.accessibilityId("testID-primary-backToCards-main");
+    private static final By ACTIVATE_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-activate-main'] | //*[@text='Activate']");
+    private static final By BACK_TO_CARDS_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-backToCards-main'] | //*[@text='Back to cards']");
 
     // ── Transaction detail locators ──
     private static final By TRANSACTION_SUBTITLE = AppiumBy.accessibilityId("testID-second-secRow-0");

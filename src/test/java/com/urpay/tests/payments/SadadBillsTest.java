@@ -45,8 +45,10 @@ public class SadadBillsTest extends BaseTest {
     @Severity(SeverityLevel.BLOCKER)
     public void testLoginForSadad() {
         ConfigManager c = ConfigManager.getInstance();
+        String mobile = c.get("sadad.mobileNumber");
+        topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("sadad.mobileNumber"),
+                mobile,
                 c.get("sadad.id"),
                 c.get("sadad.verificationCode", "1234"),
                 c.get("sadad.passCode", "2233"));

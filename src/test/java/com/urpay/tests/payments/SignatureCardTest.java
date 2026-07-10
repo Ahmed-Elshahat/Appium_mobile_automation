@@ -16,4 +16,7 @@ public class SignatureCardTest extends AbstractCardTest {
     protected String getCardPrefix() {
         return "signatureCard";
     }
+
+    @Override
+    protected boolean useRegistration() { return true; }
 }

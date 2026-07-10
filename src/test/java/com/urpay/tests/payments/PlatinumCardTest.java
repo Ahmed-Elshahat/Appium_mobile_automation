@@ -16,4 +16,7 @@ public class PlatinumCardTest extends AbstractCardTest {
     protected String getCardPrefix() {
         return "platinumCard";
     }
+
+    @Override
+    protected boolean useRegistration() { return true; }
 }

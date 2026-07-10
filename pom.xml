@@ -146,6 +146,13 @@
             <version>23.3.0.23.09</version>
         </dependency>
 
+        <!-- IBM MQ Client (for MQ job triggering) -->
+        <dependency>
+            <groupId>com.ibm.mq</groupId>
+            <artifactId>com.ibm.mq.allclient</artifactId>
+            <version>9.2.2.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>

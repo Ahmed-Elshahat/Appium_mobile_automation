@@ -16,4 +16,7 @@ public class AlAhliCardTest extends AbstractCardTest {
     protected String getCardPrefix() {
         return "alahliCard";
     }
+
+    @Override
+    protected boolean useRegistration() { return true; }
 }

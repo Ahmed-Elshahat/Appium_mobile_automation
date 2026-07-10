@@ -44,6 +44,11 @@ public class TravelEsimPage extends BasePage {
     @iOSXCUITFindBy(accessibility = "Regional")
     private WebElement regionalTab;
 
+    // First country in the alphabetical list (e.g. "Aruba")
+    @AndroidFindBy(xpath = "//*[@text='Aruba']")
+    @iOSXCUITFindBy(xpath = "//*[@label='Aruba']")
+    private WebElement firstCountryItem;
+
     // ── Global Profile Page ───────────────────────────
 
     @AndroidFindBy(accessibility = "testID-data-0")
@@ -77,7 +82,7 @@ public class TravelEsimPage extends BasePage {
     @Step("Tap 'New E-Sim' button")
     public void tapNewEsim() {
         tap(newEsimButton);
-        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
+        waitUtils.waitForVisible(AppiumBy.xpath("//*[@text='Global' or @text='Select a country']"), 15);
     }
 
     public boolean isMyOrdersPageLoaded() {
@@ -89,9 +94,16 @@ public class TravelEsimPage extends BasePage {
     @Step("Select Global tab")
     public void selectGlobalTab() {
         tap(globalTab);
+        // Wait for plans list to load after tab switch (network call)
         waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
     }
 
+    @Step("Select first country from list")
+    public void selectFirstCountry() {
+        tap(firstCountryItem);
+        waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-data-0"), 15);
+        log.info("Selected first country — waiting for packages");
+    }
     @Step("Select Local tab")
     public void selectLocalTab() {
         tap(localTab);
@@ -108,14 +120,21 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Select first package (7 Days)")
     public void selectFirstPackage() {
-        tap(firstGlobalOption);
-        log.info("Selected first package via testID-data-0");
+        // Use UiAutomator for reliable React Native card tap
+        driver.findElement(AppiumBy.androidUIAutomator(
+                "new UiSelector().textContains(\"1GB 7Days\").instance(0)")).click();
+        log.info("Selected first package: 1GB 7Days");
     }
 
     @Step("Tap Next button")
     public void tapNext() {
-        platformActions.scrollToText("Next");
-        tap(nextButton);
+        // Use UiScrollable to scroll Next into full view, then tap
+        org.openqa.selenium.WebElement nextBtn = driver.findElement(
+                AppiumBy.androidUIAutomator(
+                        "new UiScrollable(new UiSelector().scrollable(true))"
+                        + ".scrollIntoView(new UiSelector().text(\"Next\"))"));
+        nextBtn.click();
+        log.info("Tapped Next button");
         waitUtils.waitForVisible(AppiumBy.accessibilityId("testID-label-value-0"), 15);
         log.info("Confirmation page loaded");
     }
@@ -139,20 +158,12 @@ public class TravelEsimPage extends BasePage {
 
     @Step("Tap Confirm button")
     public void tapConfirm() {
-        // The confirmation CTA sits below the fold; scroll it into view first.
-        try {
-            platformActions.scrollToText("Confirm");
-        } catch (Exception ignored) {
-            // label may differ or already be visible — continue
-        }
-        // Prefer the testID, but fall back to the clickable element bearing the
-        // Confirm/Pay label — the confirm button's testID is not stable on the
-        // current build (testID-primary-onConfirm-main was never clickable in the run).
-        org.openqa.selenium.By confirm = AppiumBy.xpath(
-                "//*[@content-desc='testID-primary-onConfirm-main']"
-                + " | //*[@text='Confirm' or @text='Confirm Purchase' or @text='Pay' or @text='Pay Now']"
-                + "/ancestor-or-self::*[@clickable='true'][1]");
-        waitUtils.waitForClickable(confirm, 15).click();
+        // Find and tap the Confirm button directly (exact text match, not "Confirmation" header)
+        org.openqa.selenium.WebElement btn = waitUtils.waitForClickable(
+                AppiumBy.androidUIAutomator(
+                        "new UiSelector().className(\"android.view.ViewGroup\")"
+                        + ".childSelector(new UiSelector().text(\"Confirm\"))"), 15);
+        btn.click();
         log.info("Tapped Confirm button");
     }
 

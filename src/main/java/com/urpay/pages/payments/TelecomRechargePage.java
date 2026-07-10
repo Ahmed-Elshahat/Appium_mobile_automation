@@ -1,9 +1,9 @@
 package com.urpay.pages.payments;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
-import com.urpay.platform.Platform;
 
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
@@ -54,12 +54,14 @@ public class TelecomRechargePage extends BasePage {
     private WebElement firstPackage;
 
     // ── Next Button — packages page ──
-    @AndroidFindBy(accessibility = "testID-primary-onPress-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onPress-main']"
+            + " | //android.widget.TextView[@text='Next']/ancestor-or-self::*[@clickable='true'][1]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onPress-main")
     private WebElement nextButtonPackages;
 
     // ── Next Button — confirm mobile number ──
-    @AndroidFindBy(accessibility = "testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6']"
+            + " | (//android.widget.TextView[@text='Next']/ancestor-or-self::*[@clickable='true'][1])[last()]")
     @iOSXCUITFindBy(accessibility = "testID-View.b8ce712a-4ccc-44c1-9a87-78a58b2036b6")
     private WebElement nextButtonMobile;
 
@@ -93,7 +95,8 @@ public class TelecomRechargePage extends BasePage {
     private WebElement rechargeAnotherNumberButton;
 
     // DoneButton.rs → testID-primary-action-main
-    @AndroidFindBy(accessibility = "testID-primary-action-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main']"
+            + " | //android.widget.TextView[@text='Done']/ancestor-or-self::*[@clickable='true'][1]")
     @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement doneButton;
 
@@ -196,16 +199,31 @@ public class TelecomRechargePage extends BasePage {
 
     @Step("Tap Confirm")
     public void tapConfirm() {
-        if (platform.isAndroid()) {
-            // Android: use UiAutomator selector for complex match
-            driver.findElement(io.appium.java_client.AppiumBy.androidUIAutomator(
-                    "new UiSelector().className(\"android.view.ViewGroup\")" +
-                    ".childSelector(new UiSelector().textMatches(\"Confirm|Select Package\"))")).click();
-        } else {
-            // iOS: use accessibility-based confirm button
-            tap(confirmButton);
+        // The Confirm button is a full-width RN bottom button. element.click() often doesn't
+        // fire React Native's onPress — fall back to a coordinate tap at the button's centre
+        // (same pattern as InternationalTransferPage.scrollToConfirmAndTap).
+        By confirm = io.appium.java_client.AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onConfirm-main']"
+                + " | //android.widget.TextView[@text='Confirm']/ancestor-or-self::*[@clickable='true'][1]");
+        try {
+            org.openqa.selenium.WebElement btn = waitUtils.waitForClickable(confirm, 15);
+            btn.click();
+            log.info("tapConfirm: element.click() fired");
+            // Verify the screen advanced — if still on the confirm screen, coordinate-tap.
+            if (isPresent(confirm, 3)) {
+                log.warn("tapConfirm: element.click() did not advance — falling back to coordinate tap");
+                org.openqa.selenium.Rectangle rect = btn.getRect();
+                int cx = rect.x + rect.width / 2;
+                int cy = rect.y + rect.height / 2;
+                tapAtCoordinates(cx, cy);
+                log.info("tapConfirm: coordinate tap at ({}, {})", cx, cy);
+            }
+        } catch (Exception e) {
+            // Last resort: tap the bottom-centre of the screen (0.5w, 0.93h)
+            log.warn("tapConfirm: locator failed — tapping bottom-centre of screen");
+            org.openqa.selenium.Dimension size = driver.manage().window().getSize();
+            tapAtCoordinates(size.width / 2, (int) (size.height * 0.93));
         }
-        log.info("tapConfirm: clicked");
     }
 
     @Step("Tap re-order confirm")
@@ -278,7 +296,13 @@ public class TelecomRechargePage extends BasePage {
     public String getFirstCardServiceName() { return getText(firstCardServiceName); }
 
     public boolean isRechargeSuccessful() {
-        // Success screen shows Done button (testID-primary-action-main)
+        // Success screen shows Done button (testID-primary-action-main) or 'Done' text.
+        // Also dismiss NPS survey if it covers the success screen.
+        By skipSurvey = io.appium.java_client.AppiumBy.accessibilityId("testID-tertiary-skipSurvey-main");
+        if (isPresent(skipSurvey, 3)) {
+            log.info("NPS survey detected on recharge success — tapping Skip");
+            tap(skipSurvey);
+        }
         return isDisplayed(doneButton, 30);
     }
     public boolean isLoaded() { return isDisplayed(zainButton, 10) || isDisplayed(stcButton, 10); }
