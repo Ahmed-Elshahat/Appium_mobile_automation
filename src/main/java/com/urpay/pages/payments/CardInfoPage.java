@@ -25,7 +25,7 @@ public class CardInfoPage extends BasePage {
     private WebElement cardNumberValue;
 
     // cardInformation/copyBtn_cardNumber.rs
-    @AndroidFindBy(accessibility = "testID-secondary-action-main")
+    @AndroidFindBy(accessibility = "testID-secondary-action-0")
     private WebElement copyCardNumberButton;
 
     // cardInformation/cardHolderName.rs
