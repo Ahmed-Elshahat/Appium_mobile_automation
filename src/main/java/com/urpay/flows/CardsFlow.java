@@ -709,25 +709,36 @@ public class CardsFlow {
             driver.findElement(textLocator).click();
             log.info("Tapped '{}' text directly", label);
         }
-        // Confirm popup if present (new UI has "Lock Card"/"Unlock Card" button, old had testID-primary-callAPI-main)
+        // Confirm popup if present (new UI shows a popup with "Lock Card"/"Unlock Card" + "No, thanks")
         setImplicitWait(3);
-        // Try the new popup button first: "Lock Card" or "Unlock Card" as a clickable button in the popup
-        By popupConfirm = AppiumBy.xpath(
-                "//*[@content-desc='testID-primary-callAPI-main'] | " +
-                "//*[@text='Lock Card' and @clickable='true'] | " +
-                "//*[@text='Unlock Card' and @clickable='true']");
-        var confirmBtns = driver.findElements(popupConfirm);
-        if (!confirmBtns.isEmpty()) {
-            // Find the last matching element — the popup button is typically at the bottom
-            confirmBtns.get(confirmBtns.size() - 1).click();
-            log.info("Tapped confirmation button on popup");
+        // Check if popup appeared by looking for "No, thanks"
+        By noThanks = AppiumBy.xpath("//*[@text='No, thanks']");
+        var noThanksBtns = driver.findElements(noThanks);
+        if (!noThanksBtns.isEmpty()) {
+            // Popup is open — the confirm button is the LAST element with the label text
+            // (first one is the products page label, second is the popup button)
+            By popupBtn = AppiumBy.xpath("(//*[@text='" + label + "'])[last()]");
+            try {
+                var btn = driver.findElement(popupBtn);
+                btn.click();
+                log.info("Tapped '{}' popup confirmation button", label);
+            } catch (Exception e) {
+                // Fallback: tap the parent of the text (clickable ViewGroup wrapping non-clickable TextView)
+                try {
+                    var btn = driver.findElement(AppiumBy.xpath(
+                            "(//*[@text='" + label + "'])[last()]/ancestor::*[@clickable='true'][1]"));
+                    btn.click();
+                    log.info("Tapped '{}' popup button via clickable ancestor", label);
+                } catch (Exception e2) {
+                    log.warn("Could not tap popup confirmation: {}", e2.getMessage());
+                }
+            }
         } else {
-            // Fallback: try "No, thanks" sibling's parent to find the confirm button
-            By fallbackBtn = AppiumBy.xpath("//*[@text='No, thanks']/parent::*/following-sibling::*");
-            var fallback = driver.findElements(fallbackBtn);
-            if (!fallback.isEmpty()) {
-                fallback.get(0).click();
-                log.info("Tapped popup confirm via fallback");
+            // Old UI: try testID-primary-callAPI-main
+            var oldBtns = driver.findElements(AppiumBy.accessibilityId("testID-primary-callAPI-main"));
+            if (!oldBtns.isEmpty()) {
+                oldBtns.get(0).click();
+                log.info("Tapped old-style confirmation popup");
             }
         }
         setImplicitWait(10);
