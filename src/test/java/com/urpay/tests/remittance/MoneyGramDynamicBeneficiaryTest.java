@@ -120,6 +120,7 @@ public class MoneyGramDynamicBeneficiaryTest extends BaseTest {
                 .receiverCountry(country)
                 .deliveryOption(delivery)
                 .currency(currency)
+                .beneficiaryType("Others")
                 .beneficiaryName(fullName)
                 .beneficiaryNickname(fullName.split(" ")[0])
                 .build();
@@ -150,18 +151,26 @@ public class MoneyGramDynamicBeneficiaryTest extends BaseTest {
         String currency = MTOCorridorHelper.currencyCodeToName(bankDepositCorridor.get("CRNCY_ISO3_CODE"));
         String delivery = MTOCorridorHelper.deliveryCodeToAppText(bankDepositCorridor.get("DELIVERY_OPTION_CODE"));
         String fullName = LocalBeneficiaryGenerator.randomFullName();
+        // Generate unique account number (10 digits from timestamp)
+        String accountNumber = String.valueOf(System.currentTimeMillis()).substring(3);
 
-        log.info("Adding Bank Deposit beneficiary: country={}, currency={}, delivery={}, name={}",
-                country, currency, delivery, fullName);
+        log.info("Adding Bank Deposit beneficiary: country={}, currency={}, delivery={}, name={}, account={}",
+                country, currency, delivery, fullName, accountNumber);
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
                 .receiverCountry(country)
                 .deliveryOption(delivery)
                 .currency(currency)
+                .beneficiaryType("Others")
                 .beneficiaryName(fullName)
                 .beneficiaryNickname(fullName.split(" ")[0])
-                .accountNumber(String.valueOf(System.currentTimeMillis()).substring(3)) // unique account
+                .bankName("")          // First bank in list selected by flow
+                .branch("")            // First branch selected by flow
+                .accountNumber(accountNumber)
+                .routingNumber("")
+                .city("")
+                .purposeOfFunds("")
                 .build();
 
         boolean submitted = new InternationalTransferFlow()
