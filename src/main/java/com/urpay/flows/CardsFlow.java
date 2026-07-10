@@ -637,12 +637,14 @@ public class CardsFlow {
                 }
             }
 
-            // Check for confirmation popup
+            // Check for confirmation popup (new UI: "Unlock Card" button, old: testID-primary-callAPI-main)
             setImplicitWait(3);
-            By yesBtn = AppiumBy.accessibilityId("testID-primary-callAPI-main");
-            var yesBtns = driver.findElements(yesBtn);
-            if (!yesBtns.isEmpty()) {
-                yesBtns.get(0).click();
+            By unlockConfirm = AppiumBy.xpath(
+                    "//*[@content-desc='testID-primary-callAPI-main'] | " +
+                    "//*[@text='Unlock Card' and @clickable='true']");
+            var confirmBtns = driver.findElements(unlockConfirm);
+            if (!confirmBtns.isEmpty()) {
+                confirmBtns.get(confirmBtns.size() - 1).click();
                 log.info("Tapped Yes on unlock confirmation");
             }
             setImplicitWait(10);
@@ -707,12 +709,26 @@ public class CardsFlow {
             driver.findElement(textLocator).click();
             log.info("Tapped '{}' text directly", label);
         }
-        // Confirm popup if present
+        // Confirm popup if present (new UI has "Lock Card"/"Unlock Card" button, old had testID-primary-callAPI-main)
         setImplicitWait(3);
-        var yesBtns = driver.findElements(AppiumBy.accessibilityId("testID-primary-callAPI-main"));
-        if (!yesBtns.isEmpty()) {
-            yesBtns.get(0).click();
-            log.info("Tapped Yes on confirmation popup");
+        // Try the new popup button first: "Lock Card" or "Unlock Card" as a clickable button in the popup
+        By popupConfirm = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-callAPI-main'] | " +
+                "//*[@text='Lock Card' and @clickable='true'] | " +
+                "//*[@text='Unlock Card' and @clickable='true']");
+        var confirmBtns = driver.findElements(popupConfirm);
+        if (!confirmBtns.isEmpty()) {
+            // Find the last matching element — the popup button is typically at the bottom
+            confirmBtns.get(confirmBtns.size() - 1).click();
+            log.info("Tapped confirmation button on popup");
+        } else {
+            // Fallback: try "No, thanks" sibling's parent to find the confirm button
+            By fallbackBtn = AppiumBy.xpath("//*[@text='No, thanks']/parent::*/following-sibling::*");
+            var fallback = driver.findElements(fallbackBtn);
+            if (!fallback.isEmpty()) {
+                fallback.get(0).click();
+                log.info("Tapped popup confirm via fallback");
+            }
         }
         setImplicitWait(10);
     }
