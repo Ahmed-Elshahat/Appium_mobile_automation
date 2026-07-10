@@ -445,18 +445,34 @@ public class CardsFlow {
                 new com.urpay.pages.payments.CardReplacementPage();
         ConfigManager c = ConfigManager.getInstance();
 
-        // Step 1: Tap Activate
+        // Step 1: Tap Activate (on card products page after replacement)
         replacementPage.tapActivate();
         log.info("Tapped Activate replacement card");
 
-        // Step 2: Enter verification code via keypad
+        // Step 2: Enter verification code (OTP-style, matching Katalon fillVerificationCode)
         String verificationCode = c.get(cardPrefix + ".verificationCode", "1234");
-        passcodePage.enterPasscode(verificationCode);
+        enterVerificationCode(verificationCode);
         log.info("Entered activation verification code");
 
-        // Step 3: Back to cards
-        replacementPage.tapBackToCards();
-        log.info("Replacement card activated — back to cards");
+        // Step 3: Wait for success + Back to cards
+        By backBtn = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-backToCards-main'] | //*[@text='Back to cards']");
+        setImplicitWait(3);
+        var backBtns = driver.findElements(backBtn);
+        if (!backBtns.isEmpty()) {
+            backBtns.get(0).click();
+            log.info("Tapped Back to Cards after activation");
+        } else {
+            // Fallback: try Done or View Card
+            By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+            var doneBtns = driver.findElements(doneBtn);
+            if (!doneBtns.isEmpty()) {
+                doneBtns.get(0).click();
+                log.info("Tapped Done/View Card after activation");
+            }
+        }
+        setImplicitWait(10);
+        log.info("Replacement card activated for: {}", cardPrefix);
     }
 
     // ══════════════════════════════════════════════════
