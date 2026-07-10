@@ -826,6 +826,8 @@ public class CardsFlow {
 
     /** Tap "Next" button after PIN entry (Katalon: NextButton → //*[@text="Next"]) */
     private void tapNextButton() {
+        // Brief pause to let the PIN input register the last digit
+        try { Thread.sleep(500); } catch (Exception ignored) {}
         By nextBtn = AppiumBy.xpath("//*[@text='Next']");
         waits.waitForClickable(nextBtn, 10).click();
         log.info("Tapped Next button");
