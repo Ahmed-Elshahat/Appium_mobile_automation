@@ -763,7 +763,7 @@ public class CardsFlow {
         log.info("Thank You / Done page visible — PIN change confirmed");
         // Tap Done button (use waitForClickable to ensure it's interactable)
         By doneBtnLocator = AppiumBy.xpath("//*[@text='Done']");
-        setImplicitWait(3);
+        setImplicitWait(0);
         var doneBtns = driver.findElements(doneBtnLocator);
         if (!doneBtns.isEmpty()) {
             try {
@@ -777,7 +777,7 @@ public class CardsFlow {
         }
         setImplicitWait(10);
         // Ensure we're back on card products page (not still on Thank You)
-        setImplicitWait(3);
+        setImplicitWait(0);
         boolean onProducts = quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
                 || quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"));
         if (!onProducts) {
@@ -823,7 +823,7 @@ public class CardsFlow {
         // Enter wrong confirmation
         passcodePage.enterPasscode("9999");
         // Notification may auto-dismiss quickly
-        if (common.isNotificationVisible(5)) {
+        if (common.isNotificationVisible(3)) {
             log.info("Invalid PIN mismatch notification: {}", common.getNotificationMessage());
         } else {
             log.warn("PIN mismatch notification not captured — may have auto-dismissed");
