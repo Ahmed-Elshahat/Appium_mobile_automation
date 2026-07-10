@@ -8,6 +8,7 @@ import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
 import com.urpay.flows.CardsFlow;
 import com.urpay.flows.LoginFlow;
+import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.payments.CardBenefitsPage;
 import com.urpay.pages.payments.CardInfoPage;
@@ -48,6 +49,12 @@ public abstract class AbstractCardTest extends BaseTest {
     /** Config prefix for this card type (e.g., "madaCard", "alahliCard") */
     protected abstract String getCardPrefix();
 
+    /** Override in subclass to return true if this suite should register a fresh user via API first. */
+    protected boolean useRegistration() { return false; }
+
+    /** Provisioned user credentials (populated when useRegistration() == true). */
+    private RegistrationApiHelper.Provisioned provisionedUser;
+
     /** Helper: get config value for this card type */
     protected String cardConfig(String key) {
         return ConfigManager.getInstance().get(getCardPrefix() + "." + key);
@@ -58,14 +65,36 @@ public abstract class AbstractCardTest extends BaseTest {
         return ConfigManager.getInstance().get(getCardPrefix() + "." + key, defaultValue);
     }
 
-    /** Login with this card type's user */
+    /** Login with this card type's user — uses provisioned credentials if useRegistration() is true */
     protected DashboardPage loginForCard() {
+        if (useRegistration()) {
+            // Register a fresh full-tier NAT user via backend API
+            log.info("Registering a fresh full-tier NAT user via API...");
+            provisionedUser = RegistrationApiHelper.registerNationalAndReturn();
+            if (provisionedUser == null) {
+                throw new RuntimeException("Failed to provision a new user via API — check VPN/backend access");
+            }
+            log.info("User provisioned: mobile={}, poi={}, consumerId={}, walletTier={}",
+                    provisionedUser.mobile, provisionedUser.poi,
+                    provisionedUser.consumerId, provisionedUser.walletTier);
+
+            // Login with the freshly provisioned credentials
+            return new LoginFlow().loginWith(
+                    provisionedUser.mobile,
+                    provisionedUser.poi,
+                    "1234",  // default OTP
+                    provisionedUser.passcode);
+        }
+        // Default: use config credentials
         return new LoginFlow().loginWith(
                 cardConfig("mobileNumber"),
                 cardConfig("id"),
                 cardConfig("verificationCode", "1234"),
                 cardConfig("passCode", "2233"));
     }
+
+    /** Get the provisioned user (available after loginForCard when useRegistration=true). */
+    protected RegistrationApiHelper.Provisioned getProvisionedUser() { return provisionedUser; }
 
     // ═══════════════════════════════════════════════════
     //  1. SETUP: Login + navigate to card products page
