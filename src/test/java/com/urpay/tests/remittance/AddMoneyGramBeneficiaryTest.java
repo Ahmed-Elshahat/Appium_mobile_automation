@@ -51,10 +51,10 @@ public class AddMoneyGramBeneficiaryTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
 
         DashboardPage dashboard = new LoginFlow().loginWith(
-                c.get("moneygram.user.mobileNumber"),
-                c.get("moneygram.user.id"),
-                c.get("moneygram.user.verificationCode", "1234"),
-                c.get("moneygram.user.passCode", "2233"));
+                c.get("moneygramBeneficiary.user.mobileNumber"),
+                c.get("moneygramBeneficiary.user.id"),
+                c.get("moneygramBeneficiary.user.verificationCode", "1234"),
+                c.get("moneygramBeneficiary.user.passCode", "2233"));
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
 
         // Each run adds a freshly named beneficiary so the DB activation targets a unique PENDING row.
@@ -72,7 +72,7 @@ public class AddMoneyGramBeneficiaryTest extends BaseTest {
                 .build();
 
         boolean submitted = new InternationalTransferFlow()
-                .addBeneficiary(data, c.get("moneygram.user.verificationCode", "1234"));
+                .addBeneficiary(data, c.get("moneygramBeneficiary.user.verificationCode", "1234"));
         Assert.assertTrue(submitted,
                 "Adding the beneficiary should reach the IVR 'Verification Call' screen");
 
@@ -102,7 +102,7 @@ public class AddMoneyGramBeneficiaryTest extends BaseTest {
                 .build();
 
         InternationalTransferFlow.TransferResult result = new InternationalTransferFlow()
-                .performTransfer(data, c.get("moneygram.user.verificationCode", "1234"));
+                .performTransfer(data, c.get("moneygramBeneficiary.user.verificationCode", "1234"));
 
         if (result == InternationalTransferFlow.TransferResult.NO_BENEFICIARY) {
             throw new SkipException("New beneficiary '" + beneficiaryFullName + "' is not selectable — "

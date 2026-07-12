@@ -1,24 +1,26 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
   ══════════════════════════════════════════════════════════════════════════════
-  FULL REGRESSION — ALL DOMAINS in ONE parallel suite, ONE command, 20 devices.
+  FULL REGRESSION — ALL DOMAINS in ONE parallel suite, ONE command, 19 devices.
   ══════════════════════════════════════════════════════════════════════════════
 
   ONE JVM loads all three data profiles at once (ConfigManager accepts a
-  comma-separated -Dprofile). ONE 20-thread pool balances across every test, so
+  comma-separated -Dprofile). ONE 19-thread pool balances across every test, so
   device utilisation is better than three fixed pools.
 
   Run (single command):
     mvn clean test "-Dsuite=suites/regression-all-parallel.xml" ^
         "-Dprofile=sit-wmv,sit-cards,sit-remittance" -Dremote=true
 
-  parallel="tests" thread-count="20": up to 20 <test> blocks (= 20 LambdaTest
-  sessions = 20 devices) run at once; the rest queue. Each <test> = 1 unique account.
+  parallel="tests" thread-count="19": up to 19 <test> blocks (= 19 LambdaTest
+  sessions) run at once; the rest queue. EVERY <test> is a SINGLE class = fully
+  parallel, NO serial blocks. Each actively-run <test> uses its OWN account.
 
   NOTES:
    • Profiles load left→right; sit-remittance last so its urpayUser.* (the only
      cross-profile clash) wins over sit-wmv's empty placeholder.
-   • family-wallet = ONE serial <test> block (shared parent/kid accounts).
+   • family-wallet = 7 PARALLEL <test> blocks, each on its own account
+     (collisions de-collided 2026-07-12); no shared parent/kid, no serial block.
    • Card method-subsets (change-pin / card-replacement / cancel-card-steps /
      validate-card-removed / physical-card) are covered by the whole-class
      mada-cards / signature-cards and are NOT repeated.
@@ -35,7 +37,7 @@
       SCHEDULING: Longest-Processing-Time-first (LPT), ordered by REAL measured
       runtimes pulled from the LambdaTest Automation API (session durations,
       probed 2026-07-12; regenerate with tools/lt-durations.ps1). With a fixed
-      20-device cap, TestNG picks up <test> blocks in document order as threads
+      19-device cap, TestNG picks up <test> blocks in document order as threads
       free up, so starting the longest first lets short tests backfill freed
       device slots and shrinks the idle-device tail. The ~Ns note on each block
       is its measured session duration. Profile precedence still comes from the
@@ -43,15 +45,14 @@
     -->
 
     <!-- Family Wallet — FULLY PARALLEL (one class per <test>). No serial blocks.
-         WARNING: the following blocks currently share an account, so running them
-         at the same time WILL fail (same account logged in on two devices) until
-         each side gets its OWN distinct account/data:
-           • DirectTopup Positive & Negative  → both use directTopup.parent (0520535694)
-           • Family Request Money & Family Mission → both use 0520437043 / 0520856357
-           • MoneyGram Bank Deposit & Send to Wallet → both use 0520581842
-           • Reject Group Qatta & Government Services → both use 0520352101
-         Also: Receive Gift needs a pre-seeded UNOPENED gift on sendGift.kid, since
-         Send Gift no longer runs before it. -->
+         All known shared-account collisions resolved 2026-07-12 (detector:
+         tools/shared-accounts.ps1).
+           • Local Transfer uses urpayUser (0520281395); no other in-suite test
+             shares it (Notifications has its OWN account 0548785333). The
+             Add-*-Beneficiary tests are NOT in this suite — they live in their own
+             DB/IVR-connected suites (add-local/international/moneygram-beneficiary.xml).
+           • Receive Gift needs a pre-seeded UNOPENED gift on sendGift.kid, since
+             Send Gift no longer runs before it. -->
     <test name="Family - Send Gift (parent)"> <!-- ~540s -->
         <classes><class name="com.urpay.tests.wallet.SendGiftFromParentTest"/></classes>
     </test>

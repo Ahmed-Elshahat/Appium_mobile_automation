@@ -45,13 +45,13 @@ public class SadadBillPaymentTest extends BaseTest {
     @Severity(SeverityLevel.BLOCKER)
     public void testLoginForSadadPayment() {
         ConfigManager c = ConfigManager.getInstance();
-        String mobile = c.get("sadad.mobileNumber");
+        String mobile = c.get("sadadPayment.mobileNumber");
         topUpBalanceByMobile(mobile);
         DashboardPage dashboard = new LoginFlow().loginWith(
                 mobile,
-                c.get("sadad.id"),
-                c.get("sadad.verificationCode", "1234"),
-                c.get("sadad.passCode", "2233"));
+                c.get("sadadPayment.id"),
+                c.get("sadadPayment.verificationCode", "1234"),
+                c.get("sadadPayment.passCode", "2233"));
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after login");
     }
 

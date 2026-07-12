@@ -56,13 +56,13 @@ public class DirectTopupNegativeTest extends BaseTest {
                 "The exceeded-limit error message should be displayed");
     }
 
-    @Step("Login as the direct-topup parent")
+    @Step("Login as the direct-topup (negative) parent")
     private DashboardPage loginAsParent() {
         ConfigManager c = ConfigManager.getInstance();
         return new LoginFlow().loginWith(
-                c.get("directTopup.parent.mobileNumber"),
-                c.get("directTopup.parent.id"),
-                c.get("directTopup.parent.verificationCode", "1234"),
-                c.get("directTopup.parent.passCode", "2233"));
+                c.get("directTopupNegative.parent.mobileNumber"),
+                c.get("directTopupNegative.parent.id"),
+                c.get("directTopupNegative.parent.verificationCode", "1234"),
+                c.get("directTopupNegative.parent.passCode", "2233"));
     }
 }
