@@ -1,6 +1,10 @@
 package com.urpay.flows;
 
+import java.time.Duration;
+import java.util.List;
+
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,9 +59,20 @@ public class GovernmentServicesFlow {
     private static final By INSUFFICIENT_BALANCE = AppiumBy.xpath(
             "//*[contains(@text,'Insufficient Balance') or contains(@label,'Insufficient Balance')]");
 
-    /** Locator for confirm payment screen */
-    private static final By CONFIRM_SCREEN =
-            AppiumBy.accessibilityId("testID-primary-onConfirm-main");
+    /** Locator for confirm payment screen. The app dropped the testID on the Confirm button, so
+     *  fall back to the visible text (matches the codebase pattern used by Cards/AutoTopup). */
+    private static final By CONFIRM_SCREEN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onConfirm-main' "
+            + "or @text='Confirm' or @label='Confirm']");
+
+    // The app intermittently raises an NPS feedback survey ("…recommend Urpay…" → "Thank you for
+    // taking the survey") that overlays the payment screens and blocks the confirm button.
+    /** Skip button on the NPS survey question screen. */
+    private static final By SURVEY_SKIP =
+            AppiumBy.accessibilityId("testID-tertiary-skipSurvey-main");
+    /** Close button on the survey "Thank you" screen. */
+    private static final By SURVEY_CLOSE =
+            AppiumBy.accessibilityId("Close");
 
     /** Locator for done/success screen */
     private static final By DONE_SCREEN = AppiumBy.xpath(
@@ -210,6 +225,9 @@ public class GovernmentServicesFlow {
 
     @Step("Complete violation payment: confirm → OTP → done")
     private GovernmentServicesPage completePayment(GovernmentServicesPage page) {
+        // The app intermittently raises an NPS feedback survey that overlays the payment flow.
+        // Dismiss it (if present) before waiting for the confirm screen.
+        dismissNpsSurveyIfPresent();
         waits.waitForVisible(CONFIRM_SCREEN, 15);
         page.tapConfirm();
 
@@ -226,6 +244,35 @@ public class GovernmentServicesFlow {
 
         log.info("Violation payment completed successfully");
         return page;
+    }
+
+    /**
+     * Instantly dismiss the intermittent NPS feedback survey if it is covering the current screen.
+     * Taps Skip on the question screen or Close on the "Thank you" screen. Uses a zero implicit
+     * wait so absent-popup checks return immediately, then restores the configured wait.
+     */
+    private void dismissNpsSurveyIfPresent() {
+        long implicit = ConfigManager.getInstance().getInt("timeout", 10);
+        driver.manage().timeouts().implicitlyWait(Duration.ZERO);
+        try {
+            clickIfPresentNow(SURVEY_SKIP, "NPS survey Skip");
+            clickIfPresentNow(SURVEY_CLOSE, "NPS survey Close");
+        } finally {
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(implicit));
+        }
+    }
+
+    /** Click the first matching element only if it is already on screen (no waiting). */
+    private void clickIfPresentNow(By locator, String label) {
+        try {
+            List<WebElement> els = driver.findElements(locator);
+            if (!els.isEmpty() && els.get(0).isDisplayed()) {
+                els.get(0).click();
+                log.info("Dismissed NPS survey via '{}'", label);
+            }
+        } catch (Exception ignored) {
+            // not present or went stale — nothing to dismiss
+        }
     }
 
     // ══════════════════════════════════════════════════

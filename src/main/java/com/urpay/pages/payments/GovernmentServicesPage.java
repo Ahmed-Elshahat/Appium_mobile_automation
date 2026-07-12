@@ -80,11 +80,11 @@ public class GovernmentServicesPage extends BasePage {
     //  PAYMENT CONFIRMATION
     // ══════════════════════════════════════════════════
 
-    @AndroidFindBy(accessibility = "testID-primary-onConfirm-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main' or @text='Confirm']")
     @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
     private WebElement confirmButton;
 
-    @AndroidFindBy(accessibility = "testID-primary-onPressDone-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onPressDone-main' or @text='Done']")
     @iOSXCUITFindBy(accessibility = "testID-primary-onPressDone-main")
     private WebElement doneButton;
 
