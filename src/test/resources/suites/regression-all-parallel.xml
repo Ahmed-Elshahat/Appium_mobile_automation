@@ -31,139 +31,18 @@
         <listener class-name="com.urpay.core.RetryListener"/>
     </listeners>
 
-    <!-- ════════════════ WMV (sit-wmv) ════════════════ -->
+    <!--
+      SCHEDULING: Longest-Processing-Time-first (LPT), ordered by REAL measured
+      runtimes pulled from the LambdaTest Automation API (session durations,
+      probed 2026-07-12; regenerate with tools/lt-durations.ps1). With a fixed
+      20-device cap, TestNG picks up <test> blocks in document order as threads
+      free up, so starting the longest first lets short tests backfill freed
+      device slots and shrinks the idle-device tail. The ~Ns note on each block
+      is its measured session duration. Profile precedence still comes from the
+      -Dprofile flag order, NOT the order of tests here.
+    -->
 
-    <!-- Auth: Change Passcode -->
-    <test name="Change Passcode Default Tier">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierTest"/></classes>
-    </test>
-    <test name="Change Passcode Default Tier Negative">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierNegativeTest"/></classes>
-    </test>
-    <test name="Change Passcode Family Tier">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierTest"/></classes>
-    </test>
-    <test name="Change Passcode Family Tier Negative">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierNegativeTest"/></classes>
-    </test>
-    <test name="Change Passcode Full Tier">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierTest"/></classes>
-    </test>
-    <test name="Change Passcode Full Tier Negative">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierNegativeTest"/></classes>
-    </test>
-    <test name="Change Passcode Visitor Tier">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierTest"/></classes>
-    </test>
-    <test name="Change Passcode Visitor Tier Negative">
-        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierNegativeTest"/></classes>
-    </test>
-
-    <!-- Auth: Forgot Passcode -->
-    <test name="Forgot Passcode Default Tier">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Default Tier Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Default Tier Login Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Family Tier">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Family Tier Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Family Tier Login Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierLoginNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Full Tier">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Full Tier Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Full Tier Login Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierLoginNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Visitor Tier">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Visitor Tier Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierNegativeTest"/></classes>
-    </test>
-    <test name="Forgot Passcode Visitor Tier Login Negative">
-        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierLoginNegativeTest"/></classes>
-    </test>
-
-    <!-- Auth: Registration / Phone -->
-    <test name="Registration Using Invitation Code">
-        <classes><class name="com.urpay.tests.wallet.RegistrationUsingInvitationCodeTest"/></classes>
-    </test>
-    <test name="Change Phone Number Full Tier">
-        <classes><class name="com.urpay.tests.settings.ChangePhoneNumberForFullTierTest"/></classes>
-    </test>
-
-    <!-- Settings & Account -->
-    <test name="Account Details">
-        <classes><class name="com.urpay.tests.wallet.AccountDetailsTest"/></classes>
-    </test>
-    <test name="Account Statement">
-        <classes><class name="com.urpay.tests.wallet.AccountStatementTest"/></classes>
-    </test>
-    <test name="Change App Language">
-        <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
-    </test>
-    <test name="Rating">
-        <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
-    </test>
-    <test name="Privacy And Terms">
-        <classes><class name="com.urpay.tests.settings.PrivacyAndTermsTest"/></classes>
-    </test>
-    <test name="Notifications">
-        <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
-    </test>
-
-    <!-- Wallet & Money -->
-    <test name="Wallet Balance">
-        <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
-    </test>
-    <test name="Send Money Request And Approve">
-        <classes><class name="com.urpay.tests.wallet.SendMoneyRequestApproveTest"/></classes>
-    </test>
-    <test name="Reject Money Request">
-        <classes><class name="com.urpay.tests.wallet.RejectMoneyRequestTest"/></classes>
-    </test>
-    <test name="Invite Friends">
-        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
-    </test>
-    <test name="Auto Top-up">
-        <groups><run><include name="auto-topup"/></run></groups>
-        <classes><class name="com.urpay.tests.wallet.AutoTopupCreationTest"/></classes>
-    </test>
-    <test name="Family Mission">
-        <classes><class name="com.urpay.tests.wallet.FamilyMissionTest"/></classes>
-    </test>
-
-    <!-- Qatta -->
-    <test name="Edit Group Qatta Details">
-        <classes><class name="com.urpay.tests.wallet.EditGroupQattaDetailsTest"/></classes>
-    </test>
-    <test name="Pay Group Qatta">
-        <classes><class name="com.urpay.tests.wallet.PayGroupQattaTest"/></classes>
-    </test>
-    <test name="Pay Quick Qatta">
-        <classes><class name="com.urpay.tests.wallet.PayQuickQattaTest"/></classes>
-    </test>
-    <test name="Reject Group Qatta">
-        <classes><class name="com.urpay.tests.wallet.RejectGroupQattaTest"/></classes>
-    </test>
-    <test name="Reject Quick Qatta">
-        <classes><class name="com.urpay.tests.wallet.RejectQuickQattaTest"/></classes>
-    </test>
-
-    <!-- Family Wallet (SERIAL on ONE device — shared parent/kid accounts) -->
+    <!-- Family Wallet: 7 chained classes, ONE device, ~2258s summed — longest stream -->
     <test name="Family Wallet (serial)">
         <classes>
             <class name="com.urpay.tests.wallet.SendGiftFromParentTest"/>
@@ -176,102 +55,217 @@
         </classes>
     </test>
 
-    <!-- ════════════════ CARDS & PAYMENTS (sit-cards) ════════════════ -->
-
-    <test name="Mada Card">
+    <!-- Card lifecycle (whole-class: add / pin / replace / cancel) -->
+    <test name="Mada Card"> <!-- ~1199s -->
         <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
     </test>
-    <test name="AlAhli Card">
+    <test name="AlAhli Card"> <!-- ~1021s -->
         <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
     </test>
-    <test name="Platinum Card">
-        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
-    </test>
-    <test name="Signature Card">
+    <test name="Signature Card"> <!-- ~980s -->
         <classes><class name="com.urpay.tests.payments.SignatureCardTest"/></classes>
     </test>
-    <test name="Government Services - Single">
-        <classes><class name="com.urpay.tests.payments.GovernmentServicesTest"/></classes>
-    </test>
-    <test name="Government Services - Multi">
-        <classes><class name="com.urpay.tests.payments.GovernmentServicesMultiTest"/></classes>
-    </test>
-    <test name="Telecom - STC">
-        <groups><run><include name="stc"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
-    </test>
-    <test name="Telecom - Mobily">
-        <groups><run><include name="mobily"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
-    </test>
-    <test name="Telecom - Zain">
-        <groups><run><include name="zain"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
-    </test>
-    <test name="SADAD Bills">
-        <groups><run><include name="sadad-bills"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.SadadBillsTest"/></classes>
-    </test>
-    <test name="SADAD Payment">
-        <groups><run><include name="sadad-payment"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.SadadBillPaymentTest"/></classes>
-    </test>
-    <test name="Travel eSIM">
-        <groups><run><include name="travel-esim"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.TravelEsimTest"/></classes>
-    </test>
-    <test name="Top-up Bank Card">
-        <groups><run><include name="topup-bankcard"/></run></groups>
-        <classes><class name="com.urpay.tests.payments.TopUpBankCardTest"/></classes>
+    <test name="Platinum Card"> <!-- ~978s -->
+        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
     </test>
 
-    <!-- ════════════════ REMITTANCE (sit-remittance) ════════════════ -->
-
-    <test name="Add Local Beneficiary">
-        <classes><class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/></classes>
-    </test>
-    <test name="Add International Beneficiary">
-        <groups><run><include name="add-international-beneficiary"/></run></groups>
-        <classes><class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/></classes>
-    </test>
-    <test name="Add MoneyGram Beneficiary">
+    <test name="Add MoneyGram Beneficiary"> <!-- ~860s -->
         <groups><run><include name="add-moneygram-beneficiary"/></run></groups>
         <classes><class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/></classes>
     </test>
-    <test name="Local Transfer">
+    <test name="Change Passcode Family Tier"> <!-- ~727s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierTest"/></classes>
+    </test>
+    <test name="Family Mission"> <!-- ~717s -->
+        <classes><class name="com.urpay.tests.wallet.FamilyMissionTest"/></classes>
+    </test>
+    <test name="Auto Top-up"> <!-- ~704s -->
+        <groups><run><include name="auto-topup"/></run></groups>
+        <classes><class name="com.urpay.tests.wallet.AutoTopupCreationTest"/></classes>
+    </test>
+    <test name="Account Statement"> <!-- ~622s -->
+        <classes><class name="com.urpay.tests.wallet.AccountStatementTest"/></classes>
+    </test>
+    <test name="Add Local Beneficiary"> <!-- ~586s -->
+        <classes><class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/></classes>
+    </test>
+    <test name="Change Passcode Default Tier Negative"> <!-- ~567s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierNegativeTest"/></classes>
+    </test>
+    <test name="Telecom - STC"> <!-- ~566s -->
+        <groups><run><include name="stc"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Add International Beneficiary"> <!-- ~566s -->
+        <groups><run><include name="add-international-beneficiary"/></run></groups>
+        <classes><class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/></classes>
+    </test>
+    <test name="Change Passcode Full Tier"> <!-- ~565s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierTest"/></classes>
+    </test>
+    <test name="Telecom - Zain"> <!-- ~511s -->
+        <groups><run><include name="zain"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Pay Group Qatta"> <!-- ~500s -->
+        <classes><class name="com.urpay.tests.wallet.PayGroupQattaTest"/></classes>
+    </test>
+    <test name="Notifications"> <!-- ~460s -->
+        <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
+    </test>
+    <test name="Government Services - Single"> <!-- ~428s -->
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesTest"/></classes>
+    </test>
+    <test name="Reject Money Request"> <!-- ~412s -->
+        <classes><class name="com.urpay.tests.wallet.RejectMoneyRequestTest"/></classes>
+    </test>
+    <test name="Reject Group Qatta"> <!-- ~408s -->
+        <classes><class name="com.urpay.tests.wallet.RejectGroupQattaTest"/></classes>
+    </test>
+    <test name="Telecom - Mobily"> <!-- ~382s -->
+        <groups><run><include name="mobily"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Family Tier Negative"> <!-- ~376s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierNegativeTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Family Tier"> <!-- ~359s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Visitor Tier Negative"> <!-- ~357s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierNegativeTest"/></classes>
+    </test>
+    <test name="Local Transfer"> <!-- ~346s -->
         <classes><class name="com.urpay.tests.remittance.LocalTransferTest"/></classes>
     </test>
-    <test name="Wallet Transfer">
+    <test name="Rating"> <!-- ~311s -->
+        <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Full Tier"> <!-- ~298s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Visitor Tier"> <!-- ~298s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierTest"/></classes>
+    </test>
+    <test name="SADAD Payment"> <!-- ~295s -->
+        <groups><run><include name="sadad-payment"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.SadadBillPaymentTest"/></classes>
+    </test>
+    <test name="Send Money Request And Approve"> <!-- ~285s -->
+        <classes><class name="com.urpay.tests.wallet.SendMoneyRequestApproveTest"/></classes>
+    </test>
+    <test name="Reject Quick Qatta"> <!-- ~284s -->
+        <classes><class name="com.urpay.tests.wallet.RejectQuickQattaTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Default Tier"> <!-- ~277s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/></classes>
+    </test>
+    <test name="Pay Quick Qatta"> <!-- ~263s -->
+        <classes><class name="com.urpay.tests.wallet.PayQuickQattaTest"/></classes>
+    </test>
+    <test name="Government Services - Multi"> <!-- ~253s -->
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesMultiTest"/></classes>
+    </test>
+    <test name="Change Passcode Visitor Tier"> <!-- ~248s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Default Tier Negative"> <!-- ~246s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierNegativeTest"/></classes>
+    </test>
+    <test name="Change Passcode Default Tier"> <!-- ~244s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierTest"/></classes>
+    </test>
+    <test name="Western Union International Transfer"> <!-- ~240s -->
+        <classes><class name="com.urpay.tests.remittance.WesternUnionTransferTest"/></classes>
+    </test>
+    <test name="Account Details"> <!-- ~230s -->
+        <classes><class name="com.urpay.tests.wallet.AccountDetailsTest"/></classes>
+    </test>
+    <test name="Travel eSIM"> <!-- ~230s -->
+        <groups><run><include name="travel-esim"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TravelEsimTest"/></classes>
+    </test>
+    <test name="Change Phone Number Full Tier"> <!-- ~228s -->
+        <classes><class name="com.urpay.tests.settings.ChangePhoneNumberForFullTierTest"/></classes>
+    </test>
+    <test name="Change App Language"> <!-- ~227s -->
+        <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
+    </test>
+    <test name="Change Passcode Family Tier Negative"> <!-- ~222s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierNegativeTest"/></classes>
+    </test>
+    <test name="Change Passcode Visitor Tier Negative"> <!-- ~214s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeVisitorTierNegativeTest"/></classes>
+    </test>
+    <test name="Wallet Transfer"> <!-- ~213s -->
         <classes><class name="com.urpay.tests.remittance.WalletTransferTest"/></classes>
     </test>
-    <test name="MoneyGram Bank Deposit">
+    <test name="Top-up Bank Card"> <!-- ~206s -->
+        <groups><run><include name="topup-bankcard"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TopUpBankCardTest"/></classes>
+    </test>
+    <test name="Wallet Balance"> <!-- ~203s -->
+        <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
+    </test>
+    <test name="Transfast Cash Pickup"> <!-- ~202s -->
+        <classes><class name="com.urpay.tests.remittance.TransfastCashPickupTest"/></classes>
+    </test>
+    <test name="Edit Group Qatta Details"> <!-- ~194s -->
+        <classes><class name="com.urpay.tests.wallet.EditGroupQattaDetailsTest"/></classes>
+    </test>
+    <test name="Change Passcode Full Tier Negative"> <!-- ~192s -->
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierNegativeTest"/></classes>
+    </test>
+    <test name="H2H Tahweel Bank Deposit"> <!-- ~174s -->
+        <classes><class name="com.urpay.tests.remittance.TahweelBankDepositTest"/></classes>
+    </test>
+    <test name="SADAD Bills"> <!-- ~173s -->
+        <groups><run><include name="sadad-bills"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.SadadBillsTest"/></classes>
+    </test>
+    <test name="MoneyGram Bank Deposit"> <!-- ~171s -->
         <classes>
             <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
                 <methods><include name="testMoneyGramBankDepositToIndia"/></methods>
             </class>
         </classes>
     </test>
-    <test name="MoneyGram Send to Wallet">
+    <test name="Registration Using Invitation Code"> <!-- ~154s -->
+        <classes><class name="com.urpay.tests.wallet.RegistrationUsingInvitationCodeTest"/></classes>
+    </test>
+    <test name="H2H Tahweel Cash Pickup"> <!-- ~154s -->
+        <classes><class name="com.urpay.tests.remittance.TahweelTransferTest"/></classes>
+    </test>
+    <test name="MoneyGram Send to Wallet"> <!-- ~148s -->
         <classes>
             <class name="com.urpay.tests.remittance.MoneyGramTransferTest">
                 <methods><include name="testMoneyGramSendToWalletTransfer"/></methods>
             </class>
         </classes>
     </test>
-    <test name="Western Union International Transfer">
-        <classes><class name="com.urpay.tests.remittance.WesternUnionTransferTest"/></classes>
+    <test name="Privacy And Terms"> <!-- ~143s -->
+        <classes><class name="com.urpay.tests.settings.PrivacyAndTermsTest"/></classes>
     </test>
-    <test name="Transfast Bank Deposit">
+    <test name="Invite Friends"> <!-- ~128s -->
+        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
+    </test>
+    <test name="Transfast Bank Deposit"> <!-- ~128s -->
         <classes><class name="com.urpay.tests.remittance.TransfastBankDepositTest"/></classes>
     </test>
-    <test name="Transfast Cash Pickup">
-        <classes><class name="com.urpay.tests.remittance.TransfastCashPickupTest"/></classes>
+    <test name="Forgot Passcode Full Tier Negative"> <!-- ~106s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierNegativeTest"/></classes>
     </test>
-    <test name="H2H Tahweel Cash Pickup">
-        <classes><class name="com.urpay.tests.remittance.TahweelTransferTest"/></classes>
+    <test name="Forgot Passcode Full Tier Login Negative"> <!-- ~63s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierLoginNegativeTest"/></classes>
     </test>
-    <test name="H2H Tahweel Bank Deposit">
-        <classes><class name="com.urpay.tests.remittance.TahweelBankDepositTest"/></classes>
+    <test name="Forgot Passcode Visitor Tier Login Negative"> <!-- ~63s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeVisitorTierLoginNegativeTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Family Tier Login Negative"> <!-- ~62s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierLoginNegativeTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Default Tier Login Negative"> <!-- ~59s -->
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
     </test>
 
 </suite>
