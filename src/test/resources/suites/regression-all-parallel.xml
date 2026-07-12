@@ -25,7 +25,7 @@
    • Remittance excludes MoneyGram Cash Pickup & Transfast Send-to-Wallet (no accounts).
 -->
 <suite name="URPay Full Regression (All Domains, Parallel)" verbose="1"
-       parallel="tests" thread-count="20" group-by-instances="true">
+       parallel="tests" thread-count="19" group-by-instances="true">
 
     <listeners>
         <listener class-name="com.urpay.core.RetryListener"/>
