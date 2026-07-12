@@ -93,7 +93,8 @@ public abstract class AbstractChangePasscodeTierNegativeTest extends BaseTest {
                 cfg().get(keyPrefix() + ".mobileNumber"),
                 cfg().get(keyPrefix() + ".id"),
                 cfg().get(keyPrefix() + ".poiType", "NAT"),
-                cfg().get(keyPrefix() + ".verificationCode", "1234"));
+                cfg().get(keyPrefix() + ".verificationCode", "1234"),
+                cfg().get(keyPrefix() + ".dob", ""));
         if (!reset) {
             log.warn("Pre-suite passcode reset skipped/failed for {} — continuing with UI flow", keyPrefix());
         }

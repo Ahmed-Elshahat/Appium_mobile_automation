@@ -48,14 +48,19 @@ public final class PasscodeResetApiHelper {
      * @param poi          proof-of-identity number (national/border id)
      * @param poiType      proof-of-identity type ({@code NAT} or {@code BOR})
      * @param otp          the OTP the SIT backend accepts for this account (e.g. {@code 1234})
+     * @param dob          the account's registered date of birth ({@code yyyy-MM-dd}); validated by
+     *                     the reset-authorization step and therefore per-user, not global
      * @return {@code true} only if the final reset call returned a 2xx status
      */
     @Step("Reset passcode via API for {mobileNumber} (poiType {poiType})")
-    public static boolean resetToDefaultPasscode(String mobileNumber, String poi, String poiType, String otp) {
+    public static boolean resetToDefaultPasscode(String mobileNumber, String poi, String poiType, String otp,
+                                                 String dob) {
         ConfigManager config = ConfigManager.getInstance();
         String baseUrl = config.get("passcodeReset.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
         String deviceId = config.get("passcodeReset.deviceId", "3f5996472f8f6c3d");
-        String dob = config.get("passcodeReset.dob", "1990-01-01");
+        String resolvedDob = (dob == null || dob.trim().isEmpty())
+                ? config.get("passcodeReset.dob", "1990-01-01")
+                : dob.trim();
         String passcodeBlob = config.get("passcodeReset.passcode2233Blob", DEFAULT_PASSCODE_2233_BLOB);
         String mobileWithExtension = toInternationalFormat(mobileNumber);
 
@@ -90,7 +95,7 @@ public final class PasscodeResetApiHelper {
                 return false;
             }
 
-            Response auth = resetPasswordAuthorization(baseUrl, mobileWithExtension, dob, resetRulesToken, deviceId);
+            Response auth = resetPasswordAuthorization(baseUrl, mobileWithExtension, resolvedDob, resetRulesToken, deviceId);
             String authToken = auth.getHeader(OTP_TOKEN_HEADER);
             if (authToken == null) {
                 log.warn("Passcode reset aborted: authorization call did not return a token (status {})",

@@ -5,8 +5,7 @@ import com.urpay.pages.settings.RatingPage;
 import io.qameta.allure.Step;
 
 /**
- * Rating flow — navigates to the rating screen and provides
- * methods to progress through the 3-screen feedback flow.
+ * Rating flow — navigates to the rating screen and submits the single-question NPS survey.
  *
  * Katalon source: Test Cases/Wallet_VAS/Rating/
  */
@@ -24,23 +23,9 @@ public class RatingFlow {
         return ratingPage;
     }
 
-    @Step("Complete first screen: select rating 6 and tap Next")
-    public RatingPage completeFirstScreen() {
-        ratingPage.selectRating6();
-        ratingPage.tapNext();
-        return ratingPage;
-    }
-
-    @Step("Complete second screen: select Urpay App factor and tap Next")
-    public RatingPage completeSecondScreen() {
-        ratingPage.selectUrpayAppFactor();
-        ratingPage.tapNext();
-        return ratingPage;
-    }
-
-    @Step("Complete third screen: enter comment and submit")
-    public RatingPage completeThirdScreen(String comment) {
-        ratingPage.enterComment(comment);
+    @Step("Submit NPS rating {rating}")
+    public RatingPage submitRating(String rating) {
+        ratingPage.selectRating(rating);
         ratingPage.tapSubmit();
         return ratingPage;
     }

@@ -215,6 +215,15 @@ public class FamilyMissionPage extends BasePage {
             + " or @label='Send Reward' or @name='Send Reward']")
     private WebElement validateRewardButton;
 
+    // By mirror of validateRewardButton, used to scroll the Reward-details confirmation screen until
+    // the button is on-screen (PageFactory WebElements cannot be polled with findElements for a
+    // presence check).
+    private static final By VALIDATE_REWARD_BUTTON = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onValidateReward-main']"
+            + " | //android.view.ViewGroup[@clickable='true'"
+            + " and .//android.widget.TextView[@text='Send Reward']]"
+            + " | //XCUIElementTypeButton[@name='testID-primary-onValidateReward-main']");
+
     // ── Done Reward button (after sending reward) ─────
     // testID is build-specific (hashed on the LT build); match by the visible "Done" label with
     // the testID as fallback so the locator works on BOTH the semantic and hashed builds.
@@ -411,8 +420,23 @@ public class FamilyMissionPage extends BasePage {
         tap(sendRewardButton);
     }
 
-    @Step("Tap 'Validate Reward' button")
+    @Step("Scroll to 'Send Reward' button and tap")
     public void tapValidateReward() {
+        // The 'Send Reward' button sits below the fold on the Reward-details confirmation screen;
+        // how far down it is varies with device resolution across the LT device pool. Blind
+        // swipeUp() gestures on this React-Native ScrollView overscroll-bounce back to the top, so
+        // the button may never settle on screen. UiScrollable.scrollTextIntoView("Send Reward")
+        // scrolls the exact button label into view and STOPS on it (no bounce). Fall back to
+        // swipe-scrolling only if no scrollable container is reported. Mirrors scrollAndConfirm().
+        if (!isPresent(VALIDATE_REWARD_BUTTON, 1)) {
+            try {
+                scrollToText("Send Reward");
+            } catch (Exception e) {
+                for (int i = 0; i < 6 && !isPresent(VALIDATE_REWARD_BUTTON, 1); i++) {
+                    swipeUp();
+                }
+            }
+        }
         tap(validateRewardButton);
     }
 

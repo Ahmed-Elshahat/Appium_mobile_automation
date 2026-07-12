@@ -53,12 +53,12 @@ public class RatingTest extends BaseTest {
     }
 
     // ══════════════════════════════════════════════════
-    //  TEST: FIRST FEEDBACK SCREEN TEXTS
+    //  TEST: NPS SURVEY SCREEN TEXTS
     // ══════════════════════════════════════════════════
 
     @Test(groups = {"settings", "rating", "smoke"}, priority = 1)
-    @Story("First Feedback Screen")
-    @Description("Navigate to rating screen and verify all texts on the first NPS screen")
+    @Story("NPS Survey")
+    @Description("Navigate to the rating screen and verify the NPS question and scale labels")
     @Severity(SeverityLevel.CRITICAL)
     public void testFirstFeedbackScreenTexts() {
         DashboardPage dashboard = login();
@@ -66,14 +66,11 @@ public class RatingTest extends BaseTest {
 
         RatingFlow flow = new RatingFlow();
         RatingPage page = flow.navigateToRating();
-        Assert.assertTrue(page.isFirstScreenLoaded(), "First feedback screen should be loaded");
-
-        String header = page.getFirstScreenHeader();
-        Assert.assertTrue(header.contains("Hello"), "Header should contain greeting: " + header);
+        Assert.assertTrue(page.isFirstScreenLoaded(), "NPS survey screen should be loaded");
 
         String question = page.getQuestionText();
-        Assert.assertTrue(question.contains("recommend urpay"),
-                "Question should ask about recommending urpay: " + question);
+        Assert.assertTrue(question.contains("recommend Urpay"),
+                "Question should ask about recommending Urpay: " + question);
 
         String notLikely = page.getNotLikelyText();
         Assert.assertEquals(notLikely, "Not Likely", "Lower limit text mismatch");
@@ -81,103 +78,48 @@ public class RatingTest extends BaseTest {
         String extremelyLikely = page.getExtremelyLikelyText();
         Assert.assertEquals(extremelyLikely, "Extremely Likely", "Upper limit text mismatch");
 
-        log.info("First feedback screen texts verified successfully");
+        log.info("NPS survey screen texts verified successfully");
     }
 
     // ══════════════════════════════════════════════════
-    //  TEST: SELECT RATING AND NAVIGATE TO NEXT SCREEN
+    //  TEST: SELECT RATING AND SUBMIT
     // ══════════════════════════════════════════════════
 
     @Test(groups = {"settings", "rating"}, priority = 2,
             dependsOnMethods = "testFirstFeedbackScreenTexts")
-    @Story("First Feedback Screen")
-    @Description("Select rating 6 and verify navigation to second screen")
+    @Story("NPS Survey")
+    @Description("Select an NPS rating, confirm Submit enables, submit and reach the success screen")
     @Severity(SeverityLevel.CRITICAL)
-    public void testSelectRatingAndNavigateToNext() {
+    public void testSelectRatingAndSubmit() {
         RatingPage page = new RatingPage();
-        page.selectRating6();
+        page.selectRating(ConfigManager.getInstance().get("rating.npsScore", "9"));
 
-        Assert.assertTrue(page.isNextButtonVisible(), "Next button should be visible after rating selection");
+        Assert.assertTrue(page.isSubmitEnabled(), "Submit should be enabled after selecting a rating");
 
-        page.tapNext();
-        Assert.assertTrue(page.isSecondScreenLoaded(), "Second feedback screen should be loaded");
+        page.tapSubmit();
+        Assert.assertTrue(page.isSuccessScreenLoaded(), "Success screen should be loaded after submit");
 
-        log.info("Rating selected and navigated to second screen successfully");
+        log.info("Rating selected and submitted successfully");
     }
 
     // ══════════════════════════════════════════════════
-    //  TEST: SECOND FEEDBACK SCREEN TEXTS
+    //  TEST: SURVEY SUCCESS AND CLOSE
     // ══════════════════════════════════════════════════
 
     @Test(groups = {"settings", "rating"}, priority = 3,
-            dependsOnMethods = "testSelectRatingAndNavigateToNext")
-    @Story("Second Feedback Screen")
-    @Description("Verify all factor texts on the second feedback screen")
+            dependsOnMethods = "testSelectRatingAndSubmit")
+    @Story("NPS Survey")
+    @Description("Verify the thank-you message on the success screen and close the survey")
     @Severity(SeverityLevel.NORMAL)
-    public void testSecondFeedbackScreenTexts() {
+    public void testSurveySuccessAndClose() {
         RatingPage page = new RatingPage();
-
-        String header = page.getSecondScreenHeader();
-        Assert.assertEquals(header, "What Factors influenced your rating?",
-                "Second screen header mismatch");
-
-        Assert.assertEquals(page.getUrpayCardsText(), "Urpay Cards", "Urpay Cards text mismatch");
-        Assert.assertEquals(page.getMoneyTransferText(), "Money Transfer", "Money Transfer text mismatch");
-        Assert.assertEquals(page.getUrpayAppText(), "Urpay App", "Urpay App text mismatch");
-        Assert.assertEquals(page.getUrpayStoreText(), "Urpay Store", "Urpay Store text mismatch");
-        Assert.assertEquals(page.getCustomerServiceText(), "Customer Service", "Customer Service text mismatch");
-
-        log.info("Second feedback screen texts verified successfully");
-    }
-
-    // ══════════════════════════════════════════════════
-    //  TEST: SELECT FACTOR AND NAVIGATE TO THIRD SCREEN
-    // ══════════════════════════════════════════════════
-
-    @Test(groups = {"settings", "rating"}, priority = 4,
-            dependsOnMethods = "testSecondFeedbackScreenTexts")
-    @Story("Second Feedback Screen")
-    @Description("Select Urpay App factor and navigate to third screen")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testSelectFactorAndNavigateToThird() {
-        RatingPage page = new RatingPage();
-        page.selectUrpayAppFactor();
-        page.tapNext();
-
-        Assert.assertTrue(page.isThirdScreenLoaded(), "Third feedback screen should be loaded");
-
-        String header = page.getThirdScreenHeader();
-        Assert.assertEquals(header, "Do you have any comments?",
-                "Third screen header mismatch");
-
-        log.info("Factor selected and navigated to third screen successfully");
-    }
-
-    // ══════════════════════════════════════════════════
-    //  TEST: ENTER COMMENT AND SUBMIT RATING
-    // ══════════════════════════════════════════════════
-
-    @Test(groups = {"settings", "rating"}, priority = 5,
-            dependsOnMethods = "testSelectFactorAndNavigateToThird")
-    @Story("Third Feedback Screen")
-    @Description("Enter comment text and submit the rating, verify success message")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testEnterCommentAndSubmit() {
-        RatingPage page = new RatingPage();
-        page.enterComment("test");
-        page.tapSubmit();
-
-        Assert.assertTrue(page.isSuccessScreenLoaded(), "Success screen should be loaded");
-
-        String submittedText = page.getSubmittedText();
-        Assert.assertEquals(submittedText, "Submitted", "Submitted text mismatch");
 
         String thankYouMsg = page.getThankYouMessage();
-        Assert.assertTrue(thankYouMsg.contains("Thank you"),
-                "Thank you message should contain 'Thank you': " + thankYouMsg);
+        Assert.assertTrue(thankYouMsg.contains("Thank you for taking the survey"),
+                "Thank-you message mismatch: " + thankYouMsg);
 
         page.tapClose();
-        log.info("Rating submitted and success message verified");
+        log.info("Survey success verified and closed");
     }
 
     // ══════════════════════════════════════════════════
