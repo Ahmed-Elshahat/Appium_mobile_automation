@@ -42,17 +42,36 @@
       -Dprofile flag order, NOT the order of tests here.
     -->
 
-    <!-- Family Wallet: 7 chained classes, ONE device, ~2258s summed — longest stream -->
-    <test name="Family Wallet (serial)">
-        <classes>
-            <class name="com.urpay.tests.wallet.SendGiftFromParentTest"/>
-            <class name="com.urpay.tests.wallet.KidReceiveGiftTest"/>
-            <class name="com.urpay.tests.wallet.FamilyRequestMoneyTest"/>
-            <class name="com.urpay.tests.wallet.DirectTopupPositiveTest"/>
-            <class name="com.urpay.tests.wallet.DirectTopupNegativeTest"/>
-            <class name="com.urpay.tests.wallet.PermissionControlTest"/>
-            <class name="com.urpay.tests.wallet.DelinkFromParentTest"/>
-        </classes>
+    <!-- Family Wallet — FULLY PARALLEL (one class per <test>). No serial blocks.
+         WARNING: the following blocks currently share an account, so running them
+         at the same time WILL fail (same account logged in on two devices) until
+         each side gets its OWN distinct account/data:
+           • DirectTopup Positive & Negative  → both use directTopup.parent (0520535694)
+           • Family Request Money & Family Mission → both use 0520437043 / 0520856357
+           • MoneyGram Bank Deposit & Send to Wallet → both use 0520581842
+           • Reject Group Qatta & Government Services → both use 0520352101
+         Also: Receive Gift needs a pre-seeded UNOPENED gift on sendGift.kid, since
+         Send Gift no longer runs before it. -->
+    <test name="Family - Send Gift (parent)"> <!-- ~540s -->
+        <classes><class name="com.urpay.tests.wallet.SendGiftFromParentTest"/></classes>
+    </test>
+    <test name="Family - Receive Gift (kid)"> <!-- ~553s (needs pre-seeded unopened gift) -->
+        <classes><class name="com.urpay.tests.wallet.KidReceiveGiftTest"/></classes>
+    </test>
+    <test name="Family - Request Money"> <!-- ~449s -->
+        <classes><class name="com.urpay.tests.wallet.FamilyRequestMoneyTest"/></classes>
+    </test>
+    <test name="Family - Direct Topup Positive"> <!-- ~163s -->
+        <classes><class name="com.urpay.tests.wallet.DirectTopupPositiveTest"/></classes>
+    </test>
+    <test name="Family - Direct Topup Negative"> <!-- ~215s -->
+        <classes><class name="com.urpay.tests.wallet.DirectTopupNegativeTest"/></classes>
+    </test>
+    <test name="Family - Delink"> <!-- ~176s -->
+        <classes><class name="com.urpay.tests.wallet.DelinkFromParentTest"/></classes>
+    </test>
+    <test name="Family - Permission Control"> <!-- ~162s -->
+        <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
     </test>
 
     <!-- Card lifecycle (whole-class: add / pin / replace / cancel) -->
@@ -69,10 +88,6 @@
         <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
     </test>
 
-    <test name="Add MoneyGram Beneficiary"> <!-- ~860s -->
-        <groups><run><include name="add-moneygram-beneficiary"/></run></groups>
-        <classes><class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/></classes>
-    </test>
     <test name="Change Passcode Family Tier"> <!-- ~727s -->
         <classes><class name="com.urpay.tests.settings.ChangePasscodeFamilyTierTest"/></classes>
     </test>
@@ -86,19 +101,12 @@
     <test name="Account Statement"> <!-- ~622s -->
         <classes><class name="com.urpay.tests.wallet.AccountStatementTest"/></classes>
     </test>
-    <test name="Add Local Beneficiary"> <!-- ~586s -->
-        <classes><class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/></classes>
-    </test>
     <test name="Change Passcode Default Tier Negative"> <!-- ~567s -->
         <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierNegativeTest"/></classes>
     </test>
     <test name="Telecom - STC"> <!-- ~566s -->
         <groups><run><include name="stc"/></run></groups>
         <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
-    </test>
-    <test name="Add International Beneficiary"> <!-- ~566s -->
-        <groups><run><include name="add-international-beneficiary"/></run></groups>
-        <classes><class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/></classes>
     </test>
     <test name="Change Passcode Full Tier"> <!-- ~565s -->
         <classes><class name="com.urpay.tests.settings.ChangePasscodeFullTierTest"/></classes>

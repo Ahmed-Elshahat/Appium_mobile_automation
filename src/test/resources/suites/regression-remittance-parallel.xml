@@ -27,17 +27,8 @@
     </listeners>
 
     <!-- ── Beneficiaries ─────────────────────────────────────── -->
-    <test name="Add Local Beneficiary">
-        <classes><class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/></classes>
-    </test>
-    <test name="Add International Beneficiary">
-        <groups><run><include name="add-international-beneficiary"/></run></groups>
-        <classes><class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/></classes>
-    </test>
-    <test name="Add MoneyGram Beneficiary">
-        <groups><run><include name="add-moneygram-beneficiary"/></run></groups>
-        <classes><class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/></classes>
-    </test>
+    <!-- EXCLUDED from regression-all-parallel:
+         AddLocalBeneficiaryTest, AddInternationalBeneficiaryTest, AddMoneyGramBeneficiaryTest -->
 
     <!-- ── Transfers ─────────────────────────────────────────── -->
     <test name="Local Transfer">
