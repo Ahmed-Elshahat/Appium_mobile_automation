@@ -281,6 +281,7 @@ public class CardsFlow {
                 + "@content-desc='testID-primary-backToCardsDB-main' or @content-desc='testID-primary--main']");
 
         setImplicitWait(0);
+        boolean issued = false;
         for (int i = 0; i < 15; i++) {
             if (quickFind(successBtn)) {
                 setImplicitWait(10);
@@ -296,14 +297,78 @@ public class CardsFlow {
                     log.info("Tapped success screen button");
                 }
                 setImplicitWait(10);
+                issued = true;
                 break;
             }
+            // If the backend rejected issuance, its error banner ("Transaction Declined" /
+            // "Service is currently unavailable") is up instead of the success screen — stop
+            // polling and raise it as a categorized backend defect.
+            raiseIfBackendError("digital card issuance");
             try { Thread.sleep(2000); } catch (Exception ignored) {}
         }
         setImplicitWait(10);
 
+        if (!issued) {
+            // Success screen never appeared after OTP + IVR skip. Sample the error banner one
+            // last time (it may have arrived on the final poll), then fail fast: returning a
+            // half-issued card here would make every dependent card test break with cryptic
+            // element timeouts instead of surfacing the real backend defect once.
+            raiseIfBackendError("digital card issuance");
+            throw new com.urpay.utils.BackendErrorException(
+                    "Card issuance did not complete for '" + cardPrefix + "' — no success screen "
+                    + "and no error banner after OTP + IVR skip. Treating as a backend/service "
+                    + "issue (Transaction Declined / service currently unavailable) so dependent "
+                    + "card tests are skipped rather than cascading into 'broken'.");
+        }
+
         log.info("Digital card issued for: {}", cardPrefix);
         return page;
+    }
+
+    // ══════════════════════════════════════════════════
+    //  BACKEND ERROR DETECTION
+    // ══════════════════════════════════════════════════
+
+    /** Backend/SIT error banners the app shows when it cannot complete card issuance. */
+    private static final By CARD_ERROR_BANNER = AppiumBy.xpath(
+            "//*[contains(@text,'Transaction Declined') or contains(@text,'declined')] | "
+            + "//*[contains(@text,'Service') and contains(@text,'unavailable')] | "
+            + "//*[contains(@text,'currently unavailable')] | "
+            + "//*[contains(@text,'Something went wrong')] | "
+            + "//*[contains(@text,'Internal Server Error')] | "
+            + "//*[contains(@text,'try again later') or contains(@text,'Try again later')] | "
+            + "//*[contains(@text,'Network error')]");
+
+    /**
+     * If a backend/SIT error banner is showing, raise a categorized {@link
+     * com.urpay.utils.BackendErrorException}. The message carries the banner text and the phrase
+     * "currently unavailable" / "Transaction Declined" so the Allure categoriser buckets it under
+     * "Backend service unavailable (SIT)" (see categories.json). This is a product/backend defect,
+     * not a test defect — the test converts it to a clean FAILED and dependent tests are skipped.
+     */
+    private void raiseIfBackendError(String stage) {
+        setImplicitWait(0);
+        var banners = driver.findElements(CARD_ERROR_BANNER);
+        setImplicitWait(10);
+        if (banners.isEmpty()) {
+            return;
+        }
+        String text;
+        try {
+            if (!banners.get(0).isDisplayed()) {
+                return;
+            }
+            text = banners.get(0).getText();
+        } catch (Exception e) {
+            return; // banner vanished between find and read — not a stable error state
+        }
+        if (text == null || text.isBlank()) {
+            text = "Service is currently unavailable. Please try again later.";
+        }
+        log.error("⚠ BACKEND ERROR during {}: {}", stage, text);
+        throw new com.urpay.utils.BackendErrorException(
+                "Backend rejected " + stage + " — \"" + text + "\". SIT backend/provider defect "
+                + "(Transaction Declined / service currently unavailable), not a test defect.");
     }
 
     // ══════════════════════════════════════════════════

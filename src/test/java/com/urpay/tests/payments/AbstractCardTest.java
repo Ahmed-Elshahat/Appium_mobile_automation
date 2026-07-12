@@ -131,6 +131,13 @@ public abstract class AbstractCardTest extends BaseTest {
                 // Only check lock state for existing cards — new cards are always unlocked
                 flow.ensureCardUnlocked();
             }
+        } catch (com.urpay.utils.BackendErrorException e) {
+            // A backend/SIT error during card issuance is a genuine product defect, NOT a test
+            // problem. Fail (not swallow) so this shows as a clean FAILED with the backend message,
+            // and TestNG SKIPS the dependent card tests instead of letting them cascade into
+            // misleading "broken" element timeouts.
+            captureScreenshot("Backend Error During Card Issuance");
+            Assert.fail(e.getMessage());
         } catch (Exception e) {
             log.warn("Card navigation had an issue but continuing: {}", e.getMessage());
             captureScreenshot("Navigation Issue");
