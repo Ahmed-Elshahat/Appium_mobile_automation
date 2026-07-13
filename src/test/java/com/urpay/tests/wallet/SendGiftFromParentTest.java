@@ -7,6 +7,7 @@ import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
 import com.urpay.flows.LoginFlow;
 import com.urpay.flows.SendGiftFlow;
+import com.urpay.helpers.DeviceContactsHelper;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.wallet.SendGiftPage;
 
@@ -41,6 +42,17 @@ public class SendGiftFromParentTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testParentSendsGiftToKid() {
         ConfigManager c = ConfigManager.getInstance();
+        String appPackage = c.get("appPackage", "com.urpay.consumer.sit");
+
+        // The "Cash" gift picks the recipient from the device's phone contacts, and the app caches an
+        // empty contact list at first launch. So seed the kid as a device contact BEFORE login, then
+        // restart the app so its launch-time contacts read includes it. Runs on LambdaTest via an
+        // ACTION_INSERT intent + pm grant (best-effort).
+        DeviceContactsHelper.ensureContact(getDriver(), appPackage,
+                c.get("sendGift.kidName", "GiftKid"),
+                c.get("sendGift.kidContactNumber", "+" + c.get("sendGift.kidSearchMobile")));
+        DeviceContactsHelper.restartApp(getDriver(), appPackage);
+
         DashboardPage dashboard = loginAsParent();
         Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after parent login");
 
@@ -48,10 +60,11 @@ public class SendGiftFromParentTest extends BaseTest {
         flow.navigateToGifts();
 
         SendGiftPage page = flow.sendMarriageGift(
-                c.get("sendGift.kidSearchMobile"),
+                c.get("sendGift.kidName", "GiftKid"),
                 c.get("sendGift.message", "Congratulations"),
                 c.get("sendGift.amount", "5"),
-                c.get("sendGift.parent.passCode", "2233"));
+                c.get("sendGift.parent.passCode", "2233"),
+                c.get("sendGift.parent.verificationCode", "1234"));
 
         Assert.assertTrue(page.isThankYouShown(), "Gift 'Thank You' screen should be displayed");
         page.tapDone();

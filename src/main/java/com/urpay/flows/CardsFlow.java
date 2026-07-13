@@ -280,45 +280,49 @@ public class CardsFlow {
                 "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
                 + "@content-desc='testID-primary-backToCardsDB-main' or @content-desc='testID-primary--main']");
 
-        setImplicitWait(0);
+        // F5: explicit-wait polling only — no Thread.sleep and no implicit-wait toggling. Each
+        // findQuick call blocks up to 2s (≈30s total, matching the old 15×2s budget) and the
+        // implicit wait is restored in the finally block regardless of how we exit the loop.
+        By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
         boolean issued = false;
-        for (int i = 0; i < 15; i++) {
-            if (quickFind(successBtn)) {
-                setImplicitWait(10);
-                // Prefer "Done" or "View Card" over "Back to cards"
-                By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
-                setImplicitWait(2);
-                var doneBtns = driver.findElements(doneBtn);
-                if (!doneBtns.isEmpty()) {
-                    doneBtns.get(0).click();
-                    log.info("Tapped Done/View Card on success screen");
-                } else {
-                    waits.waitForClickable(successBtn, 5).click();
-                    log.info("Tapped success screen button");
+        try {
+            for (int i = 0; i < 15; i++) {
+                if (!waits.findQuick(successBtn, 2).isEmpty()) {
+                    // Prefer "Done" or "View Card" over "Back to cards"
+                    var doneBtns = waits.findQuick(doneBtn, 2);
+                    if (!doneBtns.isEmpty()) {
+                        doneBtns.get(0).click();
+                        log.info("Tapped Done/View Card on success screen");
+                    } else {
+                        waits.waitForClickable(successBtn, 5).click();
+                        log.info("Tapped success screen button");
+                    }
+                    issued = true;
+                    break;
                 }
-                setImplicitWait(10);
-                issued = true;
-                break;
+                // If the backend rejected issuance, its error banner ("Transaction Declined" /
+                // "Service is currently unavailable") is up instead of the success screen — stop
+                // polling and raise it as a categorized backend defect.
+                raiseIfBackendError("digital card issuance");
             }
-            // If the backend rejected issuance, its error banner ("Transaction Declined" /
-            // "Service is currently unavailable") is up instead of the success screen — stop
-            // polling and raise it as a categorized backend defect.
-            raiseIfBackendError("digital card issuance");
-            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        } finally {
+            setImplicitWait(10);
         }
-        setImplicitWait(10);
 
         if (!issued) {
-            // Success screen never appeared after OTP + IVR skip. Sample the error banner one
-            // last time (it may have arrived on the final poll), then fail fast: returning a
-            // half-issued card here would make every dependent card test break with cryptic
-            // element timeouts instead of surfacing the real backend defect once.
+            // Success screen never appeared after OTP + IVR skip. Sample the error banner one last
+            // time (it may have arrived on the final poll) — if it is there, raise it as a backend
+            // defect so dependent card tests skip cleanly.
             raiseIfBackendError("digital card issuance");
-            throw new com.urpay.utils.BackendErrorException(
-                    "Card issuance did not complete for '" + cardPrefix + "' — no success screen "
-                    + "and no error banner after OTP + IVR skip. Treating as a backend/service "
-                    + "issue (Transaction Declined / service currently unavailable) so dependent "
-                    + "card tests are skipped rather than cascading into 'broken'.");
+            // F3: no success screen AND no backend banner is NOT evidence of a backend outage — it
+            // is most likely an automation, app-state, locator, IVR or timing defect. Raise a
+            // framework/navigation exception (with diagnostics) so it is not misclassified into the
+            // "Backend service unavailable" bucket.
+            throw new com.urpay.utils.FlowNavigationException(
+                    "Card issuance did not complete for '" + cardPrefix + "' — no success screen and "
+                    + "no backend error banner after OTP + IVR skip. No backend evidence was found, "
+                    + "so this is treated as a framework/navigation defect (automation, app-state, "
+                    + "locator, IVR or timing) rather than a backend outage.");
         }
 
         log.info("Digital card issued for: {}", cardPrefix);
@@ -329,46 +333,19 @@ public class CardsFlow {
     //  BACKEND ERROR DETECTION
     // ══════════════════════════════════════════════════
 
-    /** Backend/SIT error banners the app shows when it cannot complete card issuance. */
-    private static final By CARD_ERROR_BANNER = AppiumBy.xpath(
-            "//*[contains(@text,'Transaction Declined') or contains(@text,'declined')] | "
-            + "//*[contains(@text,'Service') and contains(@text,'unavailable')] | "
-            + "//*[contains(@text,'currently unavailable')] | "
-            + "//*[contains(@text,'Something went wrong')] | "
-            + "//*[contains(@text,'Internal Server Error')] | "
-            + "//*[contains(@text,'try again later') or contains(@text,'Try again later')] | "
-            + "//*[contains(@text,'Network error')]");
-
     /**
      * If a backend/SIT error banner is showing, raise a categorized {@link
-     * com.urpay.utils.BackendErrorException}. The message carries the banner text and the phrase
-     * "currently unavailable" / "Transaction Declined" so the Allure categoriser buckets it under
-     * "Backend service unavailable (SIT)" (see categories.json). This is a product/backend defect,
-     * not a test defect — the test converts it to a clean FAILED and dependent tests are skipped.
+     * com.urpay.utils.BackendErrorException}.
+     *
+     * <p>F4: detection is delegated to the shared {@link com.urpay.utils.BackendErrorGuard}, which
+     * inspects Android <em>and</em> iOS/React-Native attributes (text, content-desc, label, name,
+     * value) with reusable phrase matching — so cards, remittance, SADAD, top-up and future iOS
+     * flows all classify backend banners identically. The raised message still carries the
+     * "currently unavailable" / "Transaction Declined" phrase so the Allure categoriser buckets it
+     * under "Backend service unavailable (SIT)".
      */
     private void raiseIfBackendError(String stage) {
-        setImplicitWait(0);
-        var banners = driver.findElements(CARD_ERROR_BANNER);
-        setImplicitWait(10);
-        if (banners.isEmpty()) {
-            return;
-        }
-        String text;
-        try {
-            if (!banners.get(0).isDisplayed()) {
-                return;
-            }
-            text = banners.get(0).getText();
-        } catch (Exception e) {
-            return; // banner vanished between find and read — not a stable error state
-        }
-        if (text == null || text.isBlank()) {
-            text = "Service is currently unavailable. Please try again later.";
-        }
-        log.error("⚠ BACKEND ERROR during {}: {}", stage, text);
-        throw new com.urpay.utils.BackendErrorException(
-                "Backend rejected " + stage + " — \"" + text + "\". SIT backend/provider defect "
-                + "(Transaction Declined / service currently unavailable), not a test defect.");
+        com.urpay.utils.BackendErrorGuard.raiseIfPresent(waits, stage);
     }
 
     // ══════════════════════════════════════════════════

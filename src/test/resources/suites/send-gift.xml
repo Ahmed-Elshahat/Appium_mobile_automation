@@ -1,0 +1,10 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Focused Send Gift suite — parent sends a gift to a kid.
+  Run: mvn test "-Dsuite=suites/send-gift.xml" "-Dprofile=sit-wmv"
+-->
+<suite name="Send Gift" verbose="1" parallel="none">
+    <test name="send-gift-parent-to-kid">
+        <classes><class name="com.urpay.tests.wallet.SendGiftFromParentTest"/></classes>
+    </test>
+</suite>

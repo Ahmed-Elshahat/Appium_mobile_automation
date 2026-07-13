@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Top Product Suite" verbose="1">
+    <test name="DMP 01 - Validate Top Product">
+        <classes>
+            <class name="com.urpay.tests.dmp.ValidateTopProductTest"/>
+        </classes>
+    </test>
+</suite>

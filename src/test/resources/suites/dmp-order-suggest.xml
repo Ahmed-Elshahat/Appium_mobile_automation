@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Order From Suggest Suite" verbose="1">
+    <test name="DMP - Order From Suggest">
+        <classes>
+            <class name="com.urpay.tests.dmp.orders.OrderFromSuggestTest"/>
+        </classes>
+    </test>
+</suite>

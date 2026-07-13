@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Search By Product Name Suite" verbose="1">
+    <test name="DMP - Search by product name">
+        <classes>
+            <class name="com.urpay.tests.dmp.SearchByProductNameTest"/>
+        </classes>
+    </test>
+</suite>

@@ -38,11 +38,21 @@ public class RetryAnalyzer implements IRetryAnalyzer {
         return false;
     }
 
-    /** True if the failure is the categorized "Service is currently unavailable" SIT outage. */
+    /**
+     * True if the failure is a deterministic SIT backend outage that a retry cannot recover.
+     *
+     * <p>F6: primary signal is the exception <b>type</b> — any {@link
+     * com.urpay.utils.BackendErrorException} anywhere in the cause chain is deterministic by
+     * construction. Phrase matching ("currently unavailable" / "Transaction Declined") is kept only
+     * as a fallback for outages surfaced through other exception types.
+     */
     private boolean isDeterministicOutage(Throwable t) {
         for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof com.urpay.utils.BackendErrorException) {
+                return true;
+            }
             String m = c.getMessage();
-            if (m != null && m.contains("currently unavailable")) {
+            if (m != null && (m.contains("currently unavailable") || m.contains("Transaction Declined"))) {
                 return true;
             }
         }

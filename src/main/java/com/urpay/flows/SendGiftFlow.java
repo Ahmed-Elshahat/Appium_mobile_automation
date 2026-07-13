@@ -17,7 +17,7 @@ public class SendGiftFlow {
 
     private final SendGiftPage giftPage = new SendGiftPage();
 
-    @Step("Navigate Dashboard → Gifts (Eidya) service")
+    @Step("Navigate Dashboard → Gifts service")
     public SendGiftPage navigateToGifts() {
         new DashboardPage().dismissPopups();
         giftPage.navigateToGifts();
@@ -26,8 +26,8 @@ public class SendGiftFlow {
 
     @Step("Send a Marriage gift to {kidSearchMobile}")
     public SendGiftPage sendMarriageGift(String kidSearchMobile, String message, String amount,
-            String passcode) {
-        giftPage.sendMarriageGift(kidSearchMobile, message, amount, passcode);
+            String passcode, String otp) {
+        giftPage.sendMarriageGift(kidSearchMobile, message, amount, passcode, otp);
         return giftPage;
     }
 

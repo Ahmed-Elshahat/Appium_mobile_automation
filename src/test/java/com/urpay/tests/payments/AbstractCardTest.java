@@ -1,6 +1,7 @@
 package com.urpay.tests.payments;
 
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 import org.testng.asserts.SoftAssert;
 
@@ -139,8 +140,13 @@ public abstract class AbstractCardTest extends BaseTest {
             captureScreenshot("Backend Error During Card Issuance");
             Assert.fail(e.getMessage());
         } catch (Exception e) {
-            log.warn("Card navigation had an issue but continuing: {}", e.getMessage());
-            captureScreenshot("Navigation Issue");
+            // F2: a non-backend navigation/setup failure is non-recoverable for this BLOCKER setup —
+            // do NOT swallow it and let dependent card tests run against an unknown screen (that only
+            // produces misleading element-timeout "broken" cascades). Skip the whole card chain so
+            // the failure is honest and the dependent tests report as SKIPPED, not broken.
+            log.error("Card setup navigation failed — skipping dependent card tests: {}", e.getMessage());
+            captureScreenshot("Navigation Setup Failure");
+            throw new SkipException("Card setup navigation failed: " + e.getMessage(), e);
         }
         captureScreenshot("On Card Products Page");
     }

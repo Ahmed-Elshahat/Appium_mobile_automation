@@ -46,6 +46,9 @@ Drivers/
 Katalon/
 logs-wmv/
 
+# -- DMP reference sources (separate GitLab branch DMP_1, cloned locally for reference) --
+DMP_1/
+
 # -- Temporary page-source debug dumps (investigation artefacts, not source code) --
 nb-*.xml
 

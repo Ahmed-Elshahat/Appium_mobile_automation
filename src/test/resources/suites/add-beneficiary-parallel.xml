@@ -1,0 +1,49 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  ADD-BENEFICIARY PARALLEL SUITE — dedicated coverage.  Profile: sit-remittance
+  ══════════════════════════════════════════════════════════════════════════════
+
+  F7 (code review): AddLocalBeneficiaryTest, AddInternationalBeneficiaryTest and
+  AddMoneyGramBeneficiaryTest are intentionally EXCLUDED from the main/remittance
+  parallel regression jobs because adding a beneficiary triggers an IVR phone
+  verification that cannot be driven on LambdaTest — the beneficiary must be
+  activated directly in the SIT wallet DB (IVR skip), so these need NETWORK ACCESS
+  to beneficiary.db.url and must run from a DB-connected runner.
+
+  This dedicated suite keeps that coverage explicit and auditable: a reduced broken
+  count in regression is NOT because add-beneficiary flows were dropped — they run
+  here, in their own CI job, and their Allure results should be MERGED/linked into
+  the release evidence alongside the main regression report.
+
+  Each <test> logs in with its OWN account → parallel-safe.
+
+  Run (DB-connected runner):
+    mvn clean test "-Dsuite=suites/add-beneficiary-parallel.xml" "-Dprofile=sit-remittance" -Dremote=true
+-->
+<suite name="URPay Add-Beneficiary Dedicated Suite" verbose="1"
+       parallel="tests" thread-count="3" group-by-instances="true">
+
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <test name="Add Local Beneficiary">
+        <classes>
+            <class name="com.urpay.tests.remittance.AddLocalBeneficiaryTest"/>
+        </classes>
+    </test>
+
+    <test name="Add International Beneficiary">
+        <classes>
+            <class name="com.urpay.tests.remittance.AddInternationalBeneficiaryTest"/>
+        </classes>
+    </test>
+
+    <test name="Add MoneyGram Beneficiary">
+        <classes>
+            <class name="com.urpay.tests.remittance.AddMoneyGramBeneficiaryTest"/>
+        </classes>
+    </test>
+
+</suite>
