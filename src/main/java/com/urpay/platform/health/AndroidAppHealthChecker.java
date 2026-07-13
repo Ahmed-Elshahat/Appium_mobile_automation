@@ -47,8 +47,14 @@ public class AndroidAppHealthChecker implements AppHealthChecker {
             ApplicationState state = driver.queryAppState(appPackage);
             return state == ApplicationState.NOT_RUNNING;
         } catch (Exception e) {
+            // A dead/timed-out SESSION is not an app crash — never fabricate a crash from it,
+            // otherwise infra session-loss is mislabeled "APP CRASHED / UNKNOWN".
+            if (com.urpay.utils.SessionLoss.matches(e.getMessage())) {
+                log.warn("Session lost while querying app state (infra, not a crash): {}", e.getMessage());
+                return false;
+            }
             log.warn("Failed to query app state: {}", e.getMessage());
-            return true;
+            return false;
         }
     }
 
@@ -58,6 +64,9 @@ public class AndroidAppHealthChecker implements AppHealthChecker {
             ApplicationState state = driver.queryAppState(appPackage);
             return state.name();
         } catch (Exception e) {
+            if (com.urpay.utils.SessionLoss.matches(e.getMessage())) {
+                return "SESSION_LOST";
+            }
             return "UNKNOWN (error: " + e.getMessage() + ")";
         }
     }

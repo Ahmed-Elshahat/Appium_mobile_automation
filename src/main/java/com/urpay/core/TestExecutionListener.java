@@ -73,6 +73,21 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         String testName = result.getMethod().getMethodName();
         Throwable throwable = result.getThrowable();
 
+        // A lost/timed-out Appium session is an INFRA failure, not an app crash. Detect it from the
+        // test's own throwable and tag it distinctly, then skip the health probe below — that probe
+        // would itself throw (the session is gone) and produce the misleading
+        // "APP CRASHED - App State: UNKNOWN (error: Unable to find the session info ...)" text that
+        // pollutes the report with false broken/unknown results.
+        if (com.urpay.utils.SessionLoss.isSessionLost(throwable)) {
+            String firstLine = throwable != null && throwable.getMessage() != null
+                    ? throwable.getMessage().split("\\R", 2)[0] : "session has quit or timed out";
+            log.warn("⚠ SESSION LOST during {} (infra, not an app crash) — {}", testName, firstLine);
+            failureHealth.put(testName, "SESSION LOST (infra) - " + firstLine);
+            // The session is gone — screenshots / logcat / app-state probes would all throw. Skip
+            // them; the distinct SESSION-LOST tag above is enough for correct categorization.
+            return;
+        }
+
         try {
             AppiumDriver driver = DriverFactory.getInstance().getDriver();
 
@@ -177,13 +192,20 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
 
     @Override
     public void onFinish(ISuite suite) {
-        if (failureScreenshots.isEmpty() && failureHealth.isEmpty()) return;
-        log.info("Patching Allure result(s) with failure screenshots / crash context...");
-
         try {
+            // 1. Attach failure screenshots + inject crash/health context (only if captured).
+            if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty()) {
+                log.info("Patching Allure result(s) with failure screenshots / crash context...");
+                Files.list(ALLURE_DIR)
+                        .filter(p -> p.toString().endsWith("-result.json"))
+                        .forEach(this::patchResultFile);
+            }
+            // 2. Demote broken locator / element-timeout results to a clean 'failed' so the report
+            //    NEVER shows locator flakiness as 'broken'. Genuine infra buckets (session-loss,
+            //    app-crash, backend, driver-allocation) are left as-is. Runs for every result file.
             Files.list(ALLURE_DIR)
                     .filter(p -> p.toString().endsWith("-result.json"))
-                    .forEach(this::patchResultFile);
+                    .forEach(this::demoteBrokenLocatorResult);
         } catch (IOException e) {
             log.warn("Failed to patch Allure results: {}", e.getMessage());
         }
@@ -249,6 +271,76 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         } catch (IOException e) {
             log.warn("Failed to patch {}: {}", resultFile.getFileName(), e.getMessage());
         }
+    }
+
+    /** Element / locator signatures that mean a test broke on the UI, not on a real defect. */
+    private static final java.util.regex.Pattern LOCATOR_BROKEN = java.util.regex.Pattern.compile(
+            "TimeoutException|NoSuchElement|no such element|StaleElementReference|"
+            + "ElementNotInteractable|ElementClickIntercepted|InvalidSelector|InvalidElementState|"
+            + "ElementNotVisible|waiting for element|Expected condition failed|"
+            + "could not be located|Unable to locate element|element not found",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** Infra / product signatures that must KEEP their broken bucket (never demoted). */
+    private static final java.util.regex.Pattern INFRA_BROKEN = java.util.regex.Pattern.compile(
+            "SESSION LOST|Unable to find the session info|session has quit|invalid session id|"
+            + "NoSuchSession|SessionNotCreated|Could not start a new session|"
+            + "Unable to create a new remote session|APP CRASH|not in foreground|has crashed|"
+            + "currently unavailable|Transaction Declined|Service Unavailable",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Flip a {@code broken} locator/element-timeout result to a clean {@code failed} in the Allure
+     * result JSON, so the report never surfaces UI locator flakiness as "broken". Infra/product
+     * failures (session-loss, app-crash, backend, driver-allocation) are left untouched so their
+     * dedicated categories still apply. Only the root-level status is changed (it precedes the
+     * {@code steps} array), and the message is tagged {@code [LOCATOR TIMEOUT]} for triage.
+     */
+    private void demoteBrokenLocatorResult(Path resultFile) {
+        try {
+            String json = Files.readString(resultFile, StandardCharsets.UTF_8);
+            int statusIdx = json.indexOf("\"status\":\"broken\"");
+            if (statusIdx < 0) {
+                return; // not a broken result
+            }
+            String message = extractMessage(json);
+            if (message != null && INFRA_BROKEN.matcher(message).find()) {
+                return; // genuine infra/product broken — keep its bucket
+            }
+            if (message == null || !LOCATOR_BROKEN.matcher(message).find()) {
+                return; // not a locator/element failure — leave as broken
+            }
+            String patched = json.substring(0, statusIdx)
+                    + "\"status\":\"failed\""
+                    + json.substring(statusIdx + "\"status\":\"broken\"".length());
+            patched = injectHealthIntoMessage(patched, "LOCATOR TIMEOUT");
+            Files.writeString(resultFile, patched, StandardCharsets.UTF_8);
+            log.info("Demoted broken locator result to failed: {}", resultFile.getFileName());
+        } catch (IOException e) {
+            log.warn("Failed to demote {}: {}", resultFile.getFileName(), e.getMessage());
+        }
+    }
+
+    /** Extract the root {@code statusDetails.message} value (handles escaped quotes). */
+    private String extractMessage(String json) {
+        String anchor = "\"message\":\"";
+        int i = json.indexOf(anchor);
+        if (i < 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int k = i + anchor.length(); k < json.length(); k++) {
+            char c = json.charAt(k);
+            if (c == '\\' && k + 1 < json.length()) {
+                sb.append(c).append(json.charAt(++k));
+                continue;
+            }
+            if (c == '"') {
+                break;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 
     /** Return the captured failed-test name whose Allure {@code name} appears in this result. */
