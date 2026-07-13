@@ -200,12 +200,13 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                         .filter(p -> p.toString().endsWith("-result.json"))
                         .forEach(this::patchResultFile);
             }
-            // 2. Demote broken locator / element-timeout results to a clean 'failed' so the report
-            //    NEVER shows locator flakiness as 'broken'. Genuine infra buckets (session-loss,
-            //    app-crash, backend, driver-allocation) are left as-is. Runs for every result file.
+            // 2. Demote broken results that are really product/UI defects to a clean 'failed' so the
+            //    report never shows a backend 'service unavailable' or a locator timeout as 'broken'.
+            //    Pure infra (session-loss, app-crash, driver-allocation) stays broken. Runs for
+            //    every result file.
             Files.list(ALLURE_DIR)
                     .filter(p -> p.toString().endsWith("-result.json"))
-                    .forEach(this::demoteBrokenLocatorResult);
+                    .forEach(this::demoteBrokenResult);
         } catch (IOException e) {
             log.warn("Failed to patch Allure results: {}", e.getMessage());
         }
@@ -281,22 +282,32 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             + "could not be located|Unable to locate element|element not found",
             java.util.regex.Pattern.CASE_INSENSITIVE);
 
-    /** Infra / product signatures that must KEEP their broken bucket (never demoted). */
+    /** Backend / service defect signatures — a real product/BE failure, so these become 'failed'. */
+    private static final java.util.regex.Pattern BACKEND_BROKEN = java.util.regex.Pattern.compile(
+            "currently unavailable|Service is unavailable|Service Unavailable|service unavailable|"
+            + "Transaction Declined|Something went wrong|Internal Server Error|try again later|"
+            + "Backend rejected|SIT backend|service DOWN|Service is down",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** Pure INFRA signatures that must KEEP their broken bucket (environment, not a product defect). */
     private static final java.util.regex.Pattern INFRA_BROKEN = java.util.regex.Pattern.compile(
             "SESSION LOST|Unable to find the session info|session has quit|invalid session id|"
             + "NoSuchSession|SessionNotCreated|Could not start a new session|"
-            + "Unable to create a new remote session|APP CRASH|not in foreground|has crashed|"
-            + "currently unavailable|Transaction Declined|Service Unavailable",
+            + "Unable to create a new remote session|APP CRASH|not in foreground|has crashed",
             java.util.regex.Pattern.CASE_INSENSITIVE);
 
     /**
-     * Flip a {@code broken} locator/element-timeout result to a clean {@code failed} in the Allure
-     * result JSON, so the report never surfaces UI locator flakiness as "broken". Infra/product
-     * failures (session-loss, app-crash, backend, driver-allocation) are left untouched so their
-     * dedicated categories still apply. Only the root-level status is changed (it precedes the
-     * {@code steps} array), and the message is tagged {@code [LOCATOR TIMEOUT]} for triage.
+     * Flip a {@code broken} result to a clean {@code failed} in the Allure result JSON when the
+     * failure is a genuine product/UI defect that should never appear as "broken":
+     * <ul>
+     *   <li><b>Backend / service unavailable</b> — a real BE defect (not a test defect).</li>
+     *   <li><b>Locator / element timeout</b> — UI flakiness, converted to a clean failure.</li>
+     * </ul>
+     * Pure infrastructure failures (session-loss, driver-allocation, app-crash) are left as broken
+     * so their dedicated categories still apply. Only the root-level status is changed (it precedes
+     * the {@code steps} array); the message is tagged for triage.
      */
-    private void demoteBrokenLocatorResult(Path resultFile) {
+    private void demoteBrokenResult(Path resultFile) {
         try {
             String json = Files.readString(resultFile, StandardCharsets.UTF_8);
             int statusIdx = json.indexOf("\"status\":\"broken\"");
@@ -304,18 +315,23 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 return; // not a broken result
             }
             String message = extractMessage(json);
-            if (message != null && INFRA_BROKEN.matcher(message).find()) {
-                return; // genuine infra/product broken — keep its bucket
+            if (message == null || INFRA_BROKEN.matcher(message).find()) {
+                return; // pure infra broken — keep its bucket
             }
-            if (message == null || !LOCATOR_BROKEN.matcher(message).find()) {
-                return; // not a locator/element failure — leave as broken
+            String marker;
+            if (BACKEND_BROKEN.matcher(message).find()) {
+                marker = "BACKEND DEFECT"; // real backend/service failure → product 'failed'
+            } else if (LOCATOR_BROKEN.matcher(message).find()) {
+                marker = "LOCATOR TIMEOUT"; // UI locator flakiness → clean 'failed'
+            } else {
+                return; // unattributed broken — leave as broken
             }
             String patched = json.substring(0, statusIdx)
                     + "\"status\":\"failed\""
                     + json.substring(statusIdx + "\"status\":\"broken\"".length());
-            patched = injectHealthIntoMessage(patched, "LOCATOR TIMEOUT");
+            patched = injectHealthIntoMessage(patched, marker);
             Files.writeString(resultFile, patched, StandardCharsets.UTF_8);
-            log.info("Demoted broken locator result to failed: {}", resultFile.getFileName());
+            log.info("Demoted broken result to failed ({}): {}", marker, resultFile.getFileName());
         } catch (IOException e) {
             log.warn("Failed to demote {}: {}", resultFile.getFileName(), e.getMessage());
         }
