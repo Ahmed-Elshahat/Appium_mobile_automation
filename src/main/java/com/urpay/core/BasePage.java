@@ -236,24 +236,35 @@ public abstract class BasePage {
 
     // ── Global Error Detection ─────────────────────────────────────
 
+    private static final By ERROR_BANNER = By.xpath(
+            "//*[contains(@text,'Service') and contains(@text,'unavailable')] | " +
+            "//*[contains(@text,'service') and contains(@text,'unavailable')] | " +
+            "//*[contains(@text,'Something went wrong')] | " +
+            "//*[contains(@text,'Internal Server Error')] | " +
+            "//*[contains(@text,'Try again later')] | " +
+            "//*[contains(@text,'try again later')] | " +
+            "//*[contains(@text,'connection timed out')] | " +
+            "//*[contains(@text,'Network error')]");
+
     /**
-     * Quick check for error banners after every tap. Detection is delegated to the shared,
-     * platform-aware {@link com.urpay.utils.BackendErrorGuard} (F4) so Android and iOS/React-Native
-     * banners are recognized consistently. This is a non-throwing diagnostic: if a backend banner is
-     * detected it captures a screenshot and attaches it to Allure, but never fails the tap — flows
-     * decide when to raise {@link com.urpay.utils.BackendErrorException}.
+     * Quick check for error banners after every tap.
+     * Uses explicit WebDriverWait via WaitUtils.findQuick — no implicit wait toggling.
+     * If an error is detected, captures screenshot and attaches to Allure.
      */
     protected void checkForErrorBanner() {
         try {
-            com.urpay.utils.BackendErrorGuard.detect(waitUtils).ifPresent(errorText -> {
-                log.error("\u26A0 ERROR BANNER DETECTED: {}", errorText);
+            List<WebElement> errors = waitUtils.findQuick(ERROR_BANNER, 1);
+            if (!errors.isEmpty()) {
+                String errorText = errors.get(0).getText();
+                log.error("⚠ ERROR BANNER DETECTED: {}", errorText);
+
                 byte[] screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
                 if (screenshot.length > 0) {
                     Allure.addAttachment(
                             "BUG: " + errorText, "image/png",
                             new ByteArrayInputStream(screenshot), ".png");
                 }
-            });
+            }
         } catch (Exception ignored) {}
     }
 

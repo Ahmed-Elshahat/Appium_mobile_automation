@@ -265,6 +265,7 @@ public final class RegistrationApiHelper {
             if (doKyc) {
                 completeKyc(baseUrl, session);
                 acceptNewTerms(baseUrl, session);
+                acceptPartyConsents(baseUrl, session, poiNumber, poiType.code(), partyId);
                 reactivateInDb(mobile, partyId);
             } else {
                 log.info("Stopping before KYC/terms (Default-tier account, not KYC-completed)");
@@ -802,6 +803,65 @@ public final class RegistrationApiHelper {
                 .body(body)
                 .post(baseUrl + "/consumers/new-terms/accept/after-login");
         log.info("Accept new terms (v{}) -> status {} body {}", termsVersion,
+                resp.getStatusCode(), resp.getBody().asString());
+    }
+
+    /**
+     * Record the consumer's policy consents through the Consents service, exactly as the URPay app
+     * does after registration (see the {@code ConsumerConsentsInquiry} then
+     * {@code ConsumerConsentsCreate} backend trace):
+     * <ol>
+     *   <li>{@code GET /consumers/party-consents} — inquire the existing consents;</li>
+     *   <li>{@code POST /consumers/party-consents} — create a granular consent record per policy.</li>
+     * </ol>
+     * Unlike {@link #acceptNewTerms} (which only flags a single global terms version), this creates
+     * one consent per policy: Terms &amp; Conditions ({@code tnc_UrPay}), Privacy ({@code pv_UrPay})
+     * and the two marketing consents ({@code UrPayMCSMS} = SMS, {@code UrPayMCPN} = push). The policy
+     * list, version and channel are config-overridable. Best-effort.
+     *
+     * @param entityId     the consumer's POI number (national / iqama / border id)
+     * @param entityIdType the POI type (NAT / IQA / BOR)
+     * @param partyId      the consumer's party id
+     */
+    @Step("API accept party consents (policies) for party {partyId}")
+    static void acceptPartyConsents(String baseUrl, Session session, String entityId,
+                                    String entityIdType, String partyId) {
+        if (partyId == null || entityId == null) {
+            log.warn("Party consents skipped: missing partyId/entityId");
+            return;
+        }
+        ConfigManager config = ConfigManager.getInstance();
+        String policies = config.get("registration.consentPolicies",
+                "tnc_UrPay,pv_UrPay,UrPayMCSMS,UrPayMCPN");
+        String policyVersion = config.get("registration.consentPolicyVersion", "NONE");
+        String channelType = config.get("registration.consentChannelType", "Urpay");
+
+        // The app first inquires the existing consents (GET) before creating them.
+        Response inquiry = authedRequest(session).get(baseUrl + "/consumers/party-consents");
+        log.info("Party consents inquiry -> status {} body {}", inquiry.getStatusCode(),
+                inquiry.getBody().asString());
+
+        StringBuilder consents = new StringBuilder();
+        for (String raw : policies.split(",")) {
+            String policyId = raw.trim();
+            if (policyId.isEmpty()) {
+                continue;
+            }
+            if (consents.length() > 0) {
+                consents.append(",");
+            }
+            consents.append("{\"entityId\":\"").append(entityId)
+                    .append("\",\"entityIdType\":\"").append(entityIdType)
+                    .append("\",\"policyId\":\"").append(policyId)
+                    .append("\",\"policyVersion\":\"").append(policyVersion)
+                    .append("\",\"channelType\":\"").append(channelType)
+                    .append("\"}");
+        }
+        String body = "{\"partyConsents\":[" + consents + "],\"partyId\":\"" + partyId + "\"}";
+        Response resp = authedRequest(session)
+                .body(body)
+                .post(baseUrl + "/consumers/party-consents");
+        log.info("Accept party consents ({}) -> status {} body {}", policies,
                 resp.getStatusCode(), resp.getBody().asString());
     }
 

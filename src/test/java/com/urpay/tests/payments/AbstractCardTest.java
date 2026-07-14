@@ -329,12 +329,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  8. VALIDATE TRANSACTION DETAILS
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 8,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
-    @Story("Transaction Details")
-    @Description("Open transaction tab — DISABLED: Transactions tab removed in new UI")
-    @Severity(SeverityLevel.NORMAL)
-    public void testValidateTransactionDetails() {
+    // DISABLED: Transactions tab removed in new UI — not a TestNG test (kept for future re-enable)
+    private void testValidateTransactionDetails() {
         CardsFlow flow = new CardsFlow();
         TransactionDetailsPage details = flow.openTransactionDetails();
         captureScreenshot("Transaction Details");
@@ -393,12 +389,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  11. VALIDATE CARD DUPLICATION
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 11,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
-    @Story("Card Duplication Validation")
-    @Description("Attempt duplicate card — DISABLED: Request Card button removed in new UI")
-    @Severity(SeverityLevel.NORMAL)
-    public void testValidateCardDuplication() {
+    // DISABLED: Request Card button removed in new UI — not a TestNG test (kept for future re-enable)
+    private void testValidateCardDuplication() {
         CardsFlow flow = new CardsFlow();
         CardsPage page = flow.attemptDuplicateCard();
         captureScreenshot("Duplication Error");
@@ -468,12 +460,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  12. CANCEL CARD FROM SETTINGS (with invalid passcode first)
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 12,
-            dependsOnMethods = "testIssueDigitalCard", enabled = false)
-    @Story("Cancel Card from Settings")
-    @Description("Cancel from settings → enter invalid passcode → verify error → enter correct passcode")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testCancelCardFromSettings() {
+    // DISABLED: destructive/cancel flow — not a TestNG test (kept for future re-enable)
+    private void testCancelCardFromSettings() {
         CardsFlow flow = new CardsFlow();
         CardSettingsPage settings = flow.cancelCardFromSettings(getCardPrefix());
         captureScreenshot("Card Cancelled from Settings");
@@ -483,12 +471,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  13. CANCEL CARD (runs last — destructive)
     // ═══════════════════════════════════════════════════
 
-    @Test(groups = {"payments", "cards"}, priority = 13,
-            dependsOnMethods = "testIssueDigitalCard", enabled = false)
-    @Story("Cancel Card")
-    @Description("Cancel card → select reason → confirm → passcode → no thanks")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testCancelCard() {
+    // DISABLED: destructive/cancel flow — not a TestNG test (kept for future re-enable)
+    private void testCancelCard() {
         new CardsFlow().cancelCard(getCardPrefix());
         captureScreenshot("Card Cancelled");
     }

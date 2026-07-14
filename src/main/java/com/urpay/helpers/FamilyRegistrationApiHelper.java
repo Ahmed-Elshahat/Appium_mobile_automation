@@ -428,6 +428,7 @@ public final class FamilyRegistrationApiHelper {
         // Accept the latest T&C for the kid so the app does not present the terms screen on first
         // login (the UI journeys log in as the kid and would otherwise stall on it).
         RegistrationApiHelper.acceptNewTerms(baseUrl, kidSession);
+        RegistrationApiHelper.acceptPartyConsents(baseUrl, kidSession, kid.poi, kid.poiType, kid.partyId);
         // Body mirrors the app's CreateFamilyRequestRq_Rule exactly: the parent (receiver) is
         // resolved by mobile only (no receiverPoi*), and the kid is named via requesterConsumerId.
         String body = "{"
@@ -612,6 +613,7 @@ public final class FamilyRegistrationApiHelper {
         // Accept the latest T&C for the parent (mirrors the main registration flow) so the app does
         // not present the terms screen on first login.
         RegistrationApiHelper.acceptNewTerms(baseUrl, session);
+        RegistrationApiHelper.acceptPartyConsents(baseUrl, session, parent.poi, parent.poiType, parent.partyId);
         reactivate(parent);
     }
 
