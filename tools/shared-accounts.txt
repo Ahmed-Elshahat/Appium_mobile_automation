@@ -1,0 +1,10 @@
+Accounts shared by 2+ DISTINCT test classes (literal .mobileNumber refs):
+
+
+0520281395  -> 3 test classes:
+    AddLocalBeneficiaryTest (urpayUser.mobileNumber)
+    LocalTransferTest (urpayUser.mobileNumber)
+    NotificationsTest (urpayUser.mobileNumber)
+
+NOTE: prefix-indirection classes NOT captured here (check manually):
+  MoneyGramTransferTest (loginAndTransfer prefix), TelecomRechargeTest, AbstractChangePasscode*/AbstractForgotPasscode* (keyPrefix()).

@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Promo Item Level Diagnostic Suite" verbose="1">
+    <!-- The two item-level codes that were rejected on the first product; re-run with the
+         failure-message capture to reveal the rejection reason. -->
+    <test name="DMP - Promo Item Level">
+        <classes>
+            <class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/>
+            <class name="com.urpay.tests.dmp.promo.PercentageItemLevelMaxQtyTest"/>
+        </classes>
+    </test>
+</suite>

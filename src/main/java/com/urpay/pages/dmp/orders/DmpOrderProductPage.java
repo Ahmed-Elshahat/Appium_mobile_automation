@@ -21,9 +21,11 @@ import io.qameta.allure.Step;
 public class DmpOrderProductPage extends BasePage {
 
     // Add-to-cart / Buy-now call-to-action (text-first; scrolled into view before tapping).
+    // NOTE: do NOT match the header '.Cart' icon here — it sits at the top of the DOM and would be
+    // tapped instead of the actual bottom CTA.
     @AndroidFindBy(xpath = "//*[@text='Add to Cart' or @text='Add to cart' "
             + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') "
-            + "or contains(@content-desc,'.Cart') or contains(@name,'.Cart')]")
+            + "or starts-with(@text,'Buy Now') or contains(@text,'Buy Now')]")
     private WebElement addToCartButton;
 
     // Cart toolbar icon / 'View Cart' snackbar (Katalon cartToolbarButton testID-right-icon-0).

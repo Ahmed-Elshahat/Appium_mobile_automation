@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Promo Fixed Amount Item Level Suite" verbose="1">
+    <test name="DMP - Promo Fixed Amount Item Level">
+        <classes>
+            <class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/>
+        </classes>
+    </test>
+</suite>

@@ -1,0 +1,12 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Promo Valid Generic Suite" verbose="1">
+    <!-- Verification aggregate: the three generic valid-promo suites (each a distinct login user)
+         whose codes apply to any single product. Runs sequentially (one session per class). -->
+    <test name="DMP - Promo Valid Generic">
+        <classes>
+            <class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/>
+            <class name="com.urpay.tests.dmp.promo.PercentageCartLevelMaxTest"/>
+            <class name="com.urpay.tests.dmp.promo.PercentageItemLevelMaxQtyTest"/>
+        </classes>
+    </test>
+</suite>

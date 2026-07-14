@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Promo Percentage Item Level Max Qty Suite" verbose="1">
+    <test name="DMP - Promo Percentage Item Level with Max Qty">
+        <classes>
+            <class name="com.urpay.tests.dmp.promo.PercentageItemLevelMaxQtyTest"/>
+        </classes>
+    </test>
+</suite>

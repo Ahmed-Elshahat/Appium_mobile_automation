@@ -36,8 +36,24 @@ public class DmpBrowseFlow {
      */
     @Step("Sort '{category}' by price (descending={descending}) and sample {sampleSize} prices")
     public List<Double> getSortedCategoryPrices(String category, boolean descending, int sampleSize) {
+        return getSortedCategoryPrices(category, descending, sampleSize, false);
+    }
+
+    /**
+     * As {@link #getSortedCategoryPrices(String, boolean, int)} but selects the Store entry point:
+     * {@code physical=false} → Vouchers "View All" (digital), {@code physical=true} → Devices
+     * "View All" (physical products). Mirrors the two Katalon sorting suites which differ only by
+     * the {@code viewAllVouchers} vs {@code viewAllDevices} entry.
+     *
+     * @param physical {@code true} to enter via the physical Devices "View All".
+     */
+    @Step("Sort '{category}' by price (descending={descending}, physical={physical}) and sample {sampleSize} prices")
+    public List<Double> getSortedCategoryPrices(String category, boolean descending, int sampleSize,
+            boolean physical) {
         new DmpFlow().openMarketPlace();
-        DmpAllItemsPage items = new DmpAllItemsPage().openFromVouchers();
+        DmpAllItemsPage items = physical
+                ? new DmpAllItemsPage().openFromDevices()
+                : new DmpAllItemsPage().openFromVouchers();
         items.selectCategory(category);
         DmpSortFilterPage filter = items.openFilter();
         DmpAllItemsPage sorted = filter.sortByPrice(descending);
@@ -45,5 +61,27 @@ public class DmpBrowseFlow {
         log.info("Sampled {} prices for category '{}' (descending={}): {}",
                 prices.size(), category, descending, prices);
         return prices;
+    }
+
+    /**
+     * Open the Store, drill into {@code category}'s All Items listing and search for {@code productName}.
+     * Returns the listing page so the test can assert whether the product is present (relevant category)
+     * or the "No Results" empty state is shown (irrelevant category).
+     *
+     * <p>Migrated from Katalon (DMP_1 branch) Product/Physical Product Grouping Management:
+     * "Verify Products are Displayed in Relevant Categories" / "Validate Products are Not Displayed in
+     * Irrelevant Categories" — open All Items → select category chip → search by product name.
+     *
+     * @param physical {@code true} to enter via the physical Devices ("Smart Phones") listing.
+     */
+    @Step("Search '{category}' (physical={physical}) for product '{productName}'")
+    public DmpAllItemsPage searchProductInCategory(String category, String productName, boolean physical) {
+        new DmpFlow().openMarketPlace();
+        DmpAllItemsPage items = physical
+                ? new DmpAllItemsPage().openFromDevices()
+                : new DmpAllItemsPage().openFromVouchers();
+        items.selectCategory(category);
+        items.searchProduct(productName);
+        return items;
     }
 }

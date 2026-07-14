@@ -1,0 +1,20 @@
+Existing test classes:   81
+Referenced in suite:     68
+
+=== NOT in regression-all-parallel.xml ===
+com.urpay.tests.auth.AbstractForgotPasscodeDobNegativeTest
+com.urpay.tests.auth.AbstractForgotPasscodeLoginNegativeTest
+com.urpay.tests.auth.AbstractForgotPasscodeNegativeJourneyTest
+com.urpay.tests.auth.AbstractForgotPasscodeTierTest
+com.urpay.tests.auth.SmokeTest
+com.urpay.tests.payments.AbstractCardTest
+com.urpay.tests.payments.PlatinumCardRegistrationTest
+com.urpay.tests.provisioning.UserProvisioningTest
+com.urpay.tests.remittance.MoneyGramDynamicBeneficiaryTest
+com.urpay.tests.remittance.MTOCorridorRefreshTest
+com.urpay.tests.remittance.TransfastSendToWalletTest
+com.urpay.tests.settings.AbstractChangePasscodeTierNegativeTest
+com.urpay.tests.settings.AbstractChangePasscodeTierTest
+
+=== Referenced but file NOT found (typos) ===
+(none)

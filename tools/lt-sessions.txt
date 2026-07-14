@@ -1,0 +1,48 @@
+LambdaTest session probe 2026-07-12T16:31:00
+OK: https://mobile-api.lambdatest.com/mobile-automation/api/v1/sessions?limit=40
+
+name                                                                 status_ind duration build_name        
+----                                                                 ---------- -------- ----------        
+GovernmentServicesTest :: testSingleTrafficViolationPayment          failed     232      URPay-Appium-Smoke
+GovernmentServicesMultiTest :: testMultipleTrafficViolationsPayment  passed     253      URPay-Appium-Smoke
+GovernmentServicesTest :: testSingleTrafficViolationPayment          failed     274      URPay-Appium-Smoke
+GovernmentServicesMultiTest :: testMultipleTrafficViolationsPayment  failed     280      URPay-Appium-Smoke
+GovernmentServicesMultiTest :: testMultipleTrafficViolationsPayment  failed     268      URPay-Appium-Smoke
+GovernmentServicesTest :: testSingleTrafficViolationPayment          failed     281      URPay-Appium-Smoke
+GovernmentServicesMultiTest :: testMultipleTrafficViolationsPayment  failed     280      URPay-Appium-Smoke
+GovernmentServicesTest :: testSingleTrafficViolationPayment          failed     228      URPay-Appium-Smoke
+DelinkFromParentTest :: testKidSendsUnlinkRequest                    passed     175      URPay-Appium-Smoke
+PermissionControlTest :: testParentUnfreezesKid                      passed     162      URPay-Appium-Smoke
+DirectTopupNegativeTest :: testParentCannotExceedAllowedAmount       passed     153      URPay-Appium-Smoke
+DirectTopupPositiveTest :: testParentAddsMoneyToKidWallet            passed     163      URPay-Appium-Smoke
+FamilyRequestMoneyTest :: testKidSeesApprovedStatus                  passed     449      URPay-Appium-Smoke
+TahweelBankDepositTest :: testTahweelBankDepositTransfer             failed     174      URPay-Appium-Smoke
+TahweelTransferTest :: testTahweelCashPickupTransfer                 failed     154      URPay-Appium-Smoke
+TransfastCashPickupTest :: testTransfastCashPickupTransfer           passed     202      URPay-Appium-Smoke
+KidReceiveGiftTest :: testKidOpensReceivedGift                       failed     553      URPay-Appium-Smoke
+TransfastBankDepositTest :: testTransfastBankDepositTransfer         completed  128      URPay-Appium-Smoke
+WesternUnionTransferTest :: testWesternUnionCashPickupTransfer       passed     240      URPay-Appium-Smoke
+MoneyGramTransferTest :: testMoneyGramSendToWalletTransfer           failed     148      URPay-Appium-Smoke
+MoneyGramTransferTest :: testMoneyGramBankDepositToIndia             failed     171      URPay-Appium-Smoke
+WalletTransferTest :: testValidateSenderTransactionHistory           passed     213      URPay-Appium-Smoke
+LocalTransferTest :: testLocalTransferEditTransaction                passed     346      URPay-Appium-Smoke
+AddMoneyGramBeneficiaryTest :: testTransferToNewMoneyGramBeneficiary passed     860      URPay-Appium-Smoke
+AddInternationalBeneficiaryTest :: testRemoveBeneficiary             failed     566      URPay-Appium-Smoke
+AddLocalBeneficiaryTest :: testLocalTransferToNewBeneficiary         failed     586      URPay-Appium-Smoke
+TopUpBankCardTest :: testDeleteTopUpCard                             failed     206      URPay-Appium-Smoke
+TravelEsimTest :: testConfirmEsimPurchase                            failed     204      URPay-Appium-Smoke
+SadadBillPaymentTest :: testSadadTransactionDetails                  failed     295      URPay-Appium-Smoke
+SadadBillsTest :: testDeleteBill                                     failed     173      URPay-Appium-Smoke
+TelecomRechargeTest :: testZainReOrder                               failed     511      URPay-Appium-Smoke
+TelecomRechargeTest :: testMobilyReOrder                             failed     382      URPay-Appium-Smoke
+TelecomRechargeTest :: testSTCQuickNetRecharge                       failed     566      URPay-Appium-Smoke
+GovernmentServicesMultiTest :: testMultipleTrafficViolationsPayment  failed     414      URPay-Appium-Smoke
+GovernmentServicesTest :: testSingleTrafficViolationPayment          failed     428      URPay-Appium-Smoke
+SignatureCardTest :: testValidateCanceledCardRemoved                 passed     980      URPay-Appium-Smoke
+PlatinumCardTest :: testValidateCanceledCardRemoved                  passed     978      URPay-Appium-Smoke
+AlAhliCardTest :: testValidateCanceledCardRemoved                    passed     1021     URPay-Appium-Smoke
+MadaCardTest :: testValidateCanceledCardRemoved                      passed     1199     URPay-Appium-Smoke
+SendGiftFromParentTest :: testParentSendsGiftToKid                   failed     540      URPay-Appium-Smoke
+
+
+

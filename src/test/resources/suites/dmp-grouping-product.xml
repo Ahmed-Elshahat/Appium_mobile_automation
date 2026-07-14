@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Product Grouping Management Suite" verbose="1">
+    <test name="DMP - Product Grouping Management">
+        <classes>
+            <class name="com.urpay.tests.dmp.browse.ProductGroupingManagementTest"/>
+        </classes>
+    </test>
+</suite>

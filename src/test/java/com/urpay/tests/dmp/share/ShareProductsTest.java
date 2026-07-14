@@ -19,8 +19,12 @@ import io.qameta.allure.SeverityLevel;
  * DMP Share Products (LANE B).
  *
  * Migrated from Katalon (DMP_1 branch) suite ValidatShareingProductsWithOthers:
- *   login → NavigateToDMP → open a specific product's details by deep link → tap Share →
- *   verify the share sheet is displayed.
+ *   login → NavigateToDMP → open a product's details → tap Share → verify the share sheet.
+ *
+ * The Katalon deep link {@code urpay://MarketPlace/ProductDetails?sku=<sku>} crashes the SIT app
+ * on some product details screens ({@code IllegalStateException: HorizontalScrollView can host
+ * only one direct child}), so the test opens a normal Store product from the catalogue instead —
+ * the Share behaviour under test is identical.
  */
 @Epic("DMP")
 @Feature("Share Products")
@@ -38,8 +42,7 @@ public class ShareProductsTest extends BaseTest {
                 config.get("dmpb.share.verificationCode", "1234"),
                 config.get("dmpb.share.passCode", "2233"));
 
-        DmpShareProductPage share = new DmpShareFlow()
-                .shareProductByDeepLink(config.get("dmpb.share.sku", "6280066009007"));
+        DmpShareProductPage share = new DmpShareFlow().shareFirstStoreProduct();
 
         Assert.assertTrue(share.isShareSheetDisplayed(),
                 "The share sheet should be displayed after tapping Share");

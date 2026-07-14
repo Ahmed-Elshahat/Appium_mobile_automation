@@ -1,11 +1,11 @@
 package com.urpay.flows;
 
-import com.urpay.pages.auth.OtpPage;
 import com.urpay.pages.dmp.DmpOrderConfirmationPage;
 import com.urpay.pages.dmp.orders.DmpOrderCartPage;
 import com.urpay.pages.dmp.orders.DmpOrderCheckoutPage;
 import com.urpay.pages.dmp.orders.DmpOrderProductPage;
 import com.urpay.pages.dmp.orders.DmpOrderStorePage;
+import com.urpay.pages.dmp.orders.DmpPaymentOtpPage;
 
 import io.qameta.allure.Step;
 
@@ -57,7 +57,7 @@ public class DmpDashboardOrderFlow {
         DmpOrderCartPage cart = product.tapViewCart();
         DmpOrderCheckoutPage checkout = cart.goToCheckout();
         checkout.placeOrder();
-        new OtpPage().enterOtp(verificationCode);
+        new DmpPaymentOtpPage().enterPaymentOtp(verificationCode);
         return new DmpOrderConfirmationPage();
     }
 }

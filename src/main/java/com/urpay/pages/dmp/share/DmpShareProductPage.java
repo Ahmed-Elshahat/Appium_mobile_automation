@@ -24,12 +24,16 @@ public class DmpShareProductPage extends BasePage {
             + "or contains(@label,'.Share-Bold')]")
     private WebElement shareButton;
 
-    // Android system share chooser (Sharesheet / ResolverActivity) shown after tapping Share.
-    @AndroidFindBy(xpath = "//*[@resource-id='android:id/resolver_list' "
+    // Android system share chooser shown after tapping Share. On Android 12+ the Sharesheet is
+    // served by the com.android.intentresolver package (older builds used android:id/resolver_list /
+    // chooser_header). Anchor primarily on that package so ANY chooser element counts, with legacy
+    // resource-id / label fallbacks.
+    @AndroidFindBy(xpath = "//*[contains(@package,'intentresolver') or contains(@package,'resolver') "
+            + "or @resource-id='android:id/resolver_list' "
             + "or @resource-id='android:id/chooser_header' "
-            + "or contains(@resource-id,'android:id/profile_button') "
-            + "or contains(@resource-id,'android:id/contentPanel') "
-            + "or @text='Copy link' or @text='Copy' or @text='Nearby Share' or @text='Share']")
+            + "or contains(@resource-id,'chooser') or contains(@resource-id,'intentresolver') "
+            + "or @text='Copy link' or @text='Copy' or @text='Nearby Share' or @text='Quick Share' "
+            + "or @text='Share']")
     private WebElement shareSheet;
 
     @Step("Check the Product Details Share button is displayed")
@@ -45,12 +49,5 @@ public class DmpShareProductPage extends BasePage {
     @Step("Check the share sheet is displayed")
     public boolean isShareSheetDisplayed() {
         return isDisplayed(shareSheet, 20);
-    }
-
-    // TEMP (live-harden): capture the share-sheet page source to Allure so the exact chooser
-    // markers can be locked in, then removed. Remove once isShareSheetDisplayed is verified GREEN.
-    @Step("Capture the share sheet page source [{tag}]")
-    public void captureShareSheet(String tag) {
-        dumpPageSource(tag);
     }
 }

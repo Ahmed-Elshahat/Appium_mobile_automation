@@ -1,0 +1,56 @@
+Total mobile-number keys scanned: 99
+
+=== ACCOUNTS SHARED BY MULTIPLE KEYS (collisions) ===
+
+0520299065  (used by 3 keys):
+    giftReceiver.mobileNumber  [sit-wmv.properties]
+    sendGift.kid.mobileNumber  [sit-wmv.properties]
+    sendGift.kidSearchMobile  [sit-wmv.properties]
+
+0520352101  (used by 2 keys):
+    rejectGroup.admin.mobileNumber  [sit-wmv.properties]
+    gov.mobileNumber  [sit-cards.properties]
+
+0506915979  (used by 2 keys):
+    quickQatta.receiver.mobileNumber  [sit-wmv.properties]
+    quickQatta.recipientMobile  [sit-wmv.properties]
+
+0520437043  (used by 2 keys):
+    familyRequestMoney.parent.mobileNumber  [sit-wmv.properties]
+    familyMission.parent.mobileNumber  [sit-wmv.properties]
+
+0520581842  (used by 2 keys):
+    moneygram.user.mobileNumber  [sit-remittance.properties]
+    moneygram.sendToWallet.user.mobileNumber  [sit-remittance.properties]
+
+0520555924  (used by 2 keys):
+    rejectQuick.receiver.mobileNumber  [sit-wmv.properties]
+    rejectQuick.recipientMobile  [sit-wmv.properties]
+
+0520378665  (used by 2 keys):
+    transfast.sendToWallet.user.mobileNumber  [sit-remittance.properties]
+    editBeneficiary.mobileNumber  [sit-remittance.properties]
+
+0520540474  (used by 2 keys):
+    giftSender.mobileNumber  [sit-wmv.properties]
+    sendGift.parent.mobileNumber  [sit-wmv.properties]
+
+0589822231  (used by 2 keys):
+    urpayKid.mobileNumber  [sit-wmv.properties]
+    KidMobileNumber  [sit-wmv.properties]
+
+0567982178  (used by 2 keys):
+    urpayParent.mobileNumber  [sit-wmv.properties]
+    parentMobileNumber  [sit-wmv.properties]
+
+0520856357  (used by 2 keys):
+    familyRequestMoney.kid.mobileNumber  [sit-wmv.properties]
+    familyMission.kid.mobileNumber  [sit-wmv.properties]
+
+0520154446  (used by 2 keys):
+    moneyRequestReject.receiver.mobileNumber  [sit-wmv.properties]
+    moneyRequestReject.recipientMobile  [sit-wmv.properties]
+
+0512378955  (used by 2 keys):
+    moneyRequest.approver.mobileNumber  [sit-wmv.properties]
+    moneyRequest.recipientMobile  [sit-wmv.properties]
