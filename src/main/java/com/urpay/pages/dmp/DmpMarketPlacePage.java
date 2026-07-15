@@ -37,8 +37,12 @@ public class DmpMarketPlacePage extends BasePage {
     @AndroidFindBy(xpath = "//*[@content-desc='testID-tags-menu-Text-0' or @text='Best Sellers']")
     private WebElement bestSellersTag;
 
-    // Any product card shows the "Starting from" price label.
-    @AndroidFindBy(xpath = "//*[@text='Starting from']")
+    // Any product card shows the "Starting from" price label, OR the tappable product-card testID
+    // prefix (self-heal 2026-07-15: the revamped Best-Sellers cards no longer always render the
+    // 'Starting from' label, so also accept the presence of a product card = list is displayed).
+    @AndroidFindBy(xpath = "//*[@text='Starting from' "
+            + "or starts-with(@content-desc,'testID-TouchableOpacity.9378f6b3-a294-4126-9ae9-137f2bfe09cd.') "
+            + "or starts-with(@name,'testID-TouchableOpacity.9378f6b3-a294-4126-9ae9-137f2bfe09cd.')]")
     private WebElement firstProductPriceLabel;
 
     // Store header wishlist (heart) icon — content-desc suffix ".WishList".
@@ -82,7 +86,9 @@ public class DmpMarketPlacePage extends BasePage {
 
     @Step("Select the 'New Arrivals' product tag")
     public void selectNewArrivalsTag() {
-        tap(io.appium.java_client.AppiumBy.accessibilityId("testID-tags-menu-1"), 20);
+        tap(io.appium.java_client.AppiumBy.xpath(
+                "//*[@content-desc='testID-tags-menu-1' or @content-desc='testID-tags-menu-Text-1' "
+                        + "or @text='New Arrivals']"), 20);
     }
 
     @Step("Open the New Arrivals product at index {index}")

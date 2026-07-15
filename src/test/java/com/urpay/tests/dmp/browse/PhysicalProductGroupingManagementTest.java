@@ -25,6 +25,11 @@ import io.qameta.allure.SeverityLevel;
 public class PhysicalProductGroupingManagementTest extends AbstractDmpGroupingTest {
 
     @Override
+    protected String loginPrefix() {
+        return "dmpA.groupPhysical";
+    }
+
+    @Override
     protected String productKey() {
         return "dmpA.physicalGrouping.product";
     }

@@ -1,5 +1,6 @@
 package com.urpay.flows;
 
+import com.urpay.core.ConfigManager;
 import com.urpay.pages.dmp.physicalorder.DmpDeliveryLocationPage;
 import com.urpay.pages.dmp.physicalorder.DmpPhysicalOrderPage;
 
@@ -28,8 +29,26 @@ public class DmpPhysicalOrderFlow {
     public DmpDeliveryLocationPage reachDeliveryLocation(String product) {
         new DmpFlow().openMarketPlace();
         DmpPhysicalOrderPage order = new DmpPhysicalOrderPage();
-        // Enter the Smart Phones Devices listing, choose the Samsung brand filter, then order the
-        // first IN-STOCK Samsung device ({@code product} is used as the filter chip label).
+        // Prefer a configured SKU: deep link straight to a known IN-STOCK product (e.g. the iPhone 16
+        // Pro Max MMED3AB/A) — the Smart Phones brand listings are largely out of stock in SIT.
+        String sku = ConfigManager.getInstance().get("dmpd.physical.sku", "");
+        if (!sku.isEmpty()) {
+            if (!order.openProductByDeepLink(sku)) {
+                throw new IllegalStateException(
+                        "Physical product SKU '" + sku + "' did not open an in-stock, addable product "
+                        + "(out of stock, or the deep link did not resolve the SKU).");
+            }
+            // Revamped physical details expose 'Buy now' (variant pre-selected via the SKU) rather than
+            // 'Add to cart'; route through whichever CTA is present.
+            if (order.hasAddToCart(3)) {
+                order.addToCart();
+                order.openCart();
+                return order.goToCheckout();
+            }
+            return order.buyNowToDelivery();
+        }
+        // Fallback: enter the Smart Phones Devices listing, apply the brand filter, order the first
+        // IN-STOCK device ({@code product} is used as the filter chip label).
         order.openSmartPhonesListing();
         order.selectFilter(product);
         if (!order.openFirstInStockProduct(8)) {

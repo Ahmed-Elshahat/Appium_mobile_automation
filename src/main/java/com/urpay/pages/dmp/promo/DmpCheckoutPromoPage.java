@@ -128,6 +128,29 @@ public class DmpCheckoutPromoPage extends BasePage {
         return readText(SUCCESS_MESSAGE, 15);
     }
 
+    /**
+     * Wait for the promo-code result to render after Apply, then return the SUCCESS message text.
+     * The success message can take several seconds to appear after the Apply network round-trip, so
+     * poll until either the success or failure message renders (up to {@code timeoutSec}) instead of
+     * a single read that can fire before the text mounts. Returns the success text once it appears,
+     * or "" if a failure/validation message rendered instead (or nothing appeared in time).
+     * No Thread.sleep — each {@code readText} poll provides the wait interval (WaitUtils).
+     */
+    @Step("Wait up to {timeoutSec}s for the promo-code result message to appear")
+    public String waitForSuccessMessage(long timeoutSec) {
+        long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
+        do {
+            String success = readText(SUCCESS_MESSAGE, 2);
+            if (!success.isEmpty()) {
+                return success;
+            }
+            if (!readText(FAILURE_MESSAGE, 1).isEmpty()) {
+                return ""; // a failure/validation message rendered instead of success
+            }
+        } while (System.currentTimeMillis() < deadline);
+        return "";
+    }
+
     /** Read the promo-code failure message (empty if not shown). */
     @Step("Read the promo-code failure message")
     public String getFailureMessage() {

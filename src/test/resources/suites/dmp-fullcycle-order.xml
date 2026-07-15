@@ -1,8 +1,13 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="DMP Full Cycle Order Suite" verbose="1">
-    <test name="DMP - Full Cycle Digital MarketPlace Order (Place Order From Wishlist)">
+    <!-- RetryAnalyzer (2 retries, fresh session each) absorbs the intermittent app-build RN crash
+         'HorizontalScrollView can host only one direct child' that strikes on DMP screen transitions. -->
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+    <test name="DMP - Full Cycle Digital MarketPlace Order (Two Random Products with PromoCode)">
         <classes>
-            <class name="com.urpay.tests.dmp.PlaceOrderFromWishlistTest"/>
+            <class name="com.urpay.tests.dmp.FullCycleMarketPlaceOrderTest"/>
         </classes>
     </test>
 </suite>

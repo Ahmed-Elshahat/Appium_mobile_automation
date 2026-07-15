@@ -25,6 +25,11 @@ import io.qameta.allure.SeverityLevel;
 public class ProductGroupingManagementTest extends AbstractDmpGroupingTest {
 
     @Override
+    protected String loginPrefix() {
+        return "dmpA.groupProduct";
+    }
+
+    @Override
     protected String productKey() {
         return "dmpA.grouping.product";
     }

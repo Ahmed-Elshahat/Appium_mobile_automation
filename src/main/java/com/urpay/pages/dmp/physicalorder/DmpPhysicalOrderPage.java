@@ -4,6 +4,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.core.ConfigManager;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
@@ -56,9 +57,25 @@ public class DmpPhysicalOrderPage extends BasePage {
     private static final String PRODUCT_CARD_PREFIX =
             "testID-TouchableOpacity.9378f6b3-a294-4126-9ae9-137f2bfe09cd.";
 
+    // Product-details deep link (open a specific product by its Magento SKU).
+    private static final String PRODUCT_DEEP_LINK = "urpay://MarketPlace/ProductDetails?sku=";
+
     // In-stock vs out-of-stock markers on the product-details screen.
     private static final By ADD_TO_CART = AppiumBy.xpath(
             "//*[@text='Add to cart' or @text='Add to Cart' or @text='Add To Cart']");
+    // Some revamped physical products (e.g. the iPhone) expose a 'Buy now (<price>)' CTA instead of
+    // 'Add to cart' (the variant is pre-selected via the SKU deep link). The bottom primary CTA is a
+    // LinearGradient TouchableOpacity (same testID family as the cart 'Place Order').
+    private static final By BUY_NOW = AppiumBy.xpath(
+            "//*[@content-desc='testID-TouchableOpacity.1e77c248-7475-4a5b-8891-8fa4f2864061' "
+            + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') or contains(@text,'Buy Now')]");
+    // Color swatch: the first clickable ViewGroup right after the 'Select color' label (no testID).
+    private static final By COLOR_SWATCH = AppiumBy.xpath(
+            "//*[@text='Select color']/following::android.view.ViewGroup[@clickable='true'][1]");
+    // Either purchase CTA means the product details opened and are purchasable.
+    private static final By PURCHASE_CTA = AppiumBy.xpath(
+            "//*[@text='Add to cart' or @text='Add to Cart' or @text='Add To Cart' "
+            + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') or contains(@text,'Buy Now')]");
     private static final By OUT_OF_STOCK = AppiumBy.xpath(
             "//*[@text='Out of stock' or @text='Out of Stock' or @text='Notify Me' "
             + "or @text=\"We'll notify you\" or contains(@text,'notify you')]");
@@ -159,6 +176,50 @@ public class DmpPhysicalOrderPage extends BasePage {
             pressBack();
         }
         return false;
+    }
+
+    /**
+     * Open a specific physical product by its Magento SKU via deep link (bypasses the browse /
+     * in-stock hunt). Returns {@code true} when the details show the "Add to cart" CTA (in stock +
+     * addable), {@code false} if it is out of stock or the deep link did not resolve the SKU.
+     */
+    @Step("Open physical product by SKU deep link '{sku}'")
+    public boolean openProductByDeepLink(String sku) {
+        // Use the APP-SCOPED deep link (mobile: deepLink with the package) — the same mechanism that
+        // opens digital products in the promo flow (FixedMinPurchase). The generic BasePage.openDeepLink
+        // drops the MarketPlace/ProductDetails route to the device launcher (home screen) instead.
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("url", PRODUCT_DEEP_LINK + sku);
+        params.put("package", ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit"));
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
+        boolean opened = isPresent(PURCHASE_CTA, 20);
+        if (!opened) {
+            // Diagnostic: capture what the deep link actually landed on (iPhone details w/ variant
+            // selectors? a not-found/home screen?) so the SKU-encoding / variant step can be fixed.
+            dumpPageSource("physical-deeplink-" + sku.replace("/", "_"));
+        }
+        return opened;
+    }
+
+    /** True if the open product details expose the 'Add to cart' CTA (vs the 'Buy now' instant CTA). */
+    public boolean hasAddToCart(long timeoutSec) {
+        return isPresent(ADD_TO_CART, timeoutSec);
+    }
+
+    /** Tap 'Buy now' on the product details and proceed to the checkout / delivery-location screen. */
+    @Step("Buy now and proceed to the checkout / delivery-location screen")
+    public DmpDeliveryLocationPage buyNowToDelivery() {
+        // The revamped physical details require an explicit color-swatch tap before 'Buy now' proceeds.
+        try {
+            tap(COLOR_SWATCH, 8);
+        } catch (Exception e) {
+            log.info("Color swatch not tappable ({}); proceeding to Buy now", e.getMessage());
+        }
+        tap(BUY_NOW, 20);
+        // TEMP diagnostic: map the screen that follows 'Buy now' for a physical product (checkout /
+        // delivery-address). Remove once the path to the delivery-location input is locked in.
+        dumpPageSource("physical-after-buynow");
+        return new DmpDeliveryLocationPage();
     }
 
     @Step("Add the physical product to the cart")

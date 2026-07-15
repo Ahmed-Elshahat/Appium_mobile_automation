@@ -27,11 +27,15 @@ import io.qameta.allure.Step;
  */
 public class DmpOrderStorePage extends BasePage {
 
-    // Product-tag tabs on the Store dashboard.
+    // Product-tag tabs on the Store dashboard. Self-heal 2026-07-15: hedge the testID-tags-menu-Text-N
+    // form (confirmed for Best Sellers = testID-tags-menu-Text-0) alongside the plain -N form + text,
+    // so the Suggested tab is found on builds that use the -Text- content-desc.
     private static final By NEW_ARRIVALS_TAB =
-            AppiumBy.xpath("//*[@content-desc='testID-tags-menu-1' or @text='New Arrivals']");
+            AppiumBy.xpath("//*[@content-desc='testID-tags-menu-1' or @content-desc='testID-tags-menu-Text-1' "
+                    + "or @text='New Arrivals']");
     private static final By SUGGESTED_TAB =
-            AppiumBy.xpath("//*[@content-desc='testID-tags-menu-2' or @text='Suggested']");
+            AppiumBy.xpath("//*[@content-desc='testID-tags-menu-2' or @content-desc='testID-tags-menu-Text-2' "
+                    + "or @text='Suggested']");
 
     // Dashboard product card (Katalon SelectProductFromDashBoard). The New Arrivals carousel is
     // the 1st instance of this content-desc; the Suggested carousel is the 2nd.

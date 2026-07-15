@@ -43,7 +43,22 @@ public class DmpOrderProductPage extends BasePage {
         if (!isDisplayed(addToCartButton, 3)) {
             scrollToCta();
         }
-        tap(addToCartButton, 20);
+        // element.click() on the revamped RN Add-to-Cart / Buy-now button is an intermittent no-op
+        // (the item silently fails to be added → empty cart downstream), so tap the button's centre
+        // coordinates instead — the same reliable RN onPress trigger used for Place Order.
+        tapCtaByCoordinates();
+    }
+
+    /** Tap the Add-to-Cart / Buy-now button at its centre coordinates (reliable RN onPress trigger). */
+    private void tapCtaByCoordinates() {
+        try {
+            WebElement btn = waitUtils.waitForVisible(addToCartButton, 20);
+            org.openqa.selenium.Rectangle r = btn.getRect();
+            tapAtCoordinates(r.getX() + r.getWidth() / 2, r.getY() + r.getHeight() / 2);
+        } catch (Exception e) {
+            log.debug("Coordinate tap on Add-to-Cart failed, using element click: {}", e.getMessage());
+            tap(addToCartButton, 20);
+        }
     }
 
     @Step("Open the cart from the product screen")

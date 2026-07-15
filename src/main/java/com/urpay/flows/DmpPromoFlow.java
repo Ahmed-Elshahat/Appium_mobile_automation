@@ -12,6 +12,7 @@ import com.urpay.core.DriverFactory;
 import com.urpay.pages.dmp.DmpCartPage;
 import com.urpay.pages.dmp.DmpMarketPlacePage;
 import com.urpay.pages.dmp.DmpProductDetailsPage;
+import com.urpay.pages.dmp.DmpSearchPage;
 import com.urpay.pages.dmp.promo.DmpCheckoutPromoPage;
 
 import io.appium.java_client.AppiumDriver;
@@ -71,6 +72,23 @@ public class DmpPromoFlow {
         new DmpFlow().openMarketPlace();
         openProductDetailsByDeepLink(sku);
         DmpProductDetailsPage details = new DmpProductDetailsPage();
+        details.isLoaded();
+        return proceedToCheckout(details);
+    }
+
+    /**
+     * Minimum-purchase promo path: select a specific product by NAME search (the cheapest reliable way
+     * to reach a >= 200 SAR item is a high-value digital card, e.g. "iTunes 500" = 1875 SAR, in stock),
+     * then Buy now -> checkout for promo entry. Digital, so it uses the proven checkout promo screen.
+     *
+     * @param name the product name (or a distinctive prefix) to search for and open.
+     */
+    @Step("Search product by name '{name}' and go to checkout for promo entry")
+    public DmpCheckoutPromoPage openCheckoutWithProductByName(String name) {
+        DmpMarketPlacePage marketplace = new DmpFlow().openMarketPlace();
+        DmpSearchPage search = marketplace.openSearch();
+        search.searchFor(name);
+        DmpProductDetailsPage details = search.openResult(name);
         details.isLoaded();
         return proceedToCheckout(details);
     }

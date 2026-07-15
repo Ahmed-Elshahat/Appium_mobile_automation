@@ -36,8 +36,8 @@ public class OrderFromNewArrivalTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testOrderFromNewArrival() {
         new LoginFlow().loginWith(
-                config.get("dmp.mobileNumber"),
-                config.get("dmp.id"),
+                config.get("dmpNewArrival.mobileNumber"),
+                config.get("dmpNewArrival.id"),
                 config.get("dmp.verificationCode", "1234"),
                 config.get("dmp.passCode", "2233"));
 

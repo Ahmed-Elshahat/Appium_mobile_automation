@@ -37,8 +37,8 @@ public class PlaceOrderWithSelectedProductTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testPlaceOrderWithSelectedProduct() {
         new LoginFlow().loginWith(
-                config.get("dmp.mobileNumber"),
-                config.get("dmp.id"),
+                config.get("dmpSelectedProduct.mobileNumber"),
+                config.get("dmpSelectedProduct.id"),
                 config.get("dmp.verificationCode", "1234"),
                 config.get("dmp.passCode", "2233"));
 

@@ -25,6 +25,11 @@ import io.qameta.allure.SeverityLevel;
 public class ProductSortingManagementTest extends AbstractDmpSortingTest {
 
     @Override
+    protected String loginPrefix() {
+        return "dmpA.sortProduct";
+    }
+
+    @Override
     protected String categoriesKey() {
         return "dmpA.sorting.categories";
     }

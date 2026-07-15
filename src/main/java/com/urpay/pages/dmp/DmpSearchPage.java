@@ -53,4 +53,10 @@ public class DmpSearchPage extends BasePage {
         tap(AppiumBy.xpath("//*[@text='" + categoryName + "']"), 20);
         return new DmpCategoryResultsPage();
     }
+
+    @Step("Open the first search result matching '{name}'")
+    public com.urpay.pages.dmp.DmpProductDetailsPage openResult(String name) {
+        tap(AppiumBy.xpath("(//*[contains(@text,'" + name + "')])[1]"), 20);
+        return new com.urpay.pages.dmp.DmpProductDetailsPage();
+    }
 }

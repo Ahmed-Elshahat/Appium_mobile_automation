@@ -38,8 +38,8 @@ public class ValidateTopProductTest extends BaseTest {
     @Severity(SeverityLevel.NORMAL)
     public void testTopProductsSectionVisible() {
         new LoginFlow().loginWith(
-                config.get("dmp.mobileNumber"),
-                config.get("dmp.id"),
+                config.get("dmpTopProduct.mobileNumber"),
+                config.get("dmpTopProduct.id"),
                 config.get("dmp.verificationCode", "1234"),
                 config.get("dmp.passCode", "2233"));
 

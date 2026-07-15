@@ -36,8 +36,8 @@ public class OrderFromSuggestTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testOrderFromSuggest() {
         new LoginFlow().loginWith(
-                config.get("dmp.mobileNumber"),
-                config.get("dmp.id"),
+                config.get("dmpSuggest.mobileNumber"),
+                config.get("dmpSuggest.id"),
                 config.get("dmp.verificationCode", "1234"),
                 config.get("dmp.passCode", "2233"));
 

@@ -40,8 +40,8 @@ public class SearchByProductNameTest extends BaseTest {
         String product = config.get("dmp.searchProduct", "Twitch");
 
         new LoginFlow().loginWith(
-                config.get("dmp.mobileNumber"),
-                config.get("dmp.id"),
+                config.get("dmpSearchProd.mobileNumber"),
+                config.get("dmpSearchProd.id"),
                 config.get("dmp.verificationCode", "1234"),
                 config.get("dmp.passCode", "2233"));
 

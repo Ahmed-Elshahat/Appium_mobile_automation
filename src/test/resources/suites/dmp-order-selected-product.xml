@@ -1,5 +1,10 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <suite name="DMP Order With Selected Product Suite" verbose="1">
+    <!-- RetryAnalyzer (2 retries, fresh session each) absorbs the intermittent app-build RN crash
+         'HorizontalScrollView can host only one direct child' that strikes on DMP screen transitions. -->
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
     <test name="DMP - Validate Placing Order With Selected Product">
         <classes>
             <class name="com.urpay.tests.dmp.orders.PlaceOrderWithSelectedProductTest"/>

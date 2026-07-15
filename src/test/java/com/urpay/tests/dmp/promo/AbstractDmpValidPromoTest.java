@@ -46,13 +46,21 @@ public abstract class AbstractDmpValidPromoTest extends BaseTest {
                 config.get(p + ".verificationCode", "1234"),
                 config.get(p + ".passCode", "2233"));
 
-        DmpCheckoutPromoPage checkout = openCheckout(p);
+        // Minimum-purchase promos (e.g. 10SAROFF200Min) require a cart >= N SAR; select a specific
+        // >= 200 SAR product by name when <prefix>.productName is set (a digital card such as the
+        // 1875 SAR "iTunes 500"), otherwise use the default first-product / SKU path.
+        String productName = config.get(p + ".productName", "");
+        DmpCheckoutPromoPage checkout = productName.isEmpty()
+                ? openCheckout(p)
+                : new DmpPromoFlow().openCheckoutWithProductByName(productName);
         Assert.assertTrue(checkout.isLoaded(),
                 "The DMP checkout (promo) screen should be displayed after Buy now");
 
         checkout.setAndApplyPromoCode(config.get(p + ".code"));
 
-        String success = checkout.getSuccessMessage();
+        // Wait for the promo result to render (the success message mounts a few seconds after Apply)
+        // then validate it — a single immediate read can catch the screen before the text appears.
+        String success = checkout.waitForSuccessMessage(40);
         String observed = success.isEmpty() ? checkout.getFailureMessage() : success;
         Assert.assertEquals(success, config.get(p + ".successMessage"),
                 "A valid promo code should show the success message; the app showed: '" + observed + "'");

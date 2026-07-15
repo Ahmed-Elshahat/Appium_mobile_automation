@@ -49,6 +49,9 @@ public abstract class AbstractDmpSortingTest extends BaseTest {
     /** {@code true} to enter via the physical Devices "View All"; {@code false} for digital Vouchers. */
     protected abstract boolean physical();
 
+    /** Config key prefix for this suite's dedicated login user (one cred per suite). */
+    protected abstract String loginPrefix();
+
     protected void runSorting(boolean descending) {
         ensureLoggedIn();
         int sample = Integer.parseInt(config.get("dmpA.sorting.sampleSize", "5"));
@@ -81,8 +84,8 @@ public abstract class AbstractDmpSortingTest extends BaseTest {
             return;
         }
         new LoginFlow().loginWith(
-                config.get("dmpA.mobileNumber"),
-                config.get("dmpA.id"),
+                config.get(loginPrefix() + ".mobileNumber"),
+                config.get(loginPrefix() + ".id"),
                 config.get("dmpA.verificationCode", "1234"),
                 config.get("dmpA.passCode", "2233"));
         authenticated = true;

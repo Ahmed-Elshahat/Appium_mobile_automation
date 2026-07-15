@@ -48,6 +48,9 @@ public abstract class AbstractDmpGroupingTest extends BaseTest {
     /** {@code true} to enter via the physical Devices ("Smart Phones") listing. */
     protected abstract boolean physical();
 
+    /** Config key prefix for this suite's dedicated login user (one cred per suite). */
+    protected abstract String loginPrefix();
+
     protected void runRelevant() {
         ensureLoggedIn();
         String product = config.get(productKey(), defaultProduct());
@@ -85,8 +88,8 @@ public abstract class AbstractDmpGroupingTest extends BaseTest {
             return;
         }
         new LoginFlow().loginWith(
-                config.get("dmpA.mobileNumber"),
-                config.get("dmpA.id"),
+                config.get(loginPrefix() + ".mobileNumber"),
+                config.get(loginPrefix() + ".id"),
                 config.get("dmpA.verificationCode", "1234"),
                 config.get("dmpA.passCode", "2233"));
         authenticated = true;

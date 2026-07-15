@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="DMP Gift Order Suite" verbose="1">
+    <test name="DMP - Validate placing order as a gift and check it sent to gift receiver">
+        <classes>
+            <class name="com.urpay.tests.dmp.gift.PlaceOrderAsGiftTest"/>
+        </classes>
+    </test>
+</suite>

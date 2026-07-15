@@ -28,6 +28,11 @@ import io.qameta.allure.SeverityLevel;
 public class PhysicalProductSortingManagementTest extends AbstractDmpSortingTest {
 
     @Override
+    protected String loginPrefix() {
+        return "dmpA.sortPhysical";
+    }
+
+    @Override
     protected String categoriesKey() {
         return "dmpA.physicalSorting.categories";
     }
