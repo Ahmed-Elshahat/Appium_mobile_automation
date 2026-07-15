@@ -27,16 +27,21 @@ public class DmpPhysicalOrderFlow {
      */
     @Step("Reach the delivery-location screen for physical product '{product}'")
     public DmpDeliveryLocationPage reachDeliveryLocation(String product) {
-        new DmpFlow().openMarketPlace();
         DmpPhysicalOrderPage order = new DmpPhysicalOrderPage();
         // Prefer a configured SKU: deep link straight to a known IN-STOCK product (e.g. the iPhone 16
         // Pro Max MMED3AB/A) — the Smart Phones brand listings are largely out of stock in SIT.
         String sku = ConfigManager.getInstance().get("dmpd.physical.sku", "");
         if (!sku.isEmpty()) {
-            if (!order.openProductByDeepLink(sku)) {
+            // The product deep link occasionally drops to the launcher (RN cold-route race);
+            // openProductByDeepLink re-activates the app each try, so just re-fire it a few times.
+            boolean opened = order.openProductByDeepLink(sku);
+            for (int attempt = 2; attempt <= 4 && !opened; attempt++) {
+                opened = order.openProductByDeepLink(sku);
+            }
+            if (!opened) {
                 throw new IllegalStateException(
                         "Physical product SKU '" + sku + "' did not open an in-stock, addable product "
-                        + "(out of stock, or the deep link did not resolve the SKU).");
+                        + "(out of stock, or the deep link did not resolve the SKU after 4 attempts).");
             }
             // Revamped physical details expose 'Buy now' (variant pre-selected via the SKU) rather than
             // 'Add to cart'; route through whichever CTA is present.
@@ -49,6 +54,7 @@ public class DmpPhysicalOrderFlow {
         }
         // Fallback: enter the Smart Phones Devices listing, apply the brand filter, order the first
         // IN-STOCK device ({@code product} is used as the filter chip label).
+        new DmpFlow().openMarketPlace();
         order.openSmartPhonesListing();
         order.selectFilter(product);
         if (!order.openFirstInStockProduct(8)) {

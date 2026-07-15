@@ -98,10 +98,17 @@ public class SendGiftPage extends BasePage {
             + " and .//android.widget.TextView[@text='Next']])[last()]");
     private static final By GIFT_AMOUNT_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-TextInput.d81d3b37-7d22-410e-bb9b-ac500e5b5a67']");
+    // The app caps a sender's outstanding (unopened) gifts. At the cap, tapping Next on the amount
+    // screen shows this inline error and stays on the amount screen (no Confirm button).
+    private static final By GIFT_LIMIT_ERROR = AppiumBy.xpath(
+            "//*[contains(@text,'unopened gifts')]");
+    // testID-primary-onConfirm-main is hashed on the LT build, and a "|" union combined with a
+    // relative ".//" predicate throws in the UiAutomator2 xpath engine (swallowed -> 15s timeout).
+    // Mirror the proven NEXT_BTN pattern instead: match the CLICKABLE ViewGroup by its visible
+    // "Confirm" label, taking the LAST match (the current screen mounts last in document order).
     private static final By CONFIRM_BTN = AppiumBy.xpath(
-            "//*[@content-desc='testID-primary-onConfirm-main']"
-            + " | //android.view.ViewGroup[@clickable='true'"
-            + " and .//android.widget.TextView[@text='Confirm']]");
+            "(//android.view.ViewGroup[@clickable='true'"
+            + " and .//android.widget.TextView[@text='Confirm']])[last()]");
     private static final By THANK_YOU_TEXT =
             AppiumBy.accessibilityId("testID-Text.7e9fc765-884f-4f79-9f43-1ae77833b7a5");
     private static final By DONE_BTN = AppiumBy.xpath(
@@ -272,6 +279,15 @@ public class SendGiftPage extends BasePage {
         platformActions.dismissKeyboard();
         tap(NEXT_BTN);
 
+        // If the sender is at the unopened-gifts cap, the app blocks the send here with an inline
+        // error and never renders the Confirm screen. Surface it as a clear, actionable failure
+        // instead of a confusing 15s Confirm-button timeout.
+        List<WebElement> limitError = waitUtils.findQuick(GIFT_LIMIT_ERROR, 3);
+        if (!limitError.isEmpty()) {
+            throw new IllegalStateException("Gift could not be sent — app returned: \""
+                    + limitError.get(0).getText() + "\". Clear the sender's unopened gifts (have the"
+                    + " recipient open them) or use a sender under the limit, then re-run.");
+        }
         tap(CONFIRM_BTN);
         platformActions.enterDigits(passcode);   // fillVerificationCode
 

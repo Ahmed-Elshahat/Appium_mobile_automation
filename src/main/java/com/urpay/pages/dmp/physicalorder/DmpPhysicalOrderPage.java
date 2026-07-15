@@ -188,9 +188,17 @@ public class DmpPhysicalOrderPage extends BasePage {
         // Use the APP-SCOPED deep link (mobile: deepLink with the package) — the same mechanism that
         // opens digital products in the promo flow (FixedMinPurchase). The generic BasePage.openDeepLink
         // drops the MarketPlace/ProductDetails route to the device launcher (home screen) instead.
+        String pkg = ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit");
+        // Bring the app to the foreground first — mobile: deepLink flakily drops to the launcher when the
+        // app is not already the active app, which then breaks the following deep-link route.
+        try {
+            ((io.appium.java_client.android.AndroidDriver) driver).activateApp(pkg);
+        } catch (Exception ignored) {
+            // activateApp unsupported / already active — proceed to the deep link
+        }
         java.util.Map<String, Object> params = new java.util.HashMap<>();
         params.put("url", PRODUCT_DEEP_LINK + sku);
-        params.put("package", ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit"));
+        params.put("package", pkg);
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
         boolean opened = isPresent(PURCHASE_CTA, 20);
         if (!opened) {
@@ -216,9 +224,14 @@ public class DmpPhysicalOrderPage extends BasePage {
             log.info("Color swatch not tappable ({}); proceeding to Buy now", e.getMessage());
         }
         tap(BUY_NOW, 20);
-        // TEMP diagnostic: map the screen that follows 'Buy now' for a physical product (checkout /
-        // delivery-address). Remove once the path to the delivery-location input is locked in.
-        dumpPageSource("physical-after-buynow");
+        // The post-Buy-now "Manage location" screen shows a loader first — wait for it to clear so the
+        // location list / form is rendered before the test asserts the delivery step was reached.
+        try {
+            waitUtils.waitForInvisible(
+                    io.appium.java_client.AppiumBy.xpath("//*[starts-with(@content-desc,'testID-Loader')]"));
+        } catch (Exception ignored) {
+            // loader already gone or never shown
+        }
         return new DmpDeliveryLocationPage();
     }
 

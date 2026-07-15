@@ -104,6 +104,12 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         ltOptions.put("idleTimeout", 300);
         ltOptions.put("newCommandTimeout", 300);
         ltOptions.put("appiumVersion", "2.12.1");
+        // Optional device geolocation (e.g. "SA" for Saudi Arabia) so map-based screens (DMP physical
+        // delivery-location picker) resolve to the right country instead of the cloud device's GPS.
+        String geoLocation = config.get("lt.geoLocation", "");
+        if (!geoLocation.isEmpty()) {
+            ltOptions.put("geoLocation", geoLocation);
+        }
         return ltOptions;
     }
 }

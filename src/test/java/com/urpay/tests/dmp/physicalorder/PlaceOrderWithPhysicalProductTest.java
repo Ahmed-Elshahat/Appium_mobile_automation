@@ -47,11 +47,14 @@ public class PlaceOrderWithPhysicalProductTest extends BaseTest {
                 flow.reachDeliveryLocation(config.get("dmpd.physical.product", "iphone 16 Plus"));
 
         Assert.assertTrue(location.isLoaded(),
-                "The delivery-location screen should be reached after checkout for a physical product");
+                "The delivery-location screen should be reached after Buy now for a physical product");
 
-        flow.enterDeliveryLocations(location,
+        // Complete the delivery location and place the order (payment via OTP).
+        com.urpay.pages.dmp.DmpOrderConfirmationPage confirmation = location.completeDeliveryAndPlaceOrder(
                 config.get("dmpd.physical.location1", "Riyadh KSA"),
-                config.get("dmpd.physical.location1Edited", "Riyadh KSA Test"),
-                config.get("dmpd.physical.location2", "Egpyt"));
+                config.get("dmpd.physical.verificationCode", "1234"));
+
+        Assert.assertTrue(confirmation.isOrderPlaced(),
+                "The physical order should be placed successfully (Order Placed! screen shown)");
     }
 }

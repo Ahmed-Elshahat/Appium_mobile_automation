@@ -15,9 +15,19 @@
     "messageRegex": ".*(SESSION LOST|Unable to find the session info|session has quit|invalid session id|NoSuchSession|Session ID is null|session is either terminated or not started).*"
   },
   {
+    "name": "Network / Appium server unreachable (infra)",
+    "matchedStatuses": ["failed", "broken", "skipped"],
+    "messageRegex": ".*(HttpConnectTimeoutException|HTTP connect timed out|Connection refused|Read timed out|UnreachableBrowserException|Failed to connect to|ConnectException|SocketTimeoutException|remote browser.*may have died).*"
+  },
+  {
     "name": "App crashed / not in foreground",
     "matchedStatuses": ["failed", "broken"],
     "messageRegex": ".*(APP CRASH|NOT IN FOREGROUND|has crashed|not in foreground).*"
+  },
+  {
+    "name": "Skipped by dependency cascade",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*(depends on (not successfully finished )?methods?|dependsOnMethods|because of (failed|skipped) dependenc).*"
   },
   {
     "name": "Element not found / timeout",
