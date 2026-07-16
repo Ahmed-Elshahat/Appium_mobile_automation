@@ -49,6 +49,19 @@ mvn clean test -Dsuite=suites/stc-only.xml -Dprofile=sit-cards
 allure generate allure-results --single-file -o target/allure-single-report --clean
 ```
 
+#### Trend-aware report (recommended)
+
+The one-liner above produces a single run with no history. To keep the **trend graph,
+flaky detection, and retries** across runs, use the helper script — it persists Allure
+history in a git-ignored `.allure-history/` and feeds it back on every generate:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/gen-allure-report.ps1
+```
+
+Outputs `target/allure-report` (full, with trend) and `target/allure-single-report/index.html`
+(shareable). Run it after each `mvn test` to accumulate history.
+
 ## Project Structure
 
 ```

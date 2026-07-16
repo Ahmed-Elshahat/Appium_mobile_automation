@@ -95,6 +95,26 @@ public final class BackendErrorGuard {
     }
 
     /**
+     * True if the given text (e.g. a toast/banner already captured by a caller) carries a
+     * backend/service-failure phrase. Lets flows that have the fresh banner text in hand classify a
+     * SIT outage without re-querying the (possibly vanished) transient banner.
+     *
+     * @param text captured banner/toast text; {@code null}/blank returns {@code false}.
+     */
+    public static boolean matchesBackendPhrase(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        for (String token : TOKENS) {
+            if (lower.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Raise a categorized {@link BackendErrorException} <b>only</b> when an explicit backend banner
      * is visible. If no banner is present this is a no-op — the caller decides how to treat a
      * missing success screen (F3: do not assume "backend" without evidence).

@@ -6,6 +6,8 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
+import com.urpay.utils.BackendErrorException;
+import com.urpay.utils.BackendErrorGuard;
 import com.urpay.utils.DatePickerHandler;
 
 import io.appium.java_client.AppiumBy;
@@ -223,6 +225,19 @@ public class ForgotPasscodePage extends BasePage {
             if (!toast.isEmpty()) {
                 lastDobRejectionToast = toast;
                 log.warn("Valid-DOB Next tap #{} was rejected with toast: '{}'", attempt, toast);
+                // A backend/SIT outage banner ("Service is currently unavailable. Please try again
+                // later.") on the Next tap is an ENVIRONMENT defect, not a DOB/data problem. Raise a
+                // categorized backend error so the result is reported as [BACKEND DEFECT] (and never
+                // retried by RetryAnalyzer), instead of a misleading "Enter New Passcode screen
+                // should be shown" assertion that hides the real cause. A genuine "date does not
+                // match" toast carries no backend phrase, so it falls through and the test asserts.
+                if (BackendErrorGuard.matchesBackendPhrase(toast)) {
+                    log.error("\u26A0 BACKEND ERROR during forgot-passcode date-of-birth submit: {}", toast);
+                    throw new BackendErrorException(
+                            "Backend rejected the forgot-passcode date-of-birth submit \u2014 \"" + toast
+                            + "\". SIT backend/provider defect (service currently unavailable), not a "
+                            + "test defect.");
+                }
             }
             if (isEnterNewPasscodeScreenDisplayed(timeoutSec)) {
                 lastDobRejectionToast = "";

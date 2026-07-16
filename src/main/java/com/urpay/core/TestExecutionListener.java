@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,12 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     /** testMethodName → logcat crash-evidence filename (text/plain) in allure-results */
     private final Map<String, String> failureCrashLogFiles = new ConcurrentHashMap<>();
 
+    /** testMethodName → page-source (UI hierarchy) filename (text/xml) in allure-results */
+    private final Map<String, String> failurePageSources = new ConcurrentHashMap<>();
+
+    /** Guard so the ACTUAL device/session is appended to environment.properties only once per run. */
+    private static final AtomicBoolean ENV_CAPTURED = new AtomicBoolean(false);
+
     @Override
     public void onTestStart(ITestResult result) {
         String testName = getFullTestName(result);
@@ -58,7 +65,55 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         // owns the test lifecycle and records start/stop/status automatically. Stepping here
         // logs "no test case running". Keep to console logging + cloud session naming.
         CloudSessionManager.updateTestName(testName);
+        captureActualEnvironmentOnce();
         log.info("▶ Starting: {}", testName);
+    }
+
+    /**
+     * Append the device/session the cloud ACTUALLY allocated to environment.properties, once per
+     * run. The BeforeSuite metadata records only the REQUESTED deviceName; on LambdaTest the nearest
+     * available device is often different (e.g. Pixel 8 instead of the requested Galaxy S24), which
+     * is otherwise invisible during triage. Best-effort: any failure is logged and ignored.
+     */
+    private void captureActualEnvironmentOnce() {
+        if (ENV_CAPTURED.get() || !DriverFactory.getInstance().isDriverActive()) {
+            return;
+        }
+        if (!ENV_CAPTURED.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            AppiumDriver driver = DriverFactory.getInstance().getDriver();
+            org.openqa.selenium.Capabilities caps = driver.getCapabilities();
+            String device = String.valueOf(cap(caps, "deviceName", "deviceModel", "device"));
+            String osVer = String.valueOf(cap(caps, "platformVersion", "osVersion"));
+            String session = driver.getSessionId() != null ? driver.getSessionId().toString() : "n/a";
+            String extra = "Device.Actual=" + device + "\n"
+                    + "Platform.Version.Actual=" + osVer + "\n"
+                    + "Session.Id=" + session + "\n";
+            Files.createDirectories(ALLURE_DIR);
+            Files.writeString(ALLURE_DIR.resolve("environment.properties"), extra,
+                    StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.APPEND);
+            log.info("Captured actual run environment: device={} os={} session={}",
+                    device, osVer, session);
+        } catch (Throwable t) {
+            log.debug("Actual-environment capture skipped: {}", t.getMessage());
+        }
+    }
+
+    /** First non-empty capability value across the given keys (also tries the {@code appium:} prefix). */
+    private static Object cap(org.openqa.selenium.Capabilities caps, String... keys) {
+        for (String key : keys) {
+            Object value = caps.getCapability(key);
+            if (value == null) {
+                value = caps.getCapability("appium:" + key);
+            }
+            if (value != null && !String.valueOf(value).isEmpty()) {
+                return value;
+            }
+        }
+        return "n/a";
     }
 
     @Override
@@ -170,6 +225,21 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             }
             // Keep a copy on disk for quick local inspection
             ScreenshotUtils.takeScreenshot(driver, testName);
+
+            // Page source (UI hierarchy) → allure-results/, linked via the onFinish JSON patch.
+            // Locator/element timeouts are the #1 failure category; the XML tree shows instantly
+            // whether the element was absent, renamed, or off-screen — no re-run needed.
+            try {
+                String pageSource = driver.getPageSource();
+                if (pageSource != null && !pageSource.isEmpty()) {
+                    String psName = UUID.randomUUID() + "-attachment.xml";
+                    Files.writeString(ALLURE_DIR.resolve(psName), pageSource, StandardCharsets.UTF_8);
+                    failurePageSources.put(testName, psName);
+                    log.info("Page source saved for Allure: {} -> {}", testName, psName);
+                }
+            } catch (Exception psEx) {
+                log.debug("Page source capture failed for {}: {}", testName, psEx.getMessage());
+            }
         } catch (Exception e) {
             log.warn("Screenshot capture failed for {}: {}", testName, e.getMessage());
         }
@@ -194,7 +264,8 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     public void onFinish(ISuite suite) {
         try {
             // 1. Attach failure screenshots + inject crash/health context (only if captured).
-            if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty()) {
+            if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty()
+                    || !failurePageSources.isEmpty()) {
                 log.info("Patching Allure result(s) with failure screenshots / crash context...");
                 Files.list(ALLURE_DIR)
                         .filter(p -> p.toString().endsWith("-result.json"))
@@ -243,6 +314,12 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                     attachments.add("{\"name\":\"Crash Log (logcat)\","
                             + "\"source\":\"" + crashLogFile + "\","
                             + "\"type\":\"text/plain\"}");
+                }
+                String pageSourceFile = failurePageSources.get(testName);
+                if (pageSourceFile != null) {
+                    attachments.add("{\"name\":\"Page Source (UI hierarchy)\","
+                            + "\"source\":\"" + pageSourceFile + "\","
+                            + "\"type\":\"text/xml\"}");
                 }
                 if (!attachments.isEmpty()) {
                     json = json.replace("\"attachments\":[]",

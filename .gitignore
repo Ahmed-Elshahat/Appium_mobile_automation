@@ -28,6 +28,9 @@ surefire-reports/
 # ── Allure CLI (downloaded locally) ──
 .allure/
 
+# ── Allure cross-run history store (trend/flaky; regenerated each run) ──
+.allure-history/
+
 # ── OS junk ──
 .DS_Store
 Thumbs.db
