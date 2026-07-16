@@ -72,13 +72,20 @@ public class DmpPhysicalOrderPage extends BasePage {
     // Color swatch: the first clickable ViewGroup right after the 'Select color' label (no testID).
     private static final By COLOR_SWATCH = AppiumBy.xpath(
             "//*[@text='Select color']/following::android.view.ViewGroup[@clickable='true'][1]");
+
+    private static final By LOADER_ANY = AppiumBy.xpath("//*[starts-with(@content-desc,'testID-Loader')]");
+    // Markers that the delivery step was reached after 'Buy now' (map add-location form OR Manage-location list).
+    private static final By DELIVERY_MARKER = AppiumBy.xpath(
+            "//*[@content-desc='testID-input-direct-undefined' or @content-desc='testID-Search-Input' "
+            + "or @content-desc='testID-primary-WA4-main' or @content-desc='testID-primary-p20-main' "
+            + "or @text='Manage location' or @text='Delivery location']");
     // Either purchase CTA means the product details opened and are purchasable.
     private static final By PURCHASE_CTA = AppiumBy.xpath(
             "//*[@text='Add to cart' or @text='Add to Cart' or @text='Add To Cart' "
             + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') or contains(@text,'Buy Now')]");
     private static final By OUT_OF_STOCK = AppiumBy.xpath(
-            "//*[@text='Out of stock' or @text='Out of Stock' or @text='Notify Me' "
-            + "or @text=\"We'll notify you\" or contains(@text,'notify you')]");
+            "//*[contains(@text,'out of stock') or contains(@text,'Out of stock') or contains(@text,'Out of Stock') "
+            + "or @text='Notify Me' or contains(@text,'notify you') or contains(@text,'try again later')]");
 
     @Step("Open the Store search")
     public DmpPhysicalOrderPage openSearch() {
@@ -201,6 +208,12 @@ public class DmpPhysicalOrderPage extends BasePage {
         params.put("package", pkg);
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
         boolean opened = isPresent(PURCHASE_CTA, 20);
+        if (opened && isPresent(OUT_OF_STOCK, 2)) {
+            // The Buy now button renders even when the item is out of stock; the app shows an
+            // "out of stock" banner and Buy now does nothing. Treat as not-openable (data condition).
+            log.warn("Product '{}' opened but the app shows it OUT OF STOCK.", sku);
+            return false;
+        }
         if (!opened) {
             // Diagnostic: capture what the deep link actually landed on (iPhone details w/ variant
             // selectors? a not-found/home screen?) so the SKU-encoding / variant step can be fixed.
@@ -217,22 +230,38 @@ public class DmpPhysicalOrderPage extends BasePage {
     /** Tap 'Buy now' on the product details and proceed to the checkout / delivery-location screen. */
     @Step("Buy now and proceed to the checkout / delivery-location screen")
     public DmpDeliveryLocationPage buyNowToDelivery() {
-        // The revamped physical details require an explicit color-swatch tap before 'Buy now' proceeds.
-        try {
-            tap(COLOR_SWATCH, 8);
-        } catch (Exception e) {
-            log.info("Color swatch not tappable ({}); proceeding to Buy now", e.getMessage());
+        // Buy now / color occasionally misfires (RN timing) leaving us on the product page — verify the
+        // delivery screen appears and retry the color-swatch + Buy now taps if it doesn't.
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            if (isPresent(DELIVERY_MARKER, 2)) {
+                return new DmpDeliveryLocationPage();
+            }
+            // The revamped physical details require an explicit color-swatch tap before 'Buy now' proceeds.
+            try {
+                tap(COLOR_SWATCH, 8);
+            } catch (Exception e) {
+                log.info("Color swatch not tappable ({}); proceeding to Buy now", e.getMessage());
+            }
+            try {
+                tap(BUY_NOW, 15);
+            } catch (Exception e) {
+                log.info("Buy now not tappable ({})", e.getMessage());
+            }
+            waitForLoaderGone();
+            if (isPresent(DELIVERY_MARKER, 15)) {
+                return new DmpDeliveryLocationPage();
+            }
+            log.warn("Buy now did not reach the delivery screen (attempt {}/3); retrying", attempt);
         }
-        tap(BUY_NOW, 20);
-        // The post-Buy-now "Manage location" screen shows a loader first — wait for it to clear so the
-        // location list / form is rendered before the test asserts the delivery step was reached.
+        return new DmpDeliveryLocationPage();
+    }
+
+    private void waitForLoaderGone() {
         try {
-            waitUtils.waitForInvisible(
-                    io.appium.java_client.AppiumBy.xpath("//*[starts-with(@content-desc,'testID-Loader')]"));
+            waitUtils.waitForInvisible(LOADER_ANY);
         } catch (Exception ignored) {
             // loader already gone or never shown
         }
-        return new DmpDeliveryLocationPage();
     }
 
     @Step("Add the physical product to the cart")

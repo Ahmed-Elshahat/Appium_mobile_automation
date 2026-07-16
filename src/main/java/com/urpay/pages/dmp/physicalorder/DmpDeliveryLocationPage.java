@@ -87,9 +87,12 @@ public class DmpDeliveryLocationPage extends BasePage {
     @Step("Complete the delivery location and place the order")
     public com.urpay.pages.dmp.DmpOrderConfirmationPage completeDeliveryAndPlaceOrder(
             String locationName, String otp) {
-        // 1) Add-location form (map + 'Location details' name input + Next).
+        // 1) Add-location form (map + 'Location details' name input + Next). The location name must be
+        // UNIQUE — a duplicate raises "Location name already exists" and keeps Next disabled — so append
+        // 3 random digits each run.
         if (isDisplayed(locationNameInput, 6)) {
-            enterLocationName(locationName);
+            String uniqueName = locationName + (100 + new java.util.Random().nextInt(900));
+            enterLocationName(uniqueName);
             tapNext();
             waitForLoaderGone();
         }
