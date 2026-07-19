@@ -69,9 +69,14 @@ public class DmpPhysicalOrderPage extends BasePage {
     private static final By BUY_NOW = AppiumBy.xpath(
             "//*[@content-desc='testID-TouchableOpacity.1e77c248-7475-4a5b-8891-8fa4f2864061' "
             + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') or contains(@text,'Buy Now')]");
-    // Color swatch: the first clickable ViewGroup right after the 'Select color' label (no testID).
-    private static final By COLOR_SWATCH = AppiumBy.xpath(
-            "//*[@text='Select color']/following::android.view.ViewGroup[@clickable='true'][1]");
+    // Colour swatches: the clickable ViewGroups right after the 'Select color' label (no testID). The
+    // configurable iPhone renders one per colour, in document order before the capacity pills, so
+    // %d selects the Nth (1-based) swatch for variant probing.
+    private static final String COLOR_SWATCH_NTH =
+            "(//*[@text='Select color']/following::android.view.ViewGroup[@clickable='true'])[%d]";
+    // Capacity pills — the other configurable dimension (e.g. 128GB / 256GB / 512GB).
+    private static final By CAPACITY_PILL = AppiumBy.xpath(
+            "//*[@text='128GB' or @text='256GB' or @text='512GB']");
 
     private static final By LOADER_ANY = AppiumBy.xpath("//*[starts-with(@content-desc,'testID-Loader')]");
     // Markers that the delivery step was reached after 'Buy now' (map add-location form OR Manage-location list).
@@ -83,9 +88,6 @@ public class DmpPhysicalOrderPage extends BasePage {
     private static final By PURCHASE_CTA = AppiumBy.xpath(
             "//*[@text='Add to cart' or @text='Add to Cart' or @text='Add To Cart' "
             + "or starts-with(@text,'Buy now') or contains(@text,'Buy now') or contains(@text,'Buy Now')]");
-    private static final By OUT_OF_STOCK = AppiumBy.xpath(
-            "//*[contains(@text,'out of stock') or contains(@text,'Out of stock') or contains(@text,'Out of Stock') "
-            + "or @text='Notify Me' or contains(@text,'notify you') or contains(@text,'try again later')]");
 
     @Step("Open the Store search")
     public DmpPhysicalOrderPage openSearch() {
@@ -208,17 +210,13 @@ public class DmpPhysicalOrderPage extends BasePage {
         params.put("package", pkg);
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
         boolean opened = isPresent(PURCHASE_CTA, 20);
-        if (opened && isPresent(OUT_OF_STOCK, 2)) {
-            // The Buy now button renders even when the item is out of stock; the app shows an
-            // "out of stock" banner and Buy now does nothing. Treat as not-openable (data condition).
-            log.warn("Product '{}' opened but the app shows it OUT OF STOCK.", sku);
-            return false;
-        }
         if (!opened) {
             // Diagnostic: capture what the deep link actually landed on (iPhone details w/ variant
             // selectors? a not-found/home screen?) so the SKU-encoding / variant step can be fixed.
             dumpPageSource("physical-deeplink-" + sku.replace("/", "_"));
         }
+        // NOTE: an out-of-stock banner for the pre-selected variant is NOT a failure here — the product
+        // is CONFIGURABLE and buyNowToDelivery() probes the other colour/capacity variants for stock.
         return opened;
     }
 
@@ -227,33 +225,115 @@ public class DmpPhysicalOrderPage extends BasePage {
         return isPresent(ADD_TO_CART, timeoutSec);
     }
 
-    /** Tap 'Buy now' on the product details and proceed to the checkout / delivery-location screen. */
-    @Step("Buy now and proceed to the checkout / delivery-location screen")
+    /**
+     * Buy the product and proceed to the delivery-location screen.
+     *
+     * The SKU deep link opens a CONFIGURABLE product (e.g. iPhone 16 = 5 colours x 3 capacities) with
+     * ONE variant pre-selected. That pre-selected variant is frequently out of stock while OTHER
+     * variants on the same page are in stock — and NO marketplace-API field (status / is_in_stock /
+     * salable_qty) predicts real app stock, and the "out of stock" toast auto-dismisses. So we PROBE
+     * the variants in place, using the only reliable in-stock signal: whether 'Buy now' actually
+     * advances to the delivery screen. Colours are probed at the default capacity first (fast path),
+     * then the remaining capacities.
+     */
+    @Step("Select an in-stock colour/capacity variant, Buy now and reach the delivery-location screen")
     public DmpDeliveryLocationPage buyNowToDelivery() {
-        // Buy now / color occasionally misfires (RN timing) leaving us on the product page — verify the
-        // delivery screen appears and retry the color-swatch + Buy now taps if it doesn't.
-        for (int attempt = 1; attempt <= 3; attempt++) {
-            if (isPresent(DELIVERY_MARKER, 2)) {
-                return new DmpDeliveryLocationPage();
+        if (isPresent(DELIVERY_MARKER, 2)) {
+            return new DmpDeliveryLocationPage();
+        }
+        dumpPageSource("physical-product-variants"); // TEMP diagnostic: capture the swatch/capacity structure
+        // Probe colours at the current (default) capacity first.
+        DmpDeliveryLocationPage delivery = probeColoursAndBuyNow();
+        if (delivery != null) {
+            return delivery;
+        }
+        // Fallback: every colour at the default capacity was out of stock — try the other capacities.
+        for (String capacity : capacityLabels()) {
+            selectCapacity(capacity);
+            delivery = probeColoursAndBuyNow();
+            if (delivery != null) {
+                return delivery;
             }
-            // The revamped physical details require an explicit color-swatch tap before 'Buy now' proceeds.
-            try {
-                tap(COLOR_SWATCH, 8);
-            } catch (Exception e) {
-                log.info("Color swatch not tappable ({}); proceeding to Buy now", e.getMessage());
+        }
+        log.warn("No in-stock colour/capacity variant advanced to the delivery screen after probing all variants");
+        return new DmpDeliveryLocationPage();
+    }
+
+    /**
+     * Probe every colour swatch at the current capacity: tap the swatch, tap 'Buy now', and return
+     * the delivery page as soon as 'Buy now' advances to the delivery screen (the in-stock signal).
+     * Returns {@code null} if every colour at this capacity is out of stock.
+     */
+    private DmpDeliveryLocationPage probeColoursAndBuyNow() {
+        try {
+            scrollToText("Select color");
+        } catch (Exception ignored) {
+            // 'Select color' already visible or not scrollable — proceed
+        }
+        int swatchesTapped = 0;
+        for (int colour = 1; colour <= 5; colour++) {
+            By swatch = AppiumBy.xpath(String.format(COLOR_SWATCH_NTH, colour));
+            if (!isPresent(swatch, 2)) {
+                break; // no more colour swatches at this capacity
             }
             try {
-                tap(BUY_NOW, 15);
+                tap(swatch, 5);
             } catch (Exception e) {
-                log.info("Buy now not tappable ({})", e.getMessage());
+                continue;
+            }
+            swatchesTapped++;
+            try {
+                tap(BUY_NOW, 12);
+            } catch (Exception e) {
+                log.warn("Buy now not tappable for colour {} ({})", colour, e.getMessage());
+                continue;
             }
             waitForLoaderGone();
-            if (isPresent(DELIVERY_MARKER, 15)) {
+            if (isPresent(DELIVERY_MARKER, 8)) {
+                log.warn("In-stock variant purchased (colour swatch {})", colour);
                 return new DmpDeliveryLocationPage();
             }
-            log.warn("Buy now did not reach the delivery screen (attempt {}/3); retrying", attempt);
+            log.warn("Colour swatch {} out of stock; trying the next colour", colour);
+            try {
+                scrollToText("Select color"); // stay anchored on the swatches after an out-of-stock Buy now
+            } catch (Exception ignored) {
+                // already on the product page
+            }
         }
-        return new DmpDeliveryLocationPage();
+        if (swatchesTapped == 0) {
+            log.warn("No colour swatches matched after 'Select color' — the variant probe could not run");
+        }
+        return null;
+    }
+
+    /** Distinct capacity labels (e.g. 128GB / 256GB / 512GB) currently in the view hierarchy. */
+    private java.util.List<String> capacityLabels() {
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        try {
+            for (WebElement e : driver.findElements(CAPACITY_PILL)) {
+                String text = e.getText() == null ? "" : e.getText().trim();
+                if (!text.isEmpty() && !labels.contains(text)) {
+                    labels.add(text);
+                }
+            }
+        } catch (Exception ignored) {
+            // capacity pills not in the hierarchy (not scrolled into view) — the colours-only probe stands
+        }
+        return labels;
+    }
+
+    /** Select a capacity pill by its label, scrolling it into view first. */
+    private void selectCapacity(String label) {
+        By pill = AppiumBy.xpath("//*[@text='" + label + "']");
+        try {
+            if (!isPresent(pill, 1)) {
+                scrollToText(label);
+            }
+            tap(pill, 6);
+            waitForLoaderGone();
+        } catch (Exception e) {
+            log.info("Capacity '{}' not selectable ({})", label, e.getMessage());
+        }
     }
 
     private void waitForLoaderGone() {

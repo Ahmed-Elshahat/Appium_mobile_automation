@@ -49,22 +49,23 @@ public class DmpAllItemsPage extends BasePage {
     private static final By FILTER_BUTTON = AppiumBy.xpath(
             "//*[@content-desc='testID-View.d30f69c7-50f6-4253-8542-424dc060d77f.DigitalProductsFilterEditable']");
 
-    // Physical devices entry: the Store "Smart Phones" top category tile. The revamped build removed
-    // the standalone "Devices" View-All section that Katalon's viewAllDevices tapped; smart-phone /
-    // tablet products are now reached through the top category tiles. The resulting "Devices" listing
-    // reuses the SAME filter button + product-card testIDs as the digital voucher listing.
-    private static final By SMART_PHONES_TILE = AppiumBy.xpath(
-            "//*[@text='Smart Phones' or @content-desc='Smart Phones']");
-
     @Step("Open the All Items listing via the Store 'View All' (vouchers)")
     public DmpAllItemsPage openFromVouchers() {
         // Katalon swipes the Store down to reveal the Vouchers section before tapping View All.
         for (int i = 0; i < 6 && !isPresent(VIEW_ALL_VOUCHERS, 1); i++) {
             swipeUp();
         }
+        dumpPageSource("allItems-beforeViewAll"); // TEMP: first-run locator capture
         tap(viewAllVouchers, 20);
         return this;
     }
+
+    // Physical devices entry: the Store "Smart Phones" top category tile. The revamped build removed
+    // the standalone "Devices" View-All section that Katalon's viewAllDevices tapped; smart-phone /
+    // tablet products are now reached through the top category tiles. The resulting "Devices" listing
+    // reuses the SAME filter button + product-card testIDs as the digital voucher listing.
+    private static final By SMART_PHONES_TILE = AppiumBy.xpath(
+            "//*[@text='Smart Phones' or @content-desc='Smart Phones']");
 
     @Step("Open the physical Devices listing via the Store 'Smart Phones' category tile")
     public DmpAllItemsPage openFromDevices() {
@@ -145,6 +146,9 @@ public class DmpAllItemsPage extends BasePage {
             if (price != null) {
                 prices.add(price);
             }
+        }
+        if (prices.isEmpty()) {
+            dumpPageSource("allItems-noPrices"); // TEMP: first-run diagnosis
         }
         return prices;
     }
