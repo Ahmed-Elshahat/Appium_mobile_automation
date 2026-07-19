@@ -4,17 +4,18 @@ param(
   [int]$TimeoutMin  = 180             # overall wait cap (minutes)
 )
 # ─────────────────────────────────────────────────────────────────────────────
-# Runs the THREE per-profile parallel regression suites AT THE SAME TIME.
+# Runs the FOUR per-profile parallel regression suites AT THE SAME TIME.
 # Each profile is a separate mvn JVM (one -Dprofile per run), its own log and its
 # own target-* dir so they never collide.
 #
 #   WMV        -> regression-wmv-parallel.xml        (-Dprofile=sit-wmv)
 #   CARDS      -> regression-cards-parallel.xml      (-Dprofile=sit-cards)
 #   REMITTANCE -> regression-remittance-parallel.xml (-Dprofile=sit-remittance)
+#   DMP        -> regression-dmp-parallel.xml        (-Dprofile=sit-dmp-all)
 #
-# DEVICE BUDGET: thread-counts are set to wmv=12 + cards=4 + remittance=4 = 20,
-#   matching the LambdaTest 20-device cap, so all three run together with no queuing.
-#   To change the cap, edit thread-count in each XML so the three still sum to your max.
+# DEVICE BUDGET: thread-counts are set to wmv=9 + cards=4 + remittance=2 + dmp=4 = 19,
+#   matching the LambdaTest 19-device cap, so all four run together with no queuing.
+#   To change the cap, edit thread-count in each XML so the four still sum to your max.
 #
 # Usage:
 #   .\run-regression-all-parallel.ps1                 # SIT, LambdaTest
@@ -59,7 +60,8 @@ $remoteFlag = if ($Remote) { 'true' } else { 'false' }
 $runs = @(
   @{ Name = 'wmv';        Suite = 'regression-wmv-parallel.xml';        Profile = 'sit-wmv' },
   @{ Name = 'cards';      Suite = 'regression-cards-parallel.xml';      Profile = 'sit-cards' },
-  @{ Name = 'remittance'; Suite = 'regression-remittance-parallel.xml'; Profile = 'sit-remittance' }
+  @{ Name = 'remittance'; Suite = 'regression-remittance-parallel.xml'; Profile = 'sit-remittance' },
+  @{ Name = 'dmp';        Suite = 'regression-dmp-parallel.xml';        Profile = 'sit-dmp-all' }
 )
 
 Get-Job | Where-Object Name -in ($runs.Name) | Remove-Job -Force -ErrorAction SilentlyContinue
@@ -75,7 +77,7 @@ foreach ($r in $runs) {
   Start-Sleep -Seconds 3   # stagger so LambdaTest device allocation doesn't burst
 }
 
-Write-Host "`nAll three suites running in parallel. Waiting (timeout ${TimeoutMin}m)..."
+Write-Host "`nAll four suites running in parallel. Waiting (timeout ${TimeoutMin}m)..."
 Get-Job | Where-Object Name -in ($runs.Name) | Wait-Job -Timeout ($TimeoutMin * 60) | Out-Null
 
 $summaryFile = Join-Path $logDir '_summary.txt'

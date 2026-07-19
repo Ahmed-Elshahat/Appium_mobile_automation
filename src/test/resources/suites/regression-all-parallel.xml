@@ -4,13 +4,13 @@
   FULL REGRESSION — ALL DOMAINS in ONE parallel suite, ONE command, 19 devices.
   ══════════════════════════════════════════════════════════════════════════════
 
-  ONE JVM loads all three data profiles at once (ConfigManager accepts a
+  ONE JVM loads all four data profiles at once (ConfigManager accepts a
   comma-separated -Dprofile). ONE 19-thread pool balances across every test, so
-  device utilisation is better than three fixed pools.
+  device utilisation is better than four fixed pools.
 
   Run (single command):
     mvn clean test "-Dsuite=suites/regression-all-parallel.xml" ^
-        "-Dprofile=sit-wmv,sit-cards,sit-remittance" -Dremote=true
+        "-Dprofile=sit-wmv,sit-cards,sit-remittance,sit-dmp-all" -Dremote=true
 
   parallel="tests" thread-count="19": up to 19 <test> blocks (= 19 LambdaTest
   sessions) run at once; the rest queue. EVERY <test> is a SINGLE class = fully
@@ -25,6 +25,8 @@
      validate-card-removed / physical-card) are covered by the whole-class
      mada-cards / signature-cards and are NOT repeated.
    • Remittance excludes MoneyGram Cash Pickup & Transfast Send-to-Wallet (no accounts).
+   • DMP = 29 tests (browse / orders / gift / mokafaa / promo) on the sit-dmp-all
+     profile; order/pay/promo tests need funded wallets or they fail at payment.
 -->
 <suite name="URPay Full Regression (All Domains, Parallel)" verbose="1"
        parallel="tests" thread-count="19" group-by-instances="true">
@@ -275,6 +277,99 @@
     </test>
     <test name="Forgot Passcode Default Tier Login Negative"> <!-- ~59s -->
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
+    </test>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DMP (Digital MarketPlace) — 29 tests, profile sit-dmp-all.
+         Browse tests need no wallet; order/gift/mokafaa/promo tests need funded
+         wallets (+ order history / Mokafaa points / in-stock SKU). See dmp-all.xml.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <test name="DMP - Top Product">
+        <classes><class name="com.urpay.tests.dmp.ValidateTopProductTest"/></classes>
+    </test>
+    <test name="DMP - Search by Category">
+        <classes><class name="com.urpay.tests.dmp.SearchByCategoryTest"/></classes>
+    </test>
+    <test name="DMP - Search by Product Name">
+        <classes><class name="com.urpay.tests.dmp.SearchByProductNameTest"/></classes>
+    </test>
+    <test name="DMP - Reorder from History">
+        <classes><class name="com.urpay.tests.dmp.ReorderFromHistoryTest"/></classes>
+    </test>
+    <test name="DMP - Product Wishlist Management">
+        <classes><class name="com.urpay.tests.dmp.ProductWishlistManagementTest"/></classes>
+    </test>
+    <test name="DMP - Product Sorting Management">
+        <classes><class name="com.urpay.tests.dmp.browse.ProductSortingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Physical Product Sorting Management">
+        <classes><class name="com.urpay.tests.dmp.browse.PhysicalProductSortingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Product Grouping Management">
+        <classes><class name="com.urpay.tests.dmp.browse.ProductGroupingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Physical Product Grouping Management">
+        <classes><class name="com.urpay.tests.dmp.browse.PhysicalProductGroupingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Physical Product Wishlist Management">
+        <classes><class name="com.urpay.tests.dmp.physicalwishlist.PhysicalProductWishlistManagementTest"/></classes>
+    </test>
+    <test name="DMP - Share Products">
+        <classes><class name="com.urpay.tests.dmp.share.ShareProductsTest"/></classes>
+    </test>
+    <test name="DMP - Order From New Arrival">
+        <classes><class name="com.urpay.tests.dmp.orders.OrderFromNewArrivalTest"/></classes>
+    </test>
+    <test name="DMP - Order From Suggest">
+        <classes><class name="com.urpay.tests.dmp.orders.OrderFromSuggestTest"/></classes>
+    </test>
+    <test name="DMP - Place Order With Selected Product">
+        <classes><class name="com.urpay.tests.dmp.orders.PlaceOrderWithSelectedProductTest"/></classes>
+    </test>
+    <test name="DMP - Full Cycle MarketPlace Order">
+        <classes><class name="com.urpay.tests.dmp.FullCycleMarketPlaceOrderTest"/></classes>
+    </test>
+    <test name="DMP - Place Order With Physical Product">
+        <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
+    </test>
+    <test name="DMP - Place Order As Gift">
+        <classes><class name="com.urpay.tests.dmp.gift.PlaceOrderAsGiftTest"/></classes>
+    </test>
+    <test name="DMP - Place Order Using Mokafaa Points">
+        <classes><class name="com.urpay.tests.dmp.orders.PlaceOrderUsingMokafaaPointsTest"/></classes>
+    </test>
+    <test name="DMP - Discount Per Item">
+        <classes><class name="com.urpay.tests.dmp.promo.DiscountPerItemTest"/></classes>
+    </test>
+    <test name="DMP - Promo Code Error Messages">
+        <classes><class name="com.urpay.tests.dmp.promo.PromoCodeErrorMessagesTest"/></classes>
+    </test>
+    <test name="DMP - Fixed Amount Item Level">
+        <classes><class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/></classes>
+    </test>
+    <test name="DMP - Fixed Min Purchase">
+        <classes><class name="com.urpay.tests.dmp.promo.FixedMinPurchaseTest"/></classes>
+    </test>
+    <test name="DMP - Maximum Discount Limit">
+        <classes><class name="com.urpay.tests.dmp.promo.MaximumDiscountLimitTest"/></classes>
+    </test>
+    <test name="DMP - Multi Item Orders">
+        <classes><class name="com.urpay.tests.dmp.promo.MultiItemOrdersTest"/></classes>
+    </test>
+    <test name="DMP - Percentage Cart Level Max">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentageCartLevelMaxTest"/></classes>
+    </test>
+    <test name="DMP - Percent Of Family">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentOfFamilyTest"/></classes>
+    </test>
+    <test name="DMP - Percentage Item Level Max Qty">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentageItemLevelMaxQtyTest"/></classes>
+    </test>
+    <test name="DMP - Percent Min Purchase">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentMinPurchaseTest"/></classes>
+    </test>
+    <test name="DMP - Product Specific">
+        <classes><class name="com.urpay.tests.dmp.promo.ProductSpecificTest"/></classes>
     </test>
 
 </suite>

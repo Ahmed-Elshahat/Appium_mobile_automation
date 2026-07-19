@@ -1,0 +1,129 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  DMP PARALLEL REGRESSION — up to 4 devices.  Profile: sit-dmp-all
+  ══════════════════════════════════════════════════════════════════════════════
+
+  FLAT parallel suite (same pattern as the wmv / cards / remittance squad suites).
+  parallel="tests" thread-count="4": TestNG runs up to 4 <test> blocks at once
+  (one LambdaTest session per <test> via DriverFactory ThreadLocal); the rest queue
+  and run as devices free up. All creds/data come from the consolidated
+  sit-dmp-all.properties (merged from sit-dmp{,-a,-b,-c,-d,-e}).
+
+  DEVICE BUDGET: 4 here + 9 (wmv) + 4 (cards) + 2 (remittance) = 19 = LambdaTest cap,
+  so all four squads can run AT THE SAME TIME. Running this suite ALONE? Bump
+  thread-count higher (see dmp-all.xml, which runs the same 29 tests at 19 threads).
+
+  Run:
+    mvn clean test "-Dsuite=suites/regression-dmp-parallel.xml" "-Dprofile=sit-dmp-all" -Dremote=true
+
+  NOTE: order/pay/promo suites need funded wallets (+ order history / Mokafaa
+  points / in-stock SKU) or they fail at payment. Browse suites need none.
+-->
+<suite name="URPay DMP Parallel Regression" verbose="1"
+       parallel="tests" thread-count="4" group-by-instances="true">
+
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <!-- ── Main session (browse) ── -->
+    <test name="DMP - Top Product">
+        <classes><class name="com.urpay.tests.dmp.ValidateTopProductTest"/></classes>
+    </test>
+    <test name="DMP - Search by Category">
+        <classes><class name="com.urpay.tests.dmp.SearchByCategoryTest"/></classes>
+    </test>
+    <test name="DMP - Search by Product Name">
+        <classes><class name="com.urpay.tests.dmp.SearchByProductNameTest"/></classes>
+    </test>
+    <test name="DMP - Reorder from History">
+        <classes><class name="com.urpay.tests.dmp.ReorderFromHistoryTest"/></classes>
+    </test>
+    <test name="DMP - Product Wishlist Management">
+        <classes><class name="com.urpay.tests.dmp.ProductWishlistManagementTest"/></classes>
+    </test>
+
+    <!-- ── Lane A: Sorting & Grouping (browse) ── -->
+    <test name="DMP - Product Sorting Management">
+        <classes><class name="com.urpay.tests.dmp.browse.ProductSortingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Physical Product Sorting Management">
+        <classes><class name="com.urpay.tests.dmp.browse.PhysicalProductSortingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Product Grouping Management">
+        <classes><class name="com.urpay.tests.dmp.browse.ProductGroupingManagementTest"/></classes>
+    </test>
+    <test name="DMP - Physical Product Grouping Management">
+        <classes><class name="com.urpay.tests.dmp.browse.PhysicalProductGroupingManagementTest"/></classes>
+    </test>
+
+    <!-- ── Lane B: Physical Wishlist + Share (browse) ── -->
+    <test name="DMP - Physical Product Wishlist Management">
+        <classes><class name="com.urpay.tests.dmp.physicalwishlist.PhysicalProductWishlistManagementTest"/></classes>
+    </test>
+    <test name="DMP - Share Products">
+        <classes><class name="com.urpay.tests.dmp.share.ShareProductsTest"/></classes>
+    </test>
+
+    <!-- ── Lane C: Digital Orders (needs funded wallet) ── -->
+    <test name="DMP - Order From New Arrival">
+        <classes><class name="com.urpay.tests.dmp.orders.OrderFromNewArrivalTest"/></classes>
+    </test>
+    <test name="DMP - Order From Suggest">
+        <classes><class name="com.urpay.tests.dmp.orders.OrderFromSuggestTest"/></classes>
+    </test>
+    <test name="DMP - Place Order With Selected Product">
+        <classes><class name="com.urpay.tests.dmp.orders.PlaceOrderWithSelectedProductTest"/></classes>
+    </test>
+    <test name="DMP - Full Cycle MarketPlace Order">
+        <classes><class name="com.urpay.tests.dmp.FullCycleMarketPlaceOrderTest"/></classes>
+    </test>
+
+    <!-- ── Lane D: Physical Order / Gift / Mokafaa (needs funded wallet) ── -->
+    <test name="DMP - Place Order With Physical Product">
+        <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
+    </test>
+    <test name="DMP - Place Order As Gift">
+        <classes><class name="com.urpay.tests.dmp.gift.PlaceOrderAsGiftTest"/></classes>
+    </test>
+    <test name="DMP - Place Order Using Mokafaa Points">
+        <classes><class name="com.urpay.tests.dmp.orders.PlaceOrderUsingMokafaaPointsTest"/></classes>
+    </test>
+
+    <!-- ── Lane E: Promo Code ── -->
+    <test name="DMP - Discount Per Item">
+        <classes><class name="com.urpay.tests.dmp.promo.DiscountPerItemTest"/></classes>
+    </test>
+    <test name="DMP - Promo Code Error Messages">
+        <classes><class name="com.urpay.tests.dmp.promo.PromoCodeErrorMessagesTest"/></classes>
+    </test>
+    <test name="DMP - Fixed Amount Item Level">
+        <classes><class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/></classes>
+    </test>
+    <test name="DMP - Fixed Min Purchase">
+        <classes><class name="com.urpay.tests.dmp.promo.FixedMinPurchaseTest"/></classes>
+    </test>
+    <test name="DMP - Maximum Discount Limit">
+        <classes><class name="com.urpay.tests.dmp.promo.MaximumDiscountLimitTest"/></classes>
+    </test>
+    <test name="DMP - Multi Item Orders">
+        <classes><class name="com.urpay.tests.dmp.promo.MultiItemOrdersTest"/></classes>
+    </test>
+    <test name="DMP - Percentage Cart Level Max">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentageCartLevelMaxTest"/></classes>
+    </test>
+    <test name="DMP - Percent Of Family">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentOfFamilyTest"/></classes>
+    </test>
+    <test name="DMP - Percentage Item Level Max Qty">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentageItemLevelMaxQtyTest"/></classes>
+    </test>
+    <test name="DMP - Percent Min Purchase">
+        <classes><class name="com.urpay.tests.dmp.promo.PercentMinPurchaseTest"/></classes>
+    </test>
+    <test name="DMP - Product Specific">
+        <classes><class name="com.urpay.tests.dmp.promo.ProductSpecificTest"/></classes>
+    </test>
+
+</suite>

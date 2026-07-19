@@ -1,15 +1,15 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
   ══════════════════════════════════════════════════════════════════════════════
-  WMV PARALLEL REGRESSION — up to 12 concurrent devices.  Profile: sit-wmv
+  WMV PARALLEL REGRESSION — up to 9 concurrent devices.  Profile: sit-wmv
   ══════════════════════════════════════════════════════════════════════════════
 
   FLAT parallel suite (same pattern as remittance-collection / all-wallet-settings).
-  parallel="tests" + thread-count="12": TestNG runs up to 12 <test> blocks at once,
+  parallel="tests" + thread-count="9": TestNG runs up to 9 <test> blocks at once,
   queuing the rest.  Each <test> = 1 thread = 1 LambdaTest session = 1 device =
 
-  DEVICE BUDGET: 12 here + 4 (cards) + 4 (remittance) = 20 = LambdaTest cap, so all
-  three can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count to 20.
+  DEVICE BUDGET: 9 here + 4 (cards) + 2 (remittance) + 4 (dmp) = 19 = LambdaTest cap,
+  so all four squads can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count to 19.
   1 UNIQUE account (two live sessions on one account → the later login kicks the
   first).  Every feature below uses its own dedicated account in sit-wmv.properties.
 
@@ -22,7 +22,7 @@
   as a standalone test) to avoid a duplicate DelinkFromParentTest on the same account.
 -->
 <suite name="URPay WMV Parallel Regression" verbose="1"
-       parallel="tests" thread-count="12" group-by-instances="true">
+       parallel="tests" thread-count="9" group-by-instances="true">
 
     <listeners>
         <listener class-name="com.urpay.core.RetryListener"/>

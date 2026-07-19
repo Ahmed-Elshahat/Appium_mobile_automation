@@ -1,17 +1,17 @@
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 <!--
   ══════════════════════════════════════════════════════════════════════════════
-  REMITTANCE PARALLEL REGRESSION — up to 4 devices.  Profile: sit-remittance
+  REMITTANCE PARALLEL REGRESSION — up to 2 devices.  Profile: sit-remittance
   ══════════════════════════════════════════════════════════════════════════════
 
   Mirrors the validated remittance-collection.xml groupings (each corridor logs in
   with its OWN account → parallel-safe) bumped to an 18-device cap, plus the
   Add-Beneficiary suites.  ⚠ Some corridors move REAL money (small amounts).
 
-  parallel="tests" thread-count="4": each <test> = 1 device = 1 unique account.
+  parallel="tests" thread-count="2": each <test> = 1 device = 1 unique account.
 
-  DEVICE BUDGET: 4 here + 12 (wmv) + 4 (cards) = 20 = LambdaTest cap, so all three
-  can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
+  DEVICE BUDGET: 2 here + 9 (wmv) + 4 (cards) + 4 (dmp) = 19 = LambdaTest cap, so all
+  four squads can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
 
   Run:
     mvn clean test "-Dsuite=suites/regression-remittance-parallel.xml" "-Dprofile=sit-remittance" -Dremote=true
@@ -20,7 +20,7 @@
   Pickup, Transfast Send-to-Wallet. Enable them once accounts exist.
 -->
 <suite name="URPay Remittance Parallel Regression" verbose="1"
-       parallel="tests" thread-count="4" group-by-instances="true">
+       parallel="tests" thread-count="2" group-by-instances="true">
 
     <listeners>
         <listener class-name="com.urpay.core.RetryListener"/>

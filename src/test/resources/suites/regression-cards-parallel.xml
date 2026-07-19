@@ -6,8 +6,8 @@
 
   parallel="tests" thread-count="4": each <test> = 1 device = 1 unique account.
 
-  DEVICE BUDGET: 4 here + 12 (wmv) + 4 (remittance) = 20 = LambdaTest cap, so all
-  three can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
+  DEVICE BUDGET: 4 here + 9 (wmv) + 2 (remittance) + 4 (dmp) = 19 = LambdaTest cap,
+  so all four squads can run AT THE SAME TIME. Running this suite ALONE? Bump thread-count higher.
 
   Run:
     mvn clean test "-Dsuite=suites/regression-cards-parallel.xml" "-Dprofile=sit-cards" -Dremote=true
