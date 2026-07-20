@@ -118,37 +118,50 @@ public abstract class AbstractCardTest extends BaseTest {
 
     @Test(groups = {"payments", "cards"}, priority = 1)
     @Story("Navigate to Card")
-    @Description("Login → navigate to Cards → detect existing card → land on products page")
+    @Description("Login (must reach dashboard) → issue/detect the digital card. Login is the passing "
+            + "precondition; if the card is NOT issued the issuance step FAILS so the dependent card "
+            + "tests SKIP — instead of running against a card-less screen and reporting false passes.")
     @Severity(SeverityLevel.BLOCKER)
     public void testNavigateToCard() {
-        loginForCard();
+        // ── Step A: LOGIN (passing precondition) ──
+        DashboardPage dashboard = loginForCard();
         captureScreenshot("After Login");
+        // Login must genuinely reach the dashboard. If it did not, this is a login/session problem,
+        // NOT a card-issuance defect — SKIP the card chain so it isn't misreported as a card failure.
+        if (!dashboard.isLoaded()) {
+            throw new SkipException("Login did not reach the dashboard for " + getCardPrefix()
+                    + " — cannot attempt card issuance (login/session issue, not a card defect).");
+        }
 
+        // ── Step B: ISSUE / DETECT THE CARD ──
+        CardsFlow flow = new CardsFlow();
         try {
-            CardsFlow flow = new CardsFlow();
-            boolean isNewCard = flow.issueNewDigitalCard(getCardPrefix()) != null 
+            boolean isNewCard = flow.issueNewDigitalCard(getCardPrefix()) != null
                     && !flow.isExistingCardDetected();
             if (!isNewCard) {
                 // Only check lock state for existing cards — new cards are always unlocked
                 flow.ensureCardUnlocked();
             }
         } catch (com.urpay.utils.BackendErrorException e) {
-            // A backend/SIT error during card issuance is a genuine product defect, NOT a test
-            // problem. Fail (not swallow) so this shows as a clean FAILED with the backend message,
-            // and TestNG SKIPS the dependent card tests instead of letting them cascade into
-            // misleading "broken" element timeouts.
+            // Backend/SIT outage during issuance — a genuine product defect (not a test problem).
             captureScreenshot("Backend Error During Card Issuance");
-            Assert.fail(e.getMessage());
+            Assert.fail("Card issuance failed (backend defect) for " + getCardPrefix()
+                    + ": " + e.getMessage());
         } catch (Exception e) {
-            // F2: a non-backend navigation/setup failure is non-recoverable for this BLOCKER setup —
-            // do NOT swallow it and let dependent card tests run against an unknown screen (that only
-            // produces misleading element-timeout "broken" cascades). Skip the whole card chain so
-            // the failure is honest and the dependent tests report as SKIPPED, not broken.
-            log.error("Card setup navigation failed — skipping dependent card tests: {}", e.getMessage());
-            captureScreenshot("Navigation Setup Failure");
-            throw new SkipException("Card setup navigation failed: " + e.getMessage(), e);
+            // Login already succeeded above, so the card flow ran but no card was issued (reached
+            // the IVR/verification screen without completing, or a navigation/app-state error).
+            // FAIL the issuance step (RED) so the dependent card tests SKIP, instead of the previous
+            // SkipException that hid a non-issued card as a yellow skip / false pass.
+            captureScreenshot("Card Issuance Failed");
+            Assert.fail("Card issuance did not complete for " + getCardPrefix()
+                    + ": " + e.getMessage());
         }
+
+        // ── Step C: VERIFY a card is actually present (guards against a false 'issued') ──
         captureScreenshot("On Card Products Page");
+        Assert.assertTrue(flow.isCardPresent(),
+                "Card issuance step: a card should be issued/present for " + getCardPrefix()
+                + " after the issuance flow, but none was found on the products page.");
     }
 
     // ═══════════════════════════════════════════════════

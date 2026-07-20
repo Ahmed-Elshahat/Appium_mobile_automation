@@ -104,6 +104,14 @@
             <version>${rest-assured.version}</version>
         </dependency>
 
+        <!-- Allure ↔ REST Assured: auto-attach each API request + response (status/headers/body)
+             to the Allure step. Enabled globally via ApiReporting.enable(). -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-rest-assured</artifactId>
+            <version>${allure.version}</version>
+        </dependency>
+
         <!-- Jackson JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

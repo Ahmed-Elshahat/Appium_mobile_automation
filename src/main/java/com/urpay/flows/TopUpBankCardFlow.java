@@ -65,6 +65,16 @@ public class TopUpBankCardFlow {
             + " | //*[@text='Bank Card' or @text='bank card']"
             + " | //*[@content-desc='testID-primary-onSubmit-main']");
 
+    // ── Wallet balance locators ───────────────────────
+    private static final By BALANCE_AMOUNT =
+            AppiumBy.accessibilityId("testID-master-amount-main");
+
+    // Eye / show-hide toggle for the masked balance (from WalletBalancePage).
+    private static final By EYE_ICON = AppiumBy.xpath(
+            "//*[@class='com.horcrux.svg.GroupView' and ./parent::*"
+            + "[@content-desc='testID-Icons.3c4eedac-9f12-49c9-ae8b-01a187949e18']]"
+            + "/*[@class='com.horcrux.svg.PathView']");
+
     public TopUpBankCardFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
@@ -181,8 +191,7 @@ public class TopUpBankCardFlow {
         log.info("Card details submitted");
 
         // Step 9: Wait for amount page to load
-        waits.waitForVisible(
-                AppiumBy.accessibilityId("testID-primary-validateAmount-main"), 20);
+        page.waitForAmountScreen(20);
         page.enterAmount(amount);
         platformActions.dismissKeyboard();
 
@@ -191,8 +200,7 @@ public class TopUpBankCardFlow {
         log.info("Amount {} entered and validated", amount);
 
         // Step 11: Enter payment passcode
-        waits.waitForInvisible(
-                AppiumBy.accessibilityId("testID-primary-validateAmount-main"), 10);
+        page.waitForAmountScreenDismissed(10);
         passcodePage.enterPasscode(passCode);
         log.info("Payment passcode entered");
 
@@ -239,9 +247,8 @@ public class TopUpBankCardFlow {
         page.tapNextExistingCard();
         log.info("Using existing saved card");
 
-        // Enter amount — wait for the validate amount button to confirm we're on amount page
-        waits.waitForVisible(
-                AppiumBy.accessibilityId("testID-primary-validateAmount-main"), 15);
+        // Enter amount — wait for the amount entry screen to confirm we're on amount page
+        page.waitForAmountScreen(15);
         page.enterAmount(amount);
         platformActions.dismissKeyboard();
 
@@ -250,8 +257,7 @@ public class TopUpBankCardFlow {
         log.info("Amount {} entered and validated", amount);
 
         // Enter payment passcode
-        waits.waitForInvisible(
-                AppiumBy.accessibilityId("testID-primary-validateAmount-main"), 10);
+        page.waitForAmountScreenDismissed(10);
         passcodePage.enterPasscode(passCode);
         log.info("Payment passcode entered");
 
@@ -272,11 +278,38 @@ public class TopUpBankCardFlow {
     //  WALLET BALANCE
     // ══════════════════════════════════════════════════
 
+    @Step("Reveal wallet balance if it is masked (tap the eye icon)")
+    private void revealBalanceIfHidden() {
+        // Read the amount; if it is absent or masked (no digit visible), tap the eye toggle.
+        boolean numericVisible = false;
+        java.util.List<org.openqa.selenium.WebElement> amount = waits.findQuick(BALANCE_AMOUNT, 5);
+        if (!amount.isEmpty()) {
+            String txt = amount.get(0).getText();
+            numericVisible = txt != null && txt.matches(".*\\d.*");
+        }
+        if (numericVisible) {
+            return;
+        }
+        java.util.List<org.openqa.selenium.WebElement> eye = waits.findQuick(EYE_ICON, 5);
+        if (!eye.isEmpty()) {
+            try {
+                eye.get(0).click();
+                log.info("Balance was hidden — tapped eye icon to reveal it");
+                waits.waitForVisible(BALANCE_AMOUNT, 10);
+            } catch (Exception e) {
+                log.debug("Eye icon tap failed or balance already revealed: {}", e.getMessage());
+            }
+        } else {
+            log.debug("No eye icon found — assuming balance is already visible");
+        }
+    }
+
     @Step("Get current wallet balance from dashboard")
     public String getWalletBalance() {
-        waits.waitForVisible(AppiumBy.accessibilityId("testID-master-amount-main"), 10);
-        String integer = driver.findElement(
-                AppiumBy.accessibilityId("testID-master-amount-main")).getText();
+        // 1. Make sure the balance is actually shown — it may be masked behind the eye toggle.
+        revealBalanceIfHidden();
+        waits.waitForVisible(BALANCE_AMOUNT, 10);
+        String integer = driver.findElement(BALANCE_AMOUNT).getText();
         String fraction = "";
         try {
             fraction = driver.findElement(
@@ -284,7 +317,16 @@ public class TopUpBankCardFlow {
         } catch (Exception ignored) {
             // fraction may not be present
         }
-        String balance = integer + fraction;
+        // The integer (e.g. "6,200") and fraction (e.g. "00") are shown as separate
+        // elements — join them with a decimal point so 6,200 + 00 = 6200.00 (not 620000).
+        String balance;
+        if (fraction == null || fraction.trim().isEmpty()) {
+            balance = integer;
+        } else if (fraction.trim().startsWith(".")) {
+            balance = integer + fraction.trim();
+        } else {
+            balance = integer + "." + fraction.trim();
+        }
         log.info("Wallet balance: {}", balance);
         return balance;
     }
@@ -501,11 +543,28 @@ public class TopUpBankCardFlow {
 
     @Step("Enter CVV code: {cvv}")
     private void enterCvv(String cvv) {
+        // CVV screen is CONDITIONAL — some cards/flows skip it and go straight to the
+        // 3D Secure OTP page. If the CVV screen doesn't appear (or 3D Secure is already
+        // shown), skip CVV entry rather than hard-failing.
+        By secure3ds = AppiumBy.xpath(
+                "//android.widget.EditText[@resource-id='otp']"
+                + " | //android.widget.EditText[contains(@resource-id,'otp')]"
+                + " | //*[@text='3D secure' or @text='3D Secure']"
+                + " | //*[contains(@text,'One Time Password')]");
+        if (!waits.findQuick(secure3ds, 0).isEmpty()) {
+            log.info("3D Secure screen already shown — no CVV step for this card, skipping CVV");
+            return;
+        }
+
         // CVV screen uses 3 separate input boxes — need to tap first to focus
         By cvvScreen = AppiumBy.xpath(
                 "//*[@text='CVV Code' or @text='Enter CVV Code'"
                 + " or contains(@text,'3-digit code')]");
-        waits.waitForVisible(cvvScreen, 15);
+        if (waits.findQuick(cvvScreen, 8).isEmpty()) {
+            log.info("CVV screen not shown within timeout — skipping CVV entry "
+                    + "(card proceeds straight to 3D Secure)");
+            return;
+        }
 
         // CVV boxes use system keyboard input (unlike passcode which uses custom keypad)
         // Find the first EditText/input box → tap to activate keyboard → sendKeys

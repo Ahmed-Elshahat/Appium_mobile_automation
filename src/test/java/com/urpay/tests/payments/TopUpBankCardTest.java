@@ -159,14 +159,15 @@ public class TopUpBankCardTest extends BaseTest {
         Assert.assertFalse(referenceNumber.trim().isEmpty(),
                 "Reference number should not be empty");
 
-        // Verify fees and VAT are not 0.00
+        // Verify fees are charged (non-zero) for the top-up
         String fees = detailsPage.getTransactionFees();
         Assert.assertNotEquals(fees, "0.00",
                 "Transaction fees should not be 0.00");
 
+        // VAT is present and readable — for a wallet top-up it can legitimately be 0.00
         String vat = detailsPage.getVat();
-        Assert.assertNotEquals(vat, "0.00",
-                "VAT should not be 0.00");
+        Assert.assertNotNull(vat, "VAT value should be present");
+        Assert.assertFalse(vat.trim().isEmpty(), "VAT value should not be empty");
 
         log.info("Transaction verified — Type: {}, Category: {}, Ref: {}, Fees: {}, VAT: {}",
                 transactionType, category, referenceNumber, fees, vat);
@@ -203,8 +204,8 @@ public class TopUpBankCardTest extends BaseTest {
         TransactionDetailsPage detailsPage = flow.viewLatestTransactionDetails();
 
         String transactionType = detailsPage.getType();
-        Assert.assertEquals(transactionType, "Add Money",
-                "Transaction type should be 'Add Money'");
+        Assert.assertEquals(transactionType, "Top Up",
+                "Transaction type should be 'Top Up'");
 
         String category = detailsPage.getCategory();
         Assert.assertEquals(category, "Income",

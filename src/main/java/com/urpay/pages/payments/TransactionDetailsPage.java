@@ -48,7 +48,11 @@ public class TransactionDetailsPage extends BasePage {
     private WebElement vatValue;
 
     // TransactionDetailsPageObjects/backBtnFromTransactionDetails.rs
-    @AndroidFindBy(accessibility = "testID-left-icon-item")
+    // Header back arrow — accept the item id, the generic in-app back id, or the top-left icon.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-left-icon-item'"
+            + " or @content-desc='testID-left-icon-back'"
+            + " or @content-desc='testID-left-icon-0'"
+            + " or @content-desc='testID-header-back']")
     private WebElement backButton;
 
     // ══════════════════════════════════════════════════

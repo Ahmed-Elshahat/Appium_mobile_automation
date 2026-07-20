@@ -276,9 +276,13 @@ public class CardsFlow {
         log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
 
         // ── Step 7: Wait for success screen after IVR, then tap to proceed ──
+        // Detect issuance completion by the success-screen's OWN markers only — the visible action
+        // labels (Back to cards / Done / View Card) or the issuance-specific testID. Do NOT match
+        // the generic 'testID-primary--main' primary button here: it is also present on the IVR
+        // 'Verification Call' screen, so matching it marks a NON-issued card as issued (false pass).
         By successBtn = AppiumBy.xpath(
                 "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
-                + "@content-desc='testID-primary-backToCardsDB-main' or @content-desc='testID-primary--main']");
+                + "@content-desc='testID-primary-backToCardsDB-main']");
 
         // F5: explicit-wait polling only — no Thread.sleep and no implicit-wait toggling. Each
         // findQuick call blocks up to 2s (≈30s total, matching the old 15×2s budget) and the
@@ -327,6 +331,25 @@ public class CardsFlow {
 
         log.info("Digital card issued for: {}", cardPrefix);
         return page;
+    }
+
+    /**
+     * True if a card is actually present/managed on the cards page — matched by the card-management
+     * indicators (Lock/Unlock Card, Card Settings, Card Information/Details). The card tests call
+     * this to VERIFY issuance really completed, so a flow that "finished" without a usable card
+     * (e.g. a generic button matched on the IVR/verification screen) is caught as a genuine
+     * card-issuance failure instead of a false pass. Query-only — never asserts.
+     */
+    @Step("Verify a card is present on the cards page")
+    public boolean isCardPresent() {
+        setImplicitWait(2);
+        try {
+            return quickFind(AppiumBy.xpath("//*[@text='Lock Card' or @text='Unlock Card']"))
+                    || quickFind(AppiumBy.xpath("//*[@text='Card Settings']"))
+                    || quickFind(AppiumBy.xpath("//*[@text='Card Information' or @text='Card Details']"));
+        } finally {
+            setImplicitWait(10);
+        }
     }
 
     // ══════════════════════════════════════════════════

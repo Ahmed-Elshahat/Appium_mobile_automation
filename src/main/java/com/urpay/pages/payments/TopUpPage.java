@@ -34,18 +34,31 @@ public class TopUpPage extends BasePage {
     private WebElement bankCardButton;
 
     // ── Card Selection ────────────────────────────────
+    // Cloud build HASHES the middle segment of testID-<primary|secondary>-<action>-main,
+    // so match the exact testID, the visible 'Add new card' text (avoids the solid-blue
+    // 'Next' button), OR a structural testID-secondary-…-main net as a last resort.
     @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onAddNewCard-main'"
-            + " or @content-desc='testID-secondary-onAddNewCard-main']")
+            + " or @content-desc='testID-secondary-onAddNewCard-main'"
+            + " or @text='Add new card' or @text='Add New Card' or @text='Add Card']")
     @iOSXCUITFindBy(xpath = "//*[@name='testID-primary-onAddNewCard-main'"
-            + " or @name='testID-secondary-onAddNewCard-main']")
+            + " or @name='testID-secondary-onAddNewCard-main'"
+            + " or @label='Add new card' or @label='Add New Card' or @label='Add Card']")
     private WebElement addNewCardButton;
 
-    @AndroidFindBy(accessibility = "testID-primary-onSubmit-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmit-main'"
+            + " or @text='Next'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSubmit-main")
     private WebElement nextExistingCardButton;
 
     // ── Camera / Manual Entry ─────────────────────────
-    @AndroidFindBy(accessibility = "testID-secondary-navigationAction-main")
+    // Cloud build hashes the middle segment → match exact testID, the visible
+    // 'Enter details manually' link, OR a structural testID-secondary-…-main net.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-secondary-navigationAction-main'"
+            + " or contains(@text,'details manually') or contains(@text,'Details Manually')"
+            + " or (starts-with(@content-desc,'testID-secondary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-secondary-navigationAction-main")
     private WebElement enterDetailsManuallyButton;
 
@@ -76,12 +89,20 @@ public class TopUpPage extends BasePage {
             "//*[contains(@content-desc,'testID-TextInput.') and @class='android.widget.EditText']"
             + " | //android.widget.EditText");
 
-    @AndroidFindBy(accessibility = "testID-primary-validateAmount-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-validateAmount-main'"
+            + " or @text='Next'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-validateAmount-main")
     private WebElement validateAmountButton;
 
     // ── Generic Primary Action Button (Next / Confirm / Done) ──
-    @AndroidFindBy(accessibility = "testID-primary--main")
+    // Cloud build hashes the middle segment of testID-primary-<action>-main →
+    // match visible text OR any structural testID-primary-…-main (one per wizard screen).
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary--main'"
+            + " or @text='Next' or @text='Confirm' or @text='Done' or @text='Add'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary--main")
     private WebElement primaryButton;
 
@@ -165,6 +186,16 @@ public class TopUpPage extends BasePage {
     // ══════════════════════════════════════════════════
     //  AMOUNT ENTRY
     // ══════════════════════════════════════════════════
+
+    @Step("Wait for amount entry screen to load")
+    public void waitForAmountScreen(long timeoutSec) {
+        waitUtils.waitForVisible(AMOUNT_INPUT, timeoutSec);
+    }
+
+    @Step("Wait for amount entry screen to dismiss")
+    public void waitForAmountScreenDismissed(long timeoutSec) {
+        waitUtils.waitForInvisible(AMOUNT_INPUT, timeoutSec);
+    }
 
     @Step("Enter top-up amount: {amount}")
     public void enterAmount(String amount) {

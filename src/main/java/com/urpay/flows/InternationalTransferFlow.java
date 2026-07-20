@@ -195,8 +195,24 @@ public class InternationalTransferFlow {
         platformActions.dismissKeyboard();
 
         page.closeRatingPopupIfPresent();
+
+        // After the OTP is submitted the backend shows EITHER the Thank You screen or the blocking
+        // "Service is currently unavailable. Please try again later." banner (a SIT provider outage
+        // on this route, commonly surfaced right after OTP). Detect the banner and raise a
+        // categorized backend defect so the result is reported as [BACKEND DEFECT] (and never
+        // retried) instead of a misleading "Thank You screen should be visible" assertion that
+        // hides the real cause.
+        if (page.isServiceUnavailable(6)) {
+            throw new com.urpay.utils.BackendErrorException(backendOutageAfterOtpMessage());
+        }
+
         boolean success = page.isTransferSuccessful(30);
         page.closeRatingPopupIfPresent();
+        if (!success && page.isServiceUnavailable(2)) {
+            // The Thank You screen never appeared and the outage banner surfaced a beat later while
+            // we were waiting — attribute it to the backend, not a missing success screen.
+            throw new com.urpay.utils.BackendErrorException(backendOutageAfterOtpMessage());
+        }
         log.info("International transfer completed (success={})", success);
         return success ? TransferResult.SUCCESS : TransferResult.FAILED;
     }
@@ -376,6 +392,16 @@ public class InternationalTransferFlow {
                     + " " + data.getDeliveryOption() + " route to " + data.getReceiverCountry()
                     + ". SIT backend/provider outage (not a test defect).");
         }
+    }
+
+    /**
+     * Message for the post-OTP SIT outage. Carries the "currently unavailable" / "try again later"
+     * phrase so the Allure categoriser buckets it under "Backend service unavailable (SIT)" and the
+     * {@code RetryAnalyzer} treats it as a deterministic outage (no retry).
+     */
+    private static String backendOutageAfterOtpMessage() {
+        return "Service is currently unavailable. Please try again later. — SIT backend/provider "
+                + "outage on the international transfer after OTP submit (not a test defect).";
     }
 
     /** Tahweel AlRajhi (H2H) is the only MTO that needs a payout-bank selection step. */

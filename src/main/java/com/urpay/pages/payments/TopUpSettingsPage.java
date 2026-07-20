@@ -47,11 +47,19 @@ public class TopUpSettingsPage extends BasePage {
     private WebElement autoTopUpArrow;
 
     // ── Setup Auto Top-Up ─────────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onSetTopup-main")
+    // Cloud build hashes the middle segment of testID-primary-<action>-main → accept the
+    // exact testID, the visible label, OR any single structural primary-…-main on the screen.
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSetTopup-main'"
+            + " or @text='Set Auto Top-up' or @text='Set Auto Top-Up'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSetTopup-main")
     private WebElement setAutoTopUpButton;
 
-    @AndroidFindBy(accessibility = "testID-primary-onSubmit-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSubmit-main'"
+            + " or @text='Next'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSubmit-main")
     private WebElement nextAutoTopUpCreationButton;
 
@@ -71,7 +79,10 @@ public class TopUpSettingsPage extends BasePage {
             "//*[@text='Save' or @label='Save' or @text='SAVE' or @label='SAVE']");
 
     // ── Confirm Auto Top-Up ───────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onSave-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onSave-main'"
+            + " or @text='Next' or @text='Save'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onSave-main")
     private WebElement nextSaveLimitsButton;
 
@@ -79,11 +90,17 @@ public class TopUpSettingsPage extends BasePage {
     @iOSXCUITFindBy(xpath = "//*[@name='testID-check-box-main']")
     private WebElement acceptCheckBox;
 
-    @AndroidFindBy(accessibility = "testID-primary-onConfirm-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onConfirm-main'"
+            + " or @text='Confirm'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onConfirm-main")
     private WebElement confirmAutoTopUpButton;
 
-    @AndroidFindBy(accessibility = "testID-primary-action-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-action-main'"
+            + " or @text='Done'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-action-main")
     private WebElement doneAutoTopUpButton;
 
@@ -93,11 +110,17 @@ public class TopUpSettingsPage extends BasePage {
     private WebElement autoTopUpToggle;
 
     // ── Delete Auto Top-Up ────────────────────────────
-    @AndroidFindBy(accessibility = "testID-primary-onPressCancel-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onPressCancel-main'"
+            + " or @text='Delete auto Top-up' or @text='Delete Auto Top-up'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onPressCancel-main")
     private WebElement deleteAutoTopUpButton;
 
-    @AndroidFindBy(accessibility = "testID-primary-onCancelAutoTopup-main")
+    @AndroidFindBy(xpath = "//*[@content-desc='testID-primary-onCancelAutoTopup-main'"
+            + " or @text='Delete'"
+            + " or (starts-with(@content-desc,'testID-primary-')"
+            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')]")
     @iOSXCUITFindBy(accessibility = "testID-primary-onCancelAutoTopup-main")
     private WebElement confirmDeleteAutoTopUpButton;
 

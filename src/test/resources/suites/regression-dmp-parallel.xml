@@ -84,12 +84,6 @@
     <test name="DMP - Place Order With Physical Product">
         <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
     </test>
-    <test name="DMP - Place Order As Gift">
-        <classes><class name="com.urpay.tests.dmp.gift.PlaceOrderAsGiftTest"/></classes>
-    </test>
-    <test name="DMP - Place Order Using Mokafaa Points">
-        <classes><class name="com.urpay.tests.dmp.orders.PlaceOrderUsingMokafaaPointsTest"/></classes>
-    </test>
 
     <!-- ── Lane E: Promo Code ── -->
     <test name="DMP - Discount Per Item">

@@ -146,6 +146,28 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         try {
             AppiumDriver driver = DriverFactory.getInstance().getDriver();
 
+            // GLOBAL backend-outage probe: any failure where the "Service is currently unavailable /
+            // Transaction Declined" banner is on screen is a SIT backend defect — regardless of
+            // whether the flow threw a BackendErrorException or the test merely asserted on a
+            // missing success screen. Probing here (parallel to the crash probe) makes backend
+            // detection automatic for EVERY suite, so individual flows no longer each need their own
+            // banner check. Zero risk: it only re-labels an already-failed test.
+            boolean backendTagged = alreadyBackendError(throwable);
+            if (!backendTagged) {
+                try {
+                    java.util.Optional<String> banner =
+                            com.urpay.utils.BackendErrorGuard.detect(new com.urpay.utils.WaitUtils(driver, 2));
+                    if (banner.isPresent()) {
+                        String text = banner.get().replaceAll("\\s+", " ").trim();
+                        log.error("⚠ BACKEND DEFECT during {} — banner: {}", testName, text);
+                        failureHealth.put(testName, "BACKEND DEFECT - " + text);
+                        backendTagged = true;
+                    }
+                } catch (Throwable backendEx) {
+                    log.debug("Backend-banner probe unavailable: {}", backendEx.getMessage());
+                }
+            }
+
             // Log app health state — distinguishes crashes from assertion failures during triage
             try {
                 AppHealthChecker healthChecker = AppHealthCheckerFactory.create(driver);
@@ -163,7 +185,9 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                         crashSignature != null && !crashSignature.isEmpty());
                 if (crashDetected) {
                     log.error("⚠ APP CRASHED during {} — {}", testName, healthReport);
-                    failureHealth.put(testName, "APP CRASHED - " + healthReport);
+                    if (!backendTagged) {
+                        failureHealth.put(testName, "APP CRASHED - " + healthReport);
+                    }
                     if (crashSignature != null && !crashSignature.isEmpty()) {
                         writeCrashLogAttachment(testName, crashSignature);
                         log.error("Crash signature for {}:\n{}", testName, crashSignature);
@@ -173,7 +197,9 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                     // still alive — surfaced as a distinct symptom (could be a backgrounding, a
                     // system dialog, or a crash whose log we couldn't read).
                     log.warn("⚠ App not in foreground during {} — {}", testName, healthReport);
-                    failureHealth.put(testName, "APP NOT IN FOREGROUND - " + healthReport);
+                    if (!backendTagged) {
+                        failureHealth.put(testName, "APP NOT IN FOREGROUND - " + healthReport);
+                    }
                 } else {
                     log.info("Health check for {}: {}", testName, healthReport);
                 }
@@ -472,6 +498,25 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
     /** Minimal JSON string escaping for the controlled health marker (no control chars). */
     private String jsonEscape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * True if the failure was already raised as a backend defect (a {@link
+     * com.urpay.utils.BackendErrorException} anywhere in the cause chain, or a message that already
+     * carries the outage phrase). Such failures are tagged by the broken→failed demoter, so the
+     * global on-failure banner probe skips them to avoid a duplicate marker.
+     */
+    private boolean alreadyBackendError(Throwable t) {
+        for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof com.urpay.utils.BackendErrorException) {
+                return true;
+            }
+            String m = c.getMessage();
+            if (m != null && (m.contains("currently unavailable") || m.contains("Transaction Declined"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Persist the logcat crash evidence as a text attachment linked in onFinish. */

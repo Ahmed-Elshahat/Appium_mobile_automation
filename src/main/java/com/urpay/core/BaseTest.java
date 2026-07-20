@@ -13,6 +13,7 @@ import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.helpers.WalletBalanceHelper;
 import com.urpay.reporting.ReportManager;
+import com.urpay.reporting.ApiReporting;
 import com.urpay.utils.ScreenshotUtils;
 
 import io.appium.java_client.AppiumDriver;
@@ -47,6 +48,8 @@ public abstract class BaseTest {
         String profileName = config.getProfileName();
         ReportManager.initReports("URPay-" + profileName);
         ReportManager.writeAllureMetadata();
+        // Attach every REST Assured API request + response (incl. status code) to the Allure report.
+        ApiReporting.enable();
 
         log.info("═══════════════════════════════════════════");
         log.info("  URPay Test Suite Starting");
