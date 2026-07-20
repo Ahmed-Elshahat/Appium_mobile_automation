@@ -147,6 +147,38 @@ public class TopUpPage extends BasePage {
         tap(nextExistingCardButton);
     }
 
+    /**
+     * Select a saved card on the card-selection screen by its masked last-4 digits
+     * (e.g. "****1112"). Card tiles are React-Native touchables that report clickable=false,
+     * so tap the tile's centre coordinates rather than relying on a clickable element.
+     *
+     * @return true if a matching saved card was found and tapped, false otherwise.
+     */
+    @Step("Select saved card ending {last4}")
+    public boolean selectSavedCard(String last4) {
+        By byMask = AppiumBy.xpath("//*[contains(@text,'" + last4 + "')]");
+        java.util.List<WebElement> els = waitUtils.findQuick(byMask, 5);
+        if (els.isEmpty()) {
+            return false;
+        }
+        org.openqa.selenium.Rectangle r = els.get(0).getRect();
+        swipeUtils.tapAtCoordinates(r.getX() + r.getWidth() / 2, r.getY() + r.getHeight() / 2);
+        return true;
+    }
+
+    /** Diagnostic — write the current card-selection screen tree to a local file for inspection. */
+    @Step("Dump card-selection screen")
+    public void dumpCardSelectionScreen() {
+        try {
+            java.nio.file.Files.writeString(
+                    java.nio.file.Paths.get("logcat", "topup-cardselect.xml"),
+                    driver.getPageSource());
+            log.info("Card-selection screen dumped to logcat/topup-cardselect.xml");
+        } catch (Exception e) {
+            log.warn("Card-selection dump failed: {}", e.getMessage());
+        }
+    }
+
     @Step("Tap Enter Details Manually")
     public void tapEnterDetailsManually() {
         tap(enterDetailsManuallyButton);

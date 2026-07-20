@@ -75,6 +75,29 @@ public class TopUpBankCardFlow {
             + "[@content-desc='testID-Icons.3c4eedac-9f12-49c9-ae8b-01a187949e18']]"
             + "/*[@class='com.horcrux.svg.PathView']");
 
+    // ── CVV screen locators ───────────────────────────
+    // 3D Secure bank page — if already shown, the card needs no CVV step.
+    private static final By CVV_3DS_SCREEN = AppiumBy.xpath(
+            "//android.widget.EditText[@resource-id='otp']"
+            + " | //android.widget.EditText[contains(@resource-id,'otp')]"
+            + " | //*[@text='3D secure' or @text='3D Secure']"
+            + " | //*[contains(@text,'One Time Password')]");
+
+    // The "Enter CVV Code" screen (3 boxes).
+    private static final By CVV_SCREEN = AppiumBy.xpath(
+            "//*[@text='CVV Code' or @text='Enter CVV Code'"
+            + " or contains(@text,'3-digit code')]");
+
+    // Clickable RN wrapper that focuses the hidden CVV TextInput. The CVV screen reuses the
+    // passcode component (content-desc 'testID-passCode.screen'); clicking the clickable inner
+    // node focuses the hidden input so DIGIT_x key events register (proven login-passcode pattern).
+    private static final By CVV_FOCUS_WRAPPER = AppiumBy.xpath(
+            "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
+
+    // Decline / error banner shown when a submitted CVV is rejected.
+    private static final By NOTIFICATION_MESSAGE =
+            AppiumBy.accessibilityId("testID-notification-message");
+
     public TopUpBankCardFlow() {
         this.driver = DriverFactory.getInstance().getDriver();
         this.waits = new WaitUtils(driver, 10);
@@ -241,6 +264,19 @@ public class TopUpBankCardFlow {
             page = navigateToTopUp();
             page.tapBankCard();
             log.info("Selected Bank Card as top-up method");
+        }
+
+        // Select the SAME card that was used for the new-card top-up (saved in the cards screen).
+        // Without an explicit selection the wizard defaults to whatever card is first in the list
+        // (a pre-existing card whose CVV we don't know) — pick our test card by its last-4 digits.
+        String cardNumber = ConfigManager.getInstance().get("topup.cardNumber");
+        String last4 = (cardNumber != null && cardNumber.length() >= 4)
+                ? cardNumber.substring(cardNumber.length() - 4) : "";
+        page.dumpCardSelectionScreen();
+        if (!last4.isEmpty() && page.selectSavedCard(last4)) {
+            log.info("Selected saved card ending {}", last4);
+        } else {
+            log.warn("Saved card ending {} not found on selection screen — using default card", last4);
         }
 
         // Tap Next for existing card
@@ -544,56 +580,85 @@ public class TopUpBankCardFlow {
     @Step("Enter CVV code: {cvv}")
     private void enterCvv(String cvv) {
         // CVV screen is CONDITIONAL — some cards/flows skip it and go straight to the
-        // 3D Secure OTP page. If the CVV screen doesn't appear (or 3D Secure is already
-        // shown), skip CVV entry rather than hard-failing.
-        By secure3ds = AppiumBy.xpath(
-                "//android.widget.EditText[@resource-id='otp']"
-                + " | //android.widget.EditText[contains(@resource-id,'otp')]"
-                + " | //*[@text='3D secure' or @text='3D Secure']"
-                + " | //*[contains(@text,'One Time Password')]");
-        if (!waits.findQuick(secure3ds, 0).isEmpty()) {
+        // 3D Secure OTP page. If 3D Secure is already shown, or the CVV screen never appears,
+        // skip CVV entry rather than hard-failing.
+        if (waits.isPresent(CVV_3DS_SCREEN, 1)) {
             log.info("3D Secure screen already shown — no CVV step for this card, skipping CVV");
             return;
         }
-
-        // CVV screen uses 3 separate input boxes — need to tap first to focus
-        By cvvScreen = AppiumBy.xpath(
-                "//*[@text='CVV Code' or @text='Enter CVV Code'"
-                + " or contains(@text,'3-digit code')]");
-        if (waits.findQuick(cvvScreen, 8).isEmpty()) {
+        if (!waits.isPresent(CVV_SCREEN, 8)) {
             log.info("CVV screen not shown within timeout — skipping CVV entry "
                     + "(card proceeds straight to 3D Secure)");
             return;
         }
 
-        // CVV boxes use system keyboard input (unlike passcode which uses custom keypad)
-        // Find the first EditText/input box → tap to activate keyboard → sendKeys
-        By cvvInput = AppiumBy.xpath(
-                "//android.widget.EditText"
-                + " | //*[contains(@content-desc,'testID-passCode')]"
-                + " | //*[contains(@content-desc,'testID-cvv')]"
-                + " | //*[contains(@content-desc,'testID-OTP')]");
-        try {
-            java.util.List<org.openqa.selenium.WebElement> inputs =
-                    waits.findQuick(cvvInput, 5);
-            if (!inputs.isEmpty()) {
-                org.openqa.selenium.WebElement firstInput = inputs.get(0);
-                firstInput.click();
-                log.info("Tapped CVV input element — sending keys");
-                firstInput.sendKeys(cvv);
-            } else {
-                // No EditText found — the CVV uses custom keypad like passcode
-                log.info("No EditText found for CVV — using pressKey digits");
-                org.openqa.selenium.Dimension size = driver.manage().window().getSize();
-                swipe.tapAtCoordinates(size.getWidth() / 2, (int)(size.getHeight() * 0.45));
-                platformActions.enterDigits(cvv);
+        // The CVV boxes reuse the passcode component ('testID-passCode.screen') whose hidden
+        // TextInput is NOT reliably auto-focused on the LambdaTest device — DIGIT_x key events
+        // are dropped and the boxes stay empty. Try a different focus strategy on each attempt,
+        // press the digits, then verify (with a REAL polling wait — a 0s timeout falsely reports
+        // the screen as gone) that the screen advanced past CVV.
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            switch (attempt) {
+                case 1: focusCvvInput(); break;          // click the passCode.screen wrapper
+                case 2: /* no explicit focus — rely on auto-focus */ break;
+                default: tapFirstCvvBox(); break;         // coordinate-tap the first box
             }
-        } catch (Exception e) {
-            // Fallback — try pressKey approach
-            log.info("CVV sendKeys failed — falling back to pressKey: {}", e.getMessage());
+            platformActions.clearDigits(cvv.length() + 2); // drop any partial/stale digits
             platformActions.enterDigits(cvv);
+            log.info("CVV code entered (attempt {}): {}", attempt, cvv);
+            // The CVV screen auto-advances once 3 valid digits register (no submit button):
+            // 3D Secure appears, or the CVV title disappears.
+            if (waits.isPresent(CVV_3DS_SCREEN, 8) || !waits.isPresent(CVV_SCREEN, 2)) {
+                log.info("CVV accepted — screen advanced past CVV entry (attempt {})", attempt);
+                return;
+            }
+            log.warn("CVV screen still present after attempt {} — retrying with next focus strategy",
+                    attempt);
         }
-        log.info("CVV code entered: {}", cvv);
+        // Still stuck on CVV after 3 attempts. Surface a decline banner (wrong CVV for the saved
+        // card) if present, and dump the tree so the exact box/input elements are visible.
+        java.util.List<org.openqa.selenium.WebElement> banner = waits.findQuick(NOTIFICATION_MESSAGE, 1);
+        if (!banner.isEmpty()) {
+            log.warn("CVV entry blocked by notification: '{}'", banner.get(0).getText());
+        }
+        try {
+            log.warn("CVV entry did not advance the screen. Page source:\n{}",
+                    driver.getPageSource());
+        } catch (Exception e) {
+            log.warn("Could not capture CVV page source: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Focus the hidden CVV TextInput by clicking the clickable 'testID-passCode.screen' wrapper
+     * (the proven login-passcode focus pattern). Without focus, DIGIT_x key events are dropped
+     * and the CVV boxes stay empty.
+     */
+    private void focusCvvInput() {
+        try {
+            java.util.List<org.openqa.selenium.WebElement> wrappers =
+                    waits.findQuick(CVV_FOCUS_WRAPPER, 3);
+            if (!wrappers.isEmpty()) {
+                wrappers.get(wrappers.size() - 1).click(); // inner clickable wrapper
+                log.info("Clicked CVV input wrapper to focus");
+                return;
+            }
+            log.warn("CVV focus wrapper not found — falling back to coordinate tap");
+            tapFirstCvvBox();
+        } catch (Exception e) {
+            log.warn("Click CVV input wrapper failed: {}", e.getMessage());
+        }
+    }
+
+    /** Coordinate-tap the first CVV box (~26% across, ~49% down) to focus the input. */
+    private void tapFirstCvvBox() {
+        try {
+            org.openqa.selenium.Dimension size = driver.manage().window().getSize();
+            swipe.tapAtCoordinates((int) (size.getWidth() * 0.26), (int) (size.getHeight() * 0.49));
+            log.info("Tapped first CVV box to focus input");
+        } catch (Exception e) {
+            log.warn("Tap-to-focus CVV failed: {}", e.getMessage());
+        }
     }
 
     @Step("Complete 3D Secure verification with OTP: {otp}")
