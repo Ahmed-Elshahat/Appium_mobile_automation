@@ -53,11 +53,10 @@ public class SendGiftPage extends BasePage {
             "//*[@content-desc='testID-primary-onSubmit-main' or @content-desc='testID-primary-action-main']"
             + " | //android.view.ViewGroup[@clickable='true'"
             + " and .//android.widget.TextView[@text='Try it Now']]");
-    // ── Return-to-dashboard-root helpers (kid/parent login can leave a pushed sub-screen) ──
-    private static final By HOME_TAB =
-            AppiumBy.accessibilityId("testID-dashboard");
-    private static final By INAPP_BACK_BUTTON =
-            AppiumBy.accessibilityId("testID-left-icon-back");
+    // ── Return-to-dashboard-root (kid/parent login can leave a pushed sub-screen) ──
+    // Deep link straight to the dashboard root instead of fragile multi-step back navigation —
+    // mirrors Katalon SmartNavigator.navigateToHomePageDashboardThroughDeepLink.
+    private static final String DASHBOARD_HOME_DEEP_LINK = "urpay://DashboardHome";
 
     // ── Send wizard ──
     // The "Send new gift" entry — testID may be hashed on the LT build, so match the testID or the
@@ -137,8 +136,15 @@ public class SendGiftPage extends BasePage {
             AppiumBy.accessibilityId("testID-Text.5f5d82a4-8b8f-4656-b8f9-aa0e7972d668.0");
     private static final By LATEST_GIFT =
             AppiumBy.accessibilityId("testID-data-0");
-    private static final By OPEN_GIFT_BTN =
-            AppiumBy.accessibilityId("testID-primary-onSubmit-main");
+    // The "Open Gift" button reuses testID-primary-onSubmit-main, but the middle segment is HASHED
+    // on the LT build (e.g. testID-primary-fXJ-main), so a bare accessibilityId never matches.
+    // Mirror the NEXT_BTN/DONE_BTN pattern: match the clickable ViewGroup by its visible label,
+    // with the (unhashed) testID as a fallback.
+    private static final By OPEN_GIFT_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-onSubmit-main']"
+            + " | //android.view.ViewGroup[@clickable='true'"
+            + " and .//android.widget.TextView[@text='Open Gift' or @text='Open your gift'"
+            + " or @text='Open']]");
 
     // ══════════════════════════════════════════════════
     //  NAVIGATION — open the Gifts (Eidya) service
@@ -197,17 +203,13 @@ public class SendGiftPage extends BasePage {
     }
 
     /**
-     * Ensure the dashboard ROOT is showing before searching the Services carousel. Pops any pushed
-     * sub-screen (e.g. Transactions) via its in-app back button, then taps the Home bottom-nav tab.
-     * Idempotent — a no-op when already on the dashboard root.
+     * Ensure the dashboard ROOT is showing before searching the Services carousel. Routes straight
+     * to the dashboard home via deep link (urpay://DashboardHome) — foregrounds the app and pops any
+     * pushed sub-screen (e.g. Transactions) in one step, avoiding fragile multi-step back navigation.
+     * Idempotent — a no-op effect when already on the dashboard root.
      */
     private void returnToDashboardRoot() {
-        for (int i = 0; i < 3 && isPresent(INAPP_BACK_BUTTON, 2); i++) {
-            tap(INAPP_BACK_BUTTON);
-        }
-        if (isPresent(HOME_TAB, 3)) {
-            tap(HOME_TAB);
-        }
+        openDeepLink(DASHBOARD_HOME_DEEP_LINK);
     }
 
     private WebElement firstServiceTile() {

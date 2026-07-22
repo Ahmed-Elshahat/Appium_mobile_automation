@@ -1,6 +1,7 @@
 package com.urpay.flows;
 
 import com.urpay.pages.dashboard.DashboardPage;
+import com.urpay.pages.dashboard.SettingsPage;
 import com.urpay.pages.wallet.SendGiftPage;
 
 import io.qameta.allure.Step;
@@ -41,5 +42,13 @@ public class SendGiftFlow {
     public SendGiftPage openReceivedGifts() {
         giftPage.openReceivedTab();
         return giftPage;
+    }
+
+    @Step("Logout: deep link to Settings → Logout → confirm")
+    public void logout() {
+        SettingsPage settings = new SettingsPage();
+        settings.openViaDeepLink();
+        settings.tapLogout();
+        settings.confirmLogout();
     }
 }
