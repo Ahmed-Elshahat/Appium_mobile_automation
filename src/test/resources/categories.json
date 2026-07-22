@@ -45,6 +45,16 @@
     "messageRegex": ".*(recharge must show success|QuickNet recharge|Done button.*expected).*"
   },
   {
+    "name": "Login screen not reached (app / session not ready)",
+    "matchedStatuses": ["failed", "broken", "skipped"],
+    "messageRegex": ".*(testID-input-direct-mobile|testID-input-direct-id|Passcode screen should be displayed|testID-secondary-login-main).*"
+  },
+  {
+    "name": "Dashboard not reached after login",
+    "matchedStatuses": ["failed", "broken", "skipped"],
+    "messageRegex": ".*(Dashboard should be visible|did not reach dashboard|dashboard .*not .*visible|not reach the dashboard).*"
+  },
+  {
     "name": "Element not found / timeout",
     "matchedStatuses": ["broken", "failed"],
     "messageRegex": ".*(TimeoutException|NoSuchElement|waiting for element|Expected condition failed|could not be located|StaleElementReference).*"

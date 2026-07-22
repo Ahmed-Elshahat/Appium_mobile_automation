@@ -248,6 +248,16 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 Files.write(ALLURE_DIR.resolve(fileName), screenshotBytes);
                 failureScreenshots.put(testName, fileName);
                 log.info("Screenshot saved for Allure: {} -> {}", testName, fileName);
+            } else {
+                // Empty bytes = the OS refused the capture. The URPay app is FLAG_SECURE; on devices
+                // that enforce it, Appium's getScreenshotAs returns nothing even though element
+                // queries still work — which is exactly why failures can have no screenshot while
+                // the test itself ran fine. Record WHY (kept out of the message if a stronger
+                // health/backend tag already exists) so the report shows a reason, not a blank.
+                log.warn("⚠ No screenshot for {} — getScreenshotAs returned 0 bytes (likely FLAG_SECURE "
+                        + "screenshot block on this device). Page source is captured instead.", testName);
+                failureHealth.putIfAbsent(testName,
+                        "SCREENSHOT UNAVAILABLE (secure screen / FLAG_SECURE — capture blocked by OS)");
             }
             // Keep a copy on disk for quick local inspection
             ScreenshotUtils.takeScreenshot(driver, testName);
@@ -288,6 +298,11 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
 
     @Override
     public void onFinish(ISuite suite) {
+        // Diagnostic summary — reveals at a glance whether the break is in CAPTURE (all zero) or in
+        // LINKING (captured > 0 but report shows none). Compare against the per-test 'Screenshot
+        // saved' / 'Patched Allure result' lines above.
+        log.info("Allure attachment summary for suite '{}': screenshots={}, pageSources={}, healthTags={}",
+                suite.getName(), failureScreenshots.size(), failurePageSources.size(), failureHealth.size());
         try {
             // 1. Attach failure screenshots + inject crash/health context (only if captured).
             if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty()
