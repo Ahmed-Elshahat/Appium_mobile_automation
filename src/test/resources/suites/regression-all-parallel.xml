@@ -77,18 +77,20 @@
         <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
     </test>
 
-    <!-- Card lifecycle (whole-class: add / pin / replace / cancel) -->
-    <test name="Mada Card"> <!-- ~1199s -->
+    <!--
+      CARD STAGGERING: All 4 card tests (Mada/AlAhli/Signature/Platinum) share
+      backend card-service state and must NOT start simultaneously. Each card test
+      is placed ~20 positions apart so TestNG's 19-thread pool picks them up at
+      different times as earlier tests complete. Approximate start offsets:
+        Mada Card      → T≈0   min (position 8,  wave 1)
+        AlAhli Card    → T≈5–8 min (position 28, picked up as wave-1 threads free)
+        Signature Card → T≈10–15 min (position 48)
+        Platinum Card  → T≈15–20 min (position 68)
+    -->
+
+    <!-- ── WAVE 1 FILLER (positions 9-27, 19 tests) ─────────────────────── -->
+    <test name="Mada Card"> <!-- ~1199s | card-slot-1: starts at T=0 (pos 8) -->
         <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
-    </test>
-    <test name="AlAhli Card"> <!-- ~1021s -->
-        <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
-    </test>
-    <test name="Signature Card"> <!-- ~980s -->
-        <classes><class name="com.urpay.tests.payments.SignatureCardTest"/></classes>
-    </test>
-    <test name="Platinum Card"> <!-- ~978s -->
-        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
     </test>
 
     <test name="Change Passcode Family Tier"> <!-- ~727s -->
@@ -152,6 +154,12 @@
     <test name="Rating"> <!-- ~311s -->
         <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
     </test>
+
+    <!-- ── WAVE 2 FILLER (positions 29-47, 19 tests) ─────────────────────── -->
+    <test name="AlAhli Card"> <!-- ~1021s | card-slot-2: starts ~T=5–8 min (pos 28) -->
+        <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
+    </test>
+
     <test name="Forgot Passcode Full Tier"> <!-- ~298s -->
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierTest"/></classes>
     </test>
@@ -211,6 +219,12 @@
     <test name="Wallet Transfer"> <!-- ~213s -->
         <classes><class name="com.urpay.tests.remittance.WalletTransferTest"/></classes>
     </test>
+
+    <!-- ── WAVE 3 FILLER (positions 49-67, 19 tests) ─────────────────────── -->
+    <test name="Signature Card"> <!-- ~980s | card-slot-3: starts ~T=10–15 min (pos 48) -->
+        <classes><class name="com.urpay.tests.payments.SignatureCardTest"/></classes>
+    </test>
+
     <test name="Top-up Bank Card"> <!-- ~206s -->
         <groups><run><include name="topup-bankcard"/></run></groups>
         <classes><class name="com.urpay.tests.payments.TopUpBankCardTest"/></classes>
@@ -277,6 +291,11 @@
     </test>
     <test name="Forgot Passcode Default Tier Login Negative"> <!-- ~59s -->
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierLoginNegativeTest"/></classes>
+    </test>
+
+    <!-- ── WAVE 4: last card slot (position 68) ──────────────────────────── -->
+    <test name="Platinum Card"> <!-- ~978s | card-slot-4: starts ~T=15–20 min (pos 68) -->
+        <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
     </test>
 
     <!-- ══════════════════════════════════════════════════════════════════════
