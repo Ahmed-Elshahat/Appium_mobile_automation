@@ -342,7 +342,10 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             boolean changed = false;
 
             // 1. Failure screenshot + crash log → attachments array
-            if (json.contains("\"attachments\":[]")) {
+            // Inject into the root-level attachments regardless of whether it is
+            // already empty or already contains other entries (e.g. AllureRestAssured
+            // API calls captured earlier in the test).
+            {
                 List<String> attachments = new ArrayList<>();
                 String screenshotFile = failureScreenshots.get(testName);
                 if (screenshotFile != null) {
@@ -363,8 +366,25 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                             + "\"type\":\"text/xml\"}");
                 }
                 if (!attachments.isEmpty()) {
-                    json = json.replace("\"attachments\":[]",
-                            "\"attachments\":[" + String.join(",", attachments) + "]");
+                    String newEntries = String.join(",", attachments);
+                    String emptyKey = "\"attachments\":[]";
+                    String nonEmptyKey = "\"attachments\":[";
+                    int emptyIdx = json.indexOf(emptyKey);
+                    if (emptyIdx >= 0) {
+                        // Replace empty array with our attachments
+                        json = json.substring(0, emptyIdx)
+                                + "\"attachments\":[" + newEntries + "]"
+                                + json.substring(emptyIdx + emptyKey.length());
+                    } else {
+                        // Prepend to the existing (non-empty) root-level attachments array
+                        int nonEmptyIdx = json.indexOf(nonEmptyKey);
+                        if (nonEmptyIdx >= 0) {
+                            int insertAt = nonEmptyIdx + nonEmptyKey.length();
+                            json = json.substring(0, insertAt)
+                                    + newEntries + ","
+                                    + json.substring(insertAt);
+                        }
+                    }
                     changed = true;
                     log.info("Patched Allure result for {} with {} attachment(s)",
                             testName, attachments.size());
@@ -485,6 +505,16 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             }
         }
         for (String testName : failureHealth.keySet()) {
+            if (json.contains("\"name\":\"" + testName + "\"")) {
+                return testName;
+            }
+        }
+        for (String testName : failurePageSources.keySet()) {
+            if (json.contains("\"name\":\"" + testName + "\"")) {
+                return testName;
+            }
+        }
+        for (String testName : failureCrashLogFiles.keySet()) {
             if (json.contains("\"name\":\"" + testName + "\"")) {
                 return testName;
             }
