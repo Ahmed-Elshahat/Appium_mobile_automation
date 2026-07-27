@@ -2,18 +2,20 @@ package com.urpay.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.ITestResult;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Listeners;
 
-import com.urpay.platform.health.AppHealthChecker;
-import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.helpers.WalletBalanceHelper;
-import com.urpay.reporting.ReportManager;
+import com.urpay.platform.health.AppHealthChecker;
+import com.urpay.platform.health.AppHealthCheckerFactory;
 import com.urpay.reporting.ApiReporting;
+import com.urpay.reporting.ReportManager;
 import com.urpay.utils.ScreenshotUtils;
 
 import io.appium.java_client.AppiumDriver;
@@ -67,6 +69,75 @@ public abstract class BaseTest {
             DriverFactory.getInstance().initDriver();
         }
         healthChecker = AppHealthCheckerFactory.create(getDriver());
+    }
+
+    /**
+     * Capture failure screenshot INSIDE the test lifecycle — this runs BEFORE ITestListener
+     * callbacks, so the Allure lifecycle is still open and Allure.addAttachment() works.
+     *
+     * Execution order: test fails → @AfterMethod (HERE, Allure OPEN) → ITestListener.onTestFailure
+     * (Allure adapter closes test case). This guarantees the screenshot attaches to the correct
+     * test result without needing post-hoc JSON patching.
+     */
+    @AfterMethod(alwaysRun = true)
+    public void captureFailureScreenshot(ITestResult result) {
+        if (result.getStatus() != ITestResult.FAILURE) {
+            return;
+        }
+        String testName = result.getMethod().getMethodName();
+        try {
+            if (!DriverFactory.getInstance().isDriverActive()) {
+                log.warn("Driver not active for failure screenshot: {}", testName);
+                // Attach failure details as text when no driver
+                Throwable t = result.getThrowable();
+                String details = "Screenshot unavailable — driver not active.\n\n"
+                        + "Error: " + (t != null ? t.getClass().getName() + ": " + t.getMessage() : "unknown");
+                Allure.addAttachment("Failure Details (no driver)",
+                        "text/plain", details);
+                return;
+            }
+            AppiumDriver driver = getDriver();
+            // Screenshot
+            byte[] screenshot = ScreenshotUtils.takeScreenshotAsBytes(driver);
+            if (screenshot.length > 0) {
+                Allure.addAttachment("Failure Screenshot", "image/png",
+                        new java.io.ByteArrayInputStream(screenshot), ".png");
+                log.info("✅ Failure screenshot attached to Allure for: {}", testName);
+            } else {
+                // Retry once after short delay (transient connection issues)
+                try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                screenshot = ScreenshotUtils.takeScreenshotAsBytes(driver);
+                if (screenshot.length > 0) {
+                    Allure.addAttachment("Failure Screenshot (retry)", "image/png",
+                            new java.io.ByteArrayInputStream(screenshot), ".png");
+                    log.info("✅ Failure screenshot attached on retry for: {}", testName);
+                } else {
+                    log.warn("Screenshot returned 0 bytes for {} (FLAG_SECURE or connection issue)", testName);
+                    Allure.addAttachment("Screenshot Unavailable",
+                            "text/plain", "Screenshot capture returned 0 bytes (FLAG_SECURE or connection issue)");
+                }
+            }
+            // Page source (UI hierarchy) — critical for element timeout triage
+            try {
+                String pageSource = driver.getPageSource();
+                if (pageSource != null && !pageSource.isEmpty()) {
+                    Allure.addAttachment("Page Source (UI hierarchy)", "text/xml",
+                            new java.io.ByteArrayInputStream(pageSource.getBytes(java.nio.charset.StandardCharsets.UTF_8)), ".xml");
+                }
+            } catch (Exception psEx) {
+                log.debug("Page source capture failed for {}: {}", testName, psEx.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("Failure capture failed for {}: {}", testName, e.getMessage());
+            // Still attach error details as text
+            Throwable t = result.getThrowable();
+            String details = "Screenshot capture failed: " + e.getClass().getSimpleName() + ": " + e.getMessage()
+                    + "\n\nOriginal error: " + (t != null ? t.getClass().getName() + ": " + t.getMessage() : "unknown");
+            try {
+                Allure.addAttachment("Failure Details (capture error)",
+                        "text/plain", details);
+            } catch (Exception ignored) { }
+        }
     }
 
     /**
