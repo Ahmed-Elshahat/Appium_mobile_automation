@@ -138,8 +138,12 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                     ? throwable.getMessage().split("\\R", 2)[0] : "session has quit or timed out";
             log.warn("⚠ SESSION LOST during {} (infra, not an app crash) — {}", testName, firstLine);
             failureHealth.put(testName, "SESSION LOST (infra) - " + firstLine);
-            // The session is gone — screenshots / logcat / app-state probes would all throw. Skip
-            // them; the distinct SESSION-LOST tag above is enough for correct categorization.
+            // The session is gone — screenshots / logcat / app-state probes would all throw.
+            // Create a text attachment with failure details so the report still shows SOMETHING.
+            createFailureDetailsAttachment(testName, throwable, "SESSION LOST (infra) - " + firstLine);
+            CloudSessionManager.updateStatus("failed");
+            log.error("❌ Failed: {} — {}", testName,
+                    throwable != null ? throwable.getMessage() : "unknown error");
             return;
         }
 
@@ -243,7 +247,13 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             }
 
             // Screenshot → allure-results/ (linked to the failed test via the onFinish JSON patch)
+            // Retry once on empty result (transient connection timeouts can recover on 2nd attempt)
             byte[] screenshotBytes = ScreenshotUtils.takeScreenshotAsBytes(driver);
+            if (screenshotBytes.length == 0) {
+                log.warn("Screenshot attempt 1 returned 0 bytes for {}, retrying...", testName);
+                try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                screenshotBytes = ScreenshotUtils.takeScreenshotAsBytes(driver);
+            }
             if (screenshotBytes.length > 0) {
                 String fileName = UUID.randomUUID() + "-attachment.png";
                 Files.createDirectories(ALLURE_DIR);
@@ -251,15 +261,13 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 failureScreenshots.put(testName, fileName);
                 log.info("Screenshot saved for Allure: {} -> {}", testName, fileName);
             } else {
-                // Empty bytes = the OS refused the capture. The URPay app is FLAG_SECURE; on devices
-                // that enforce it, Appium's getScreenshotAs returns nothing even though element
-                // queries still work — which is exactly why failures can have no screenshot while
-                // the test itself ran fine. Record WHY (kept out of the message if a stronger
-                // health/backend tag already exists) so the report shows a reason, not a blank.
-                log.warn("⚠ No screenshot for {} — getScreenshotAs returned 0 bytes (likely FLAG_SECURE "
-                        + "screenshot block on this device). Page source is captured instead.", testName);
+                // All attempts returned empty — create a text attachment with failure details
+                // so the report still shows SOMETHING instead of a blank failure.
+                log.warn("⚠ No screenshot for {} after retry — creating fallback text attachment", testName);
                 failureHealth.putIfAbsent(testName,
-                        "SCREENSHOT UNAVAILABLE (secure screen / FLAG_SECURE — capture blocked by OS)");
+                        "SCREENSHOT UNAVAILABLE (capture returned 0 bytes after retry)");
+                createFailureDetailsAttachment(testName, throwable,
+                        "Screenshot capture returned 0 bytes (FLAG_SECURE or connection issue)");
             }
             // Keep a copy on disk for quick local inspection
             ScreenshotUtils.takeScreenshot(driver, testName);
@@ -279,10 +287,13 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 log.debug("Page source capture failed for {}: {}", testName, psEx.getMessage());
             }
         } catch (Exception e) {
-            log.warn("❌ Screenshot capture failed for {}: {}", testName, e.getMessage());
+            log.warn("❌ Screenshot/capture failed for {}: {}", testName, e.getMessage());
             // Ensure testName is marked even if capture failed
             failureHealth.putIfAbsent(testName,
                     "SCREENSHOT CAPTURE ERROR - " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            // Create a text attachment with failure details so report still has an attachment
+            createFailureDetailsAttachment(testName, throwable,
+                    "Capture error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         } finally {
             // GUARANTEED: If ANY data was captured or if the test failed, ensure testName is in
             // at least one map so onFinish() can patch the Allure JSON. This is critical for tests
@@ -397,9 +408,11 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 }
                 String pageSourceFile = failurePageSources.get(testName);
                 if (pageSourceFile != null) {
-                    attachments.add("{\"name\":\"Page Source (UI hierarchy)\","
+                    // Detect if this is a real XML page source or a fallback text attachment
+                    boolean isTextFallback = pageSourceFile.endsWith("-attachment.txt");
+                    attachments.add("{\"name\":\"" + (isTextFallback ? "Failure Details" : "Page Source (UI hierarchy)") + "\","
                             + "\"source\":\"" + pageSourceFile + "\","
-                            + "\"type\":\"text/xml\"}");
+                            + "\"type\":\"" + (isTextFallback ? "text/plain" : "text/xml") + "\"}");
                 }
                 if (!attachments.isEmpty()) {
                     String newEntries = String.join(",", attachments);
@@ -618,5 +631,47 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         String className = result.getTestClass().getRealClass().getSimpleName();
         String methodName = result.getMethod().getMethodName();
         return className + " :: " + methodName;
+    }
+
+    /**
+     * Create a text attachment with failure details when screenshot capture is impossible.
+     * Ensures EVERY failure/broken test has at least one visible attachment in the Allure report,
+     * even if the driver is dead (session lost, connection timeout, etc.).
+     * The attachment contains: failure reason, error message, and stack trace — enough for triage.
+     */
+    private void createFailureDetailsAttachment(String testName, Throwable throwable, String captureReason) {
+        try {
+            Files.createDirectories(ALLURE_DIR);
+            StringBuilder content = new StringBuilder();
+            content.append("═══════════════════════════════════════════════════════════════\n");
+            content.append("  FAILURE DETAILS (Screenshot Unavailable)\n");
+            content.append("═══════════════════════════════════════════════════════════════\n\n");
+            content.append("Test: ").append(testName).append("\n");
+            content.append("Time: ").append(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+                    .format(new java.util.Date())).append("\n");
+            content.append("Capture Reason: ").append(captureReason).append("\n\n");
+            content.append("───────────────────────────────────────────────────────────────\n");
+            content.append("  ERROR MESSAGE\n");
+            content.append("───────────────────────────────────────────────────────────────\n");
+            if (throwable != null) {
+                content.append(throwable.getClass().getName()).append(": ");
+                content.append(throwable.getMessage() != null ? throwable.getMessage() : "null").append("\n\n");
+                content.append("───────────────────────────────────────────────────────────────\n");
+                content.append("  STACK TRACE\n");
+                content.append("───────────────────────────────────────────────────────────────\n");
+                java.io.StringWriter sw = new java.io.StringWriter();
+                throwable.printStackTrace(new java.io.PrintWriter(sw));
+                content.append(sw.toString());
+            } else {
+                content.append("No throwable available\n");
+            }
+            String fileName = UUID.randomUUID() + "-attachment.txt";
+            Files.writeString(ALLURE_DIR.resolve(fileName), content.toString(), StandardCharsets.UTF_8);
+            // Store as a page source equivalent (text attachment) so patchResultFile() can find it
+            failurePageSources.putIfAbsent(testName, fileName);
+            log.info("Failure details attachment created for {}: {}", testName, fileName);
+        } catch (IOException e) {
+            log.warn("Failed to create failure details attachment for {}: {}", testName, e.getMessage());
+        }
     }
 }
