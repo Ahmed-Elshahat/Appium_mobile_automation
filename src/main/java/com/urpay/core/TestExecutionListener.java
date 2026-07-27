@@ -303,6 +303,22 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
         // saved' / 'Patched Allure result' lines above.
         log.info("Allure attachment summary for suite '{}': screenshots={}, pageSources={}, healthTags={}",
                 suite.getName(), failureScreenshots.size(), failurePageSources.size(), failureHealth.size());
+        
+        // CRITICAL RACE-CONDITION FIX for parallel test execution:
+        // The Allure TestNG adapter writes result JSONs asynchronously. In parallel test runs
+        // (e.g., 19 threads), onFinish() is called as soon as TestNG finishes orchestrating tests,
+        // but the adapter's JSON writer threads are still running. If we patch immediately, we patch
+        // incomplete/in-flight JSON files, and the adapter's final writes overwrite our patches.
+        // Delay here ensures all JSON files are completely written before we patch them.
+        if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty() || !failurePageSources.isEmpty()) {
+            try {
+                Thread.sleep(2000); // 2s delay for async JSON writes to complete
+                log.info("Waited 2s for Allure adapter JSON writes to complete (parallel execution safety)");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        
         try {
             // 1. Attach failure screenshots + inject crash/health context (only if captured).
             if (!failureScreenshots.isEmpty() || !failureHealth.isEmpty()
