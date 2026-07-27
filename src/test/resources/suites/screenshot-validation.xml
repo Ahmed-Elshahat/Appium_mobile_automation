@@ -1,0 +1,97 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  SCREENSHOT VALIDATION SUITE — 20 tests across all domains to verify that
+  every failure/broken/timeout test gets a screenshot or fallback attachment.
+  ══════════════════════════════════════════════════════════════════════════════
+
+  Run:
+    mvn clean test "-Dsuite=suites/screenshot-validation.xml" ^
+        "-Dprofile=sit-wmv,sit-cards,sit-remittance,sit-dmp-all" -Dremote=true
+
+  parallel="tests" thread-count="19": same as full regression.
+  Mix of short/medium tests from wallet, payments, remittance, settings, DMP.
+-->
+<suite name="Screenshot Validation (20 tests)" verbose="1"
+       parallel="tests" thread-count="19" group-by-instances="true">
+
+    <listeners>
+        <listener class-name="com.urpay.core.RetryListener"/>
+    </listeners>
+
+    <!-- ── WALLET DOMAIN ─────────────────────────────────────────────── -->
+    <test name="Invite Friends Share">
+        <classes><class name="com.urpay.tests.wallet.InviteFriendsShareTest"/></classes>
+    </test>
+    <test name="Account Details">
+        <classes><class name="com.urpay.tests.wallet.AccountDetailsTest"/></classes>
+    </test>
+    <test name="Wallet Balance">
+        <classes><class name="com.urpay.tests.wallet.WalletBalanceTest"/></classes>
+    </test>
+    <test name="Notifications">
+        <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
+    </test>
+    <test name="Account Statement">
+        <classes><class name="com.urpay.tests.wallet.AccountStatementTest"/></classes>
+    </test>
+    <test name="Family Mission">
+        <classes><class name="com.urpay.tests.wallet.FamilyMissionTest"/></classes>
+    </test>
+
+    <!-- ── PAYMENTS DOMAIN ───────────────────────────────────────────── -->
+    <test name="Telecom - Zain">
+        <groups><run><include name="zain"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="Telecom - STC">
+        <groups><run><include name="stc"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.TelecomRechargeTest"/></classes>
+    </test>
+    <test name="SADAD Bills">
+        <groups><run><include name="sadad-bills"/></run></groups>
+        <classes><class name="com.urpay.tests.payments.SadadBillsTest"/></classes>
+    </test>
+    <test name="Government Services - Single">
+        <classes><class name="com.urpay.tests.payments.GovernmentServicesTest"/></classes>
+    </test>
+    <test name="Mada Card">
+        <classes><class name="com.urpay.tests.payments.MadaCardTest"/></classes>
+    </test>
+
+    <!-- ── REMITTANCE DOMAIN ─────────────────────────────────────────── -->
+    <test name="Local Transfer">
+        <classes><class name="com.urpay.tests.remittance.LocalTransferTest"/></classes>
+    </test>
+    <test name="Wallet Transfer">
+        <classes><class name="com.urpay.tests.remittance.WalletTransferTest"/></classes>
+    </test>
+    <test name="Western Union International Transfer">
+        <classes><class name="com.urpay.tests.remittance.WesternUnionTransferTest"/></classes>
+    </test>
+
+    <!-- ── SETTINGS DOMAIN ───────────────────────────────────────────── -->
+    <test name="Change App Language">
+        <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
+    </test>
+    <test name="Rating">
+        <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
+    </test>
+    <test name="Change Passcode Default Tier">
+        <classes><class name="com.urpay.tests.settings.ChangePasscodeDefaultTierTest"/></classes>
+    </test>
+
+    <!-- ── AUTH DOMAIN ───────────────────────────────────────────────── -->
+    <test name="Forgot Passcode Default Tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeDefaultTierTest"/></classes>
+    </test>
+    <test name="Forgot Passcode Family Tier">
+        <classes><class name="com.urpay.tests.auth.ForgotPasscodeFamilyTierTest"/></classes>
+    </test>
+
+    <!-- ── FAMILY WALLET ─────────────────────────────────────────────── -->
+    <test name="Family - Direct Topup Positive">
+        <classes><class name="com.urpay.tests.wallet.DirectTopupPositiveTest"/></classes>
+    </test>
+
+</suite>
