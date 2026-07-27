@@ -143,6 +143,8 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
             return;
         }
 
+        // CRITICAL: Ensure testName is in at least one map so onFinish() can patch the JSON.
+        // Even if driver access fails below, we must mark this test for processing.
         try {
             AppiumDriver driver = DriverFactory.getInstance().getDriver();
 
@@ -277,7 +279,25 @@ public class TestExecutionListener implements ITestListener, ISuiteListener {
                 log.debug("Page source capture failed for {}: {}", testName, psEx.getMessage());
             }
         } catch (Exception e) {
-            log.warn("Screenshot capture failed for {}: {}", testName, e.getMessage());
+            log.warn("❌ Screenshot capture failed for {}: {}", testName, e.getMessage());
+            // Ensure testName is marked even if capture failed
+            failureHealth.putIfAbsent(testName,
+                    "SCREENSHOT CAPTURE ERROR - " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        } finally {
+            // GUARANTEED: If ANY data was captured or if the test failed, ensure testName is in
+            // at least one map so onFinish() can patch the Allure JSON. This is critical for tests
+            // that fail after logout() or when driver is in an unexpected state — we still want to
+            // mark them for patching even if screenshots couldn't be captured.
+            boolean inSomeMap = failureScreenshots.containsKey(testName)
+                    || failureHealth.containsKey(testName)
+                    || failurePageSources.containsKey(testName)
+                    || failureCrashLogFiles.containsKey(testName);
+            if (!inSomeMap) {
+                // Test failed but no artifacts were captured or health was probed. Mark it so
+                // the JSON file still gets processed (the failure text itself is the artifact).
+                failureHealth.put(testName, "TEST FAILED - driver unavailable for capture / probes skipped");
+                log.info("Marked {} for Allure JSON patching (no capture artifacts available)", testName);
+            }
         }
 
         CloudSessionManager.updateStatus("failed");
