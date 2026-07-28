@@ -18,7 +18,6 @@ import com.urpay.platform.MobilePlatformActions;
 import com.urpay.platform.PlatformActionsFactory;
 import com.urpay.utils.WaitUtils;
 
-import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
 import io.qameta.allure.Allure;
 import io.qameta.allure.Step;
@@ -194,8 +193,14 @@ public class TelecomRechargeFlow {
         TelecomRechargePage page = new TelecomRechargePage();
 
         // First try: Reorder button might be on current page (after tapBack from order details)
+        // Check both the testID variant AND the text "Reorder" (Order History list buttons)
         java.util.List<org.openqa.selenium.WebElement> btns = waits.findQuick(
                 io.appium.java_client.AppiumBy.accessibilityId("testID-primary-action-main"), 3);
+        if (btns.isEmpty()) {
+            btns = waits.findQuick(
+                    io.appium.java_client.AppiumBy.xpath(
+                            "//*[@text='Reorder' or contains(@text,'Reorder') or contains(@content-desc,'Reorder')]"), 3);
+        }
         if (!btns.isEmpty()) {
             page.tapReorder();
         } else {
