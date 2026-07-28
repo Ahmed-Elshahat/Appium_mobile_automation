@@ -57,6 +57,10 @@ public class LocalTransferFlow {
             AppiumBy.accessibilityId("testID-viewElemenLocalTransfer");
     private static final By ENTER_AMOUNT_LABEL =
             AppiumBy.xpath("//*[@text='Enter Amount']");
+    /** Beneficiary list screen — new app flow shows this BEFORE amount entry */
+    private static final By BENEFICIARY_LIST =
+            AppiumBy.xpath("//*[@text='Local Transfer' and @class='android.widget.TextView']/ancestor::*/following-sibling::*//android.widget.EditText[contains(@text,'Search')]" +
+                    " | //*[@text='Search by name or number']");
     private static final By DASHBOARD_BALANCE =
             AppiumBy.accessibilityId("testID-master-amount-main");
 
@@ -101,21 +105,33 @@ public class LocalTransferFlow {
             log.info("Already on Local Transfer amount screen — reusing it");
             return new LocalTransferPage();
         }
-        // Deep-link straight to Local Transfer (lands on the Enter Amount screen).
+        // Already on the beneficiary list (new flow)?
+        if (waits.isVisible(BENEFICIARY_LIST, 1)) {
+            log.info("Already on Local Transfer beneficiary screen — reusing it");
+            return new LocalTransferPage();
+        }
+        // Deep-link straight to Local Transfer.
         openViaDeepLink(LOCAL_TRANSFER_DEEP_LINK);
-        if (waits.isVisible(ENTER_AMOUNT_LABEL, 10)) {
+        if (waits.isVisible(ENTER_AMOUNT_LABEL, 5)) {
             log.info("Local Transfer amount screen loaded (deep link)");
             return new LocalTransferPage();
         }
+        if (waits.isVisible(BENEFICIARY_LIST, 5)) {
+            log.info("Local Transfer beneficiary screen loaded (deep link, new flow)");
+            return new LocalTransferPage();
+        }
         // Fallback: Dashboard → Transfer → Local Transfer.
-        log.info("Deep link did not land on amount screen — falling back to Dashboard navigation");
+        log.info("Deep link did not land on expected screen — falling back to Dashboard navigation");
         openViaDeepLink("urpay://DashboardHome");
         waits.waitForVisible(DASHBOARD_BALANCE, 20);
         dashboardPage.dismissPopups();
         waits.waitForClickable(TRANSFER_NAV, 15).click();
         waits.waitForClickable(LOCAL_TRANSFER_BTN, 15).click();
-        waits.waitForVisible(ENTER_AMOUNT_LABEL, 15);
-        log.info("Local Transfer amount screen loaded (Dashboard navigation)");
+        // Accept EITHER screen (amount-first or beneficiary-first)
+        By eitherScreen = AppiumBy.xpath(
+                "//*[@text='Enter Amount'] | //*[@text='Search by name or number']");
+        waits.waitForVisible(eitherScreen, 15);
+        log.info("Local Transfer screen loaded (Dashboard navigation)");
         return new LocalTransferPage();
     }
 
@@ -123,14 +139,27 @@ public class LocalTransferFlow {
     //  STEP 1 — AMOUNT → BENEFICIARY SCREEN
     // ══════════════════════════════════════════════════
 
-    /** Enter the amount, proceed, and grant the contact permission so the beneficiary list loads. */
+    /**
+     * Navigate to Local Transfer and handle amount entry.
+     * Supports both flows:
+     *   OLD: Enter Amount → Next → Beneficiary list
+     *   NEW: Beneficiary list first → select → Enter Amount
+     */
     @Step("Open Local Transfer and enter amount {amount}")
     public LocalTransferPage openLocalTransferAmount(String amount) {
         LocalTransferPage page = navigateToLocalTransfer();
-        page.enterAmount(amount);
-        page.tapNextAtAmount();
-        grantContactPermission();
-        log.info("Entered local transfer amount {} — on beneficiary screen", amount);
+        if (waits.isVisible(ENTER_AMOUNT_LABEL, 3)) {
+            // OLD flow: amount screen shown first → enter and proceed
+            page.enterAmount(amount);
+            page.tapNextAtAmount();
+            grantContactPermission();
+            log.info("Entered local transfer amount {} — on beneficiary screen (amount-first flow)", amount);
+        } else {
+            // NEW flow: beneficiary list shown first → store amount for after beneficiary selection
+            grantContactPermission();
+            page.setPendingAmount(amount);
+            log.info("On beneficiary screen (beneficiary-first flow) — amount {} will be entered after selection", amount);
+        }
         return page;
     }
 
@@ -142,6 +171,10 @@ public class LocalTransferFlow {
      * Select the local beneficiary by name (Katalon selects the saved beneficiary by name), with
      * the first saved beneficiary as a fallback. Returns false if the account has no saved local
      * beneficiary, so the test can SKIP cleanly.
+     *
+     * Handles both flows:
+     *   OLD: Already on beneficiary screen after amount → just select
+     *   NEW: On beneficiary screen first → select → enter pending amount on next screen
      */
     @Step("Select local beneficiary: {name}")
     public boolean selectBeneficiary(LocalTransferPage page, String name) {
@@ -151,6 +184,16 @@ public class LocalTransferFlow {
         }
         page.selectBeneficiaryByName(name);
         log.info("Selected local beneficiary '{}'", name);
+
+        // NEW flow: after selecting beneficiary, the amount screen appears → enter pending amount
+        String pendingAmount = page.getPendingAmount();
+        if (pendingAmount != null) {
+            waits.waitForVisible(ENTER_AMOUNT_LABEL, 15);
+            page.enterAmount(pendingAmount);
+            page.tapNextAtAmount();
+            page.clearPendingAmount();
+            log.info("Entered pending amount {} after beneficiary selection (beneficiary-first flow)", pendingAmount);
+        }
         return true;
     }
 

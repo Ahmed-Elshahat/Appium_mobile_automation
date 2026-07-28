@@ -1,7 +1,11 @@
 package com.urpay.flows;
 
 import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.slf4j.Logger;
@@ -227,24 +231,24 @@ public class SadadBillsFlow {
         page.enterBillNumber(billNumber);
         platformActions.dismissKeyboard();
 
-        // Enter bill amount
-        waits.waitForClickable(
-                AppiumBy.xpath("//*[@content-desc='testID-TextInput.6ebddf51-6774-41c1-956f-5e9e51bc5847']"), 10);
-        page.enterBillAmount(amount);
-        platformActions.dismissKeyboard();
+        // Enter bill amount (field may not exist in newer builds — skip if absent)
+        if (waits.isPresent(
+                AppiumBy.xpath("//*[contains(@content-desc,'testID-TextInput')]"), 3)) {
+            page.enterBillAmount(amount);
+            platformActions.dismissKeyboard();
+        } else {
+            log.info("Bill amount field not present — amount will be set during payment");
+        }
 
-        // Tap Next
-        page.tapNext();
-
-        // Toggle save bill and enter name
+        // Toggle save bill and enter name (on SAME screen as bill number in current build)
         waits.waitForClickable(AppiumBy.accessibilityId("testID-switcher-isSaveFlag"), 10);
         page.toggleSaveBill();
-
         waits.waitForClickable(AppiumBy.accessibilityId("testID-input-direct-alias"), 10);
         page.enterBillName(billName);
         platformActions.dismissKeyboard();
 
-        // Confirm save
+        // Tap Next → Confirm save
+        page.tapNext();
         page.tapSaveBillConfirm();
 
         log.info("New Postpaid bill added: number={}, amount={}, name={}", billNumber, amount, billName);
@@ -285,24 +289,24 @@ public class SadadBillsFlow {
         page.enterBillNumber(billNumber);
         platformActions.dismissKeyboard();
 
-        // Enter bill amount
-        waits.waitForClickable(
-                AppiumBy.xpath("//*[@content-desc='testID-TextInput.6ebddf51-6774-41c1-956f-5e9e51bc5847']"), 10);
-        page.enterBillAmount(amount);
-        platformActions.dismissKeyboard();
+        // Enter bill amount (field may not exist in newer builds — skip if absent)
+        if (waits.isPresent(
+                AppiumBy.xpath("//*[contains(@content-desc,'testID-TextInput')]"), 3)) {
+            page.enterBillAmount(amount);
+            platformActions.dismissKeyboard();
+        } else {
+            log.info("Bill amount field not present — amount will be set during payment");
+        }
 
-        // Tap Next
-        page.tapNext();
-
-        // Toggle save bill and enter name
+        // Toggle save bill and enter name (on SAME screen as bill number in current build)
         waits.waitForClickable(AppiumBy.accessibilityId("testID-switcher-isSaveFlag"), 10);
         page.toggleSaveBill();
-
         waits.waitForClickable(AppiumBy.accessibilityId("testID-input-direct-alias"), 10);
         page.enterBillName(billName);
         platformActions.dismissKeyboard();
 
-        // Confirm save
+        // Tap Next → Confirm save
+        page.tapNext();
         page.tapSaveBillConfirm();
 
         log.info("New Overpaid bill added: number={}, amount={}, name={}", billNumber, amount, billName);
@@ -315,8 +319,30 @@ public class SadadBillsFlow {
 
     @Step("Pay bill and confirm with verification code")
     public SadadBillsPage payBill(SadadBillsPage page) {
+        // After addNewBill + "Pay Later", the app lands on the bills list — need to tap
+        // the first bill to open its detail before the "Pay Bill" button is available.
+        if (page.isBillsListLoaded()) {
+            page.tapFirstBill();
+            // Wait for bill detail screen to load (Pay Bill button)
+            waits.waitForClickable(AppiumBy.xpath(
+                    "//*[@content-desc='testID-primary-onPressCustomize-main'"
+                    + " or @content-desc='testID-primary-hsY-main'"
+                    + " or @text='Pay Bill']"), 10);
+        }
         page.tapPayBill();
-        waits.waitForClickable(AppiumBy.xpath("//*[@content-desc='testID-primary-onConfirm-main']"), 10);
+
+        // Current build shows "Enter Amount" screen after tapping Pay Bill.
+        // Enter the configured amount and tap Next before the Confirm screen appears.
+        By enterAmountScreen = AppiumBy.xpath("//*[@text='Enter Amount' or @text='Enter the amount you want to pay']");
+        if (waits.isVisible(enterAmountScreen, 5)) {
+            String amount = ConfigManager.getInstance().get("sadad.prepaid.amount", "10");
+            page.enterBillAmount(amount);
+            platformActions.dismissKeyboard();
+            page.tapNextBillAmount();
+            log.info("Entered payment amount {} on the Pay Bill amount screen", amount);
+        }
+
+        waits.waitForClickable(AppiumBy.xpath("//*[@content-desc='testID-primary-onConfirm-main']"), 15);
         page.tapConfirmPay();
         enterVerificationCode();
         captureAfterOtp("Saddad Bill Payment - Post OTP");
@@ -479,7 +505,17 @@ public class SadadBillsFlow {
 
     @Step("Get current wallet balance from dashboard")
     public String getWalletBalance() {
-        waits.waitForVisible(AppiumBy.accessibilityId("testID-master-amount-main"), 10);
+        // Ensure we're on the dashboard (on retry, app may be stuck deep in SADAD wizard
+        // where the bottom nav bar is hidden — deep link is the only reliable way back)
+        if (!waits.isVisible(AppiumBy.accessibilityId("testID-master-amount-main"), 2)) {
+            String appPackage = ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit");
+            Map<String, Object> params = new HashMap<>();
+            params.put("url", "urpay://DashboardHome");
+            params.put("package", appPackage);
+            ((JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
+            dashboardPage.dismissPopups();
+        }
+        waits.waitForVisible(AppiumBy.accessibilityId("testID-master-amount-main"), 15);
         String integer = driver.findElement(AppiumBy.accessibilityId("testID-master-amount-main")).getText();
         String fraction = "";
         try {

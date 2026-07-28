@@ -323,7 +323,15 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Tap 'Save & Add Bill' button")
     public void tapSaveBillConfirm() {
-        By confirm = AppiumBy.accessibilityId("testID-primary-onConfirmSave-main");
+        // The button testID varies across app versions:
+        //   - testID-primary-onConfirmSave-main (older)
+        //   - testID-primary-bSv-main (current)
+        //   - fallback: any primary button with "Add Bill" text
+        By confirm = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onConfirmSave-main' "
+                + "or @content-desc='testID-primary-bSv-main' "
+                + "or (contains(@content-desc,'testID-primary') and ancestor-or-self::*[contains(@text,'Add Bill')])]"
+                + " | //*[@text='Add Bill' and @clickable='true']");
         try {
             waitUtils.waitForClickable(confirm, 6).click();
         } catch (Exception e) {
@@ -357,7 +365,12 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Tap 'Pay Bill' button")
     public void tapPayBill() {
-        tap(payBillButton);
+        // testID varies: onPressCustomize-main (older) → hsY-main (current)
+        By payBill = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onPressCustomize-main'"
+                + " or @content-desc='testID-primary-hsY-main'"
+                + " or @text='Pay Bill']");
+        waitUtils.waitForClickable(payBill, 10).click();
     }
 
     @Step("Tap 'Confirm Pay' button")

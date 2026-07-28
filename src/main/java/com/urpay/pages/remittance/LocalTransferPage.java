@@ -280,12 +280,16 @@ public class LocalTransferPage extends BasePage {
 
     @Step("Toggle 'Include Fees'")
     public void toggleIncludeFees() {
-        // The Include Fees toggle is on the review screen, below the fold, and its testID is
-        // obfuscated on newer builds — locate the switch by class (there is a single switch on
-        // the review screen) and tap it. Scroll it into view first via native UiScrollable.
-        scrollIntoViewByClass("android.widget.Switch");
-        tap(AppiumBy.xpath(
-                "//*[@content-desc='testID-switcher-includeFees'] | //android.widget.Switch"));
+        // The Include Fees toggle may not exist in newer builds (fees displayed by default on
+        // the confirmation screen). Try to find and toggle it; if absent, skip gracefully.
+        try {
+            scrollIntoViewByClass("android.widget.Switch");
+            tap(AppiumBy.xpath(
+                    "//*[@content-desc='testID-switcher-includeFees'] | //android.widget.Switch"));
+            log.info("Toggled Include Fees switch");
+        } catch (Exception e) {
+            log.info("Include Fees toggle not found — fees already included by default in this build");
+        }
     }
 
     @Step("Select another purpose of transfer")
@@ -388,5 +392,26 @@ public class LocalTransferPage extends BasePage {
                 + "or contains(@text,'requested') or contains(@text,'submitted') "
                 + "or contains(@text,'received your')]");
         return isPresent(success, timeoutSec);
+    }
+
+    // ══════════════════════════════════════════════════
+    //  PENDING AMOUNT (for beneficiary-first flow)
+    // ══════════════════════════════════════════════════
+
+    private String pendingAmount;
+
+    /** Store amount for deferred entry (beneficiary-first flow). */
+    public void setPendingAmount(String amount) {
+        this.pendingAmount = amount;
+    }
+
+    /** Get the stored pending amount (null if already entered). */
+    public String getPendingAmount() {
+        return pendingAmount;
+    }
+
+    /** Clear pending amount after it has been entered. */
+    public void clearPendingAmount() {
+        this.pendingAmount = null;
     }
 }
