@@ -277,6 +277,20 @@
     <test name="Transfast Bank Deposit"> <!-- ~128s -->
         <classes><class name="com.urpay.tests.remittance.TransfastBankDepositTest"/></classes>
     </test>
+    <test name="RIA Cash Pickup">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods><include name="testRIACashPickupTransfer"/></methods>
+            </class>
+        </classes>
+    </test>
+    <test name="RIA Bank Deposit">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods><include name="testRIABankDepositTransfer"/></methods>
+            </class>
+        </classes>
+    </test>
     <test name="Forgot Passcode Full Tier Negative"> <!-- ~106s -->
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierNegativeTest"/></classes>
     </test>
