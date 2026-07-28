@@ -131,6 +131,7 @@
         <suite-file path="transfast-sendtowallet-transfer.xml"/>
         <suite-file path="tahweel-transfer.xml"/>
         <suite-file path="tahweel-bankdeposit-transfer.xml"/>
+        <suite-file path="ria-transfer.xml"/>
 
     </suite-files>
 
