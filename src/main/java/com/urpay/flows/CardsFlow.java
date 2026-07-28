@@ -210,22 +210,32 @@ public class CardsFlow {
         }
 
         // UiScrollable may leave the card partially visible — swipe to center it
-        // Also handles fallback if UiScrollable didn't work at all
-        SwipeUtils carouselSwipe = new SwipeUtils(driver, 0.40);
+        // Also handles fallback if UiScrollable didn't work at all.
+        // IMPORTANT: Swipe at the carousel's Y coordinate (not screen center) — the carousel
+        // is a horizontal list at a specific vertical position. Find any "Request Card" text
+        // or card element to anchor the Y axis. Katalon used the card element's Y center.
         setImplicitWait(0);
         boolean found = quickFind(requestBtn);
         if (!found) {
-            // Try a few LEFT swipes (card may be partially off-screen to the right)
-            for (int i = 0; i < 3; i++) {
-                carouselSwipe.swipeLeft();
+            int carouselY = getCarouselY();
+            log.info("Carousel Y position for horizontal swipe: {}", carouselY);
+            org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
+            int screenWidth = screenSize.getWidth();
+
+            // Try LEFT swipes (card may be off-screen to the right)
+            for (int i = 0; i < 5; i++) {
+                swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
+                        (int)(screenWidth * 0.2), carouselY);
                 if (quickFind(requestBtn)) { found = true; break; }
             }
-        }
-        if (!found) {
-            // Try RIGHT swipes (may have gone past it)
-            for (int i = 0; i < 6; i++) {
-                carouselSwipe.swipeRight();
-                if (quickFind(requestBtn)) { found = true; break; }
+
+            if (!found) {
+                // Try RIGHT swipes (may have gone past it)
+                for (int i = 0; i < 8; i++) {
+                    swipe.performSwipe((int)(screenWidth * 0.2), carouselY,
+                            (int)(screenWidth * 0.8), carouselY);
+                    if (quickFind(requestBtn)) { found = true; break; }
+                }
             }
         }
         setImplicitWait(10);
@@ -1185,9 +1195,47 @@ public class CardsFlow {
                 AppiumBy.accessibilityId("testID-bankCard.data.0"), 10);
     }
 
+    /** Fire a urpay:// deep link via the UiAutomator2 mobile:deepLink command. */
+    private void openViaDeepLink(String url) {
+        String appPackage = ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit");
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("url", url);
+        params.put("package", appPackage);
+        ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("mobile: deepLink", params);
+    }
+
     // ══════════════════════════════════════════════════
     //  FAST ELEMENT HELPERS (zero implicit wait)
     // ══════════════════════════════════════════════════
+
+    /**
+     * Find the vertical center of the card carousel for horizontal swiping.
+     * Looks for any visible card indicator ("Request Card" button, card element, or "Add new card")
+     * and returns its Y center. Falls back to 40% of screen height (typical carousel position).
+     */
+    private int getCarouselY() {
+        By[] anchors = {
+                AppiumBy.xpath("//*[@text='Request Card']"),
+                AppiumBy.accessibilityId("testID-bankCard.data.0"),
+                AppiumBy.xpath("//*[@text='Add new card' or @text='Add New Card']"),
+                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card']")
+        };
+        for (By anchor : anchors) {
+            try {
+                var els = driver.findElements(anchor);
+                if (!els.isEmpty() && els.get(0).isDisplayed()) {
+                    var el = els.get(0);
+                    int y = el.getLocation().getY() + el.getSize().getHeight() / 2;
+                    log.debug("Carousel Y anchored on {}: y={}", anchor, y);
+                    return y;
+                }
+            } catch (Exception ignored) {}
+        }
+        // Fallback: 40% of screen height (carousel is typically in the upper portion)
+        int fallback = (int) (driver.manage().window().getSize().getHeight() * 0.40);
+        log.debug("Carousel Y fallback: {}", fallback);
+        return fallback;
+    }
 
     /** Set implicit wait in seconds. Use 0 for instant checks. */
     private void setImplicitWait(int seconds) {
