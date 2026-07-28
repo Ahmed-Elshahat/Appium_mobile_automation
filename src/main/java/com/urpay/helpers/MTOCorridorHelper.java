@@ -288,6 +288,49 @@ public class MTOCorridorHelper {
         return corridors.get(new java.util.Random().nextInt(corridors.size()));
     }
 
+    // ══════════════════════════════════════════════════
+    //  RIA corridor helpers
+    // ══════════════════════════════════════════════════
+
+    /**
+     * Get a random corridor for RIA Cash Pickup (WILL_CALL).
+     */
+    @Step("Get RIA Cash Pickup corridor")
+    public Map<String, String> getRIACashPickup() throws Exception {
+        List<Map<String, String>> corridors = getCorridorsForDelivery("RIA", "WILL_CALL");
+        if (corridors.isEmpty()) return null;
+        return corridors.get(new java.util.Random().nextInt(corridors.size()));
+    }
+
+    /**
+     * Get a random corridor for RIA Bank Deposit (BANK_DEPOSIT).
+     */
+    @Step("Get RIA Bank Deposit corridor")
+    public Map<String, String> getRIABankDeposit() throws Exception {
+        List<Map<String, String>> corridors = getCorridorsForDelivery("RIA", "BANK_DEPOSIT");
+        if (corridors.isEmpty()) return null;
+        return corridors.get(new java.util.Random().nextInt(corridors.size()));
+    }
+
+    /**
+     * Get a random corridor for RIA Send to Wallet (DIRECT_TO_ACCT).
+     */
+    @Step("Get RIA Send to Wallet corridor")
+    public Map<String, String> getRIASendToWallet() throws Exception {
+        List<Map<String, String>> corridors = getCorridorsForDelivery("RIA", "DIRECT_TO_ACCT");
+        if (corridors.isEmpty()) return null;
+        return corridors.get(new java.util.Random().nextInt(corridors.size()));
+    }
+
+    /**
+     * Full flow: trigger MQ refresh for RIA, then return its corridors.
+     */
+    @Step("Refresh RIA code table and return available corridors")
+    public List<Map<String, String>> refreshAndGetRIACorridors() throws Exception {
+        refreshRIA();
+        return getCorridorsForProvider("RIA");
+    }
+
     /**
      * Save all corridor data to a JSON file for inspection.
      */

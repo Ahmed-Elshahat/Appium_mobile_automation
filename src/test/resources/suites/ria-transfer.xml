@@ -1,0 +1,33 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="RIA Transfer" verbose="1">
+    <!--
+        RIA International Transfer — Cash Pickup & Bank Deposit.
+
+        Uses pre-existing active beneficiaries on the configured accounts.
+        Each corridor logs in with its OWN account so they can run independently.
+
+        ⚠ REAL MONEY — small amounts from config.
+
+        Run:
+          mvn clean test "-Dsuite=suites/ria-transfer.xml" "-Dprofile=sit-remittance"
+              -Denv=SIT -Dremote=true
+    -->
+    <test name="RIA Cash Pickup Transfer">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods>
+                    <include name="testRIACashPickupTransfer"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+    <test name="RIA Bank Deposit Transfer">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods>
+                    <include name="testRIABankDepositTransfer"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
