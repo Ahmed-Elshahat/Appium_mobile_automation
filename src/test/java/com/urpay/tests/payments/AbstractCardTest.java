@@ -229,7 +229,7 @@ public abstract class AbstractCardTest extends BaseTest {
 
     // DISABLED 2026-07-29: ATM toggle depends on physical card which is removed from app flow.
     @Test(groups = {"payments", "cards"}, priority = 11,
-            dependsOnMethods = "testRequestPhysicalCard", enabled = false)
+            dependsOnMethods = "testRequestPhysicalCard", enabled = true)
     @Story("ATM Transactions Toggle")
     @Description("Disable ATM → verify → Enable → verify (runs after physical card request — ATM only available for physical cards)")
     @Severity(SeverityLevel.NORMAL)
@@ -260,9 +260,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  5. CHANGE CARD PIN
     // ═══════════════════════════════════════════════════
 
-    // DISABLED 2026-07-29: Change PIN flow not working in current build.
     @Test(groups = {"payments", "cards"}, priority = 5,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Change Card PIN")
     @Description("Change PIN → enter new PIN × 2 → OTP → Done")
     @Severity(SeverityLevel.CRITICAL)
@@ -370,7 +369,7 @@ public abstract class AbstractCardTest extends BaseTest {
 
     // DISABLED 2026-07-29: Physical card removed from app flow. Keep code for future re-enable.
     @Test(groups = {"payments", "cards"}, priority = 10,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard", enabled = true)
     @Story("Request Physical Card")
     @Description("Request physical card copy — skips if already requested or not available")
     @Severity(SeverityLevel.CRITICAL)
@@ -443,9 +442,8 @@ public abstract class AbstractCardTest extends BaseTest {
     //  11.7 VALIDATE CANCEL CARD STEPS (non-destructive)
     // ═══════════════════════════════════════════════════
 
-    // DISABLED 2026-07-29: Cancel card flow not working in current build.
     @Test(groups = {"payments", "cards"}, priority = 17,
-            dependsOnMethods = "testNavigateToCard", enabled = false)
+            dependsOnMethods = "testNavigateToCard")
     @Story("Cancel Card Steps Validation")
     @Description("Card Settings → Cancel → reason (Other) → Confirm → stops before passcode (card preserved)")
     @Severity(SeverityLevel.CRITICAL)
