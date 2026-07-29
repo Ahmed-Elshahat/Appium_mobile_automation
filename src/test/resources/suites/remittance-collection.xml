@@ -7,7 +7,7 @@
   session = 1 UNIQUE account (two sessions on one account = the later login kicks
   the first). TestNG queues any <test> beyond thread-count.
 
-  CONCURRENCY: thread-count="9" → up to 9 live sessions (9 <test> blocks).
+  CONCURRENCY: thread-count="11" → up to 11 live sessions (11 <test> blocks).
 
   group-by-instances="true": all methods of one class finish before the next class
   in the SAME <test> block runs.
@@ -22,6 +22,8 @@
     Transfast CashPickup    0520424777
     H2H/Tahweel CashPickup  0520876253
     H2H/Tahweel BankDeposit 0520926735
+    RIA CashPickup          ria.cashPickup.user.*
+    RIA BankDeposit         ria.bankDeposit.user.*
   EXCLUDED (no working account yet): MoneyGram CashPickup, Transfast SendToWallet.
 
   Run:
@@ -29,7 +31,7 @@
         "-Dsuite=suites/remittance-collection.xml" "-Dprofile=sit-remittance"
 -->
 <suite name="Remittance Squad Collection" verbose="1"
-       parallel="tests" thread-count="9" group-by-instances="true">
+       parallel="tests" thread-count="11" group-by-instances="true">
 
     <!-- Retry flaky failures inline (transient login/element timeouts) so a real
          infra hiccup recovers instead of cascade-failing. -->
@@ -88,6 +90,24 @@
     <!-- ── H2H / Tahweel AlRajhi — Bank Deposit / Account Deposit (0520926735) ── -->
     <test name="H2H Tahweel Bank Deposit">
         <classes><class name="com.urpay.tests.remittance.TahweelBankDepositTest"/></classes>
+    </test>
+
+    <!-- ── RIA — Cash Pickup (ria.cashPickup.user.*) ── -->
+    <test name="RIA Cash Pickup">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods><include name="testRIACashPickupTransfer"/></methods>
+            </class>
+        </classes>
+    </test>
+
+    <!-- ── RIA — Bank Deposit (ria.bankDeposit.user.*) ── -->
+    <test name="RIA Bank Deposit">
+        <classes>
+            <class name="com.urpay.tests.remittance.RIATransferTest">
+                <methods><include name="testRIABankDepositTransfer"/></methods>
+            </class>
+        </classes>
     </test>
 
 </suite>

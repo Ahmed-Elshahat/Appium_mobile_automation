@@ -196,49 +196,97 @@ public class CardsFlow {
             log.info("Tapped 'Add new card'");
         }
 
-        // ── Step 4: Card carousel — find "Request Card" for target type ──
-        // Use platform scroll to navigate carousel horizontally to the card type text.
-        By requestBtn = AppiumBy.xpath(
-                "//*[@text='" + cardType + "']/parent::*//*[@text='Request Card']");
+        // ── Step 4: Select card type ──
+        // New UI (2026-07): tab chips at the top ("Visa Card", "Mada Card", "Mada Bracelet").
+        // Each tab is a CATEGORY — under each tab there's a sub-carousel of specific card types.
+        //   "Visa Card" tab → Platinum Card, Signature Card
+        //   "Mada Card" tab → Mada Card
+        // Config: cardTab property maps the card to its tab (defaults to cardType for backward compat).
+        // Tap the matching tab first, then find the specific card's "Request Card" below.
+        String tabName = c.get(cardPrefix + ".cardTab", cardType);
+        By requestBtn = AppiumBy.xpath("//*[@text='Request Card']");
 
-        // First try: platform-specific horizontal scroll to find the card name
-        try {
-            platformActions.scrollHorizontalToText(cardType);
-            log.info("Found '{}' in carousel using platform horizontal scroll", cardType);
-        } catch (Exception e) {
-            log.info("Platform horizontal scroll failed for '{}'", cardType);
-        }
+        // Try tab-based UI first: tap the tab chip
+        setImplicitWait(3);
+        By cardTab = AppiumBy.xpath("//*[@text='" + tabName + "']");
+        var tabEls = driver.findElements(cardTab);
+        if (!tabEls.isEmpty()) {
+            tabEls.get(0).click();
+            log.info("Tapped '{}' tab at the top of Add New Product", tabName);
 
-        // UiScrollable may leave the card partially visible — swipe to center it
-        // Also handles fallback if UiScrollable didn't work at all.
-        // IMPORTANT: Swipe at the carousel's Y coordinate (not screen center) — the carousel
-        // is a horizontal list at a specific vertical position. Find any "Request Card" text
-        // or card element to anchor the Y axis. Katalon used the card element's Y center.
-        setImplicitWait(0);
-        boolean found = quickFind(requestBtn);
-        if (!found) {
-            int carouselY = getCarouselY();
-            log.info("Carousel Y position for horizontal swipe: {}", carouselY);
-            org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
-            int screenWidth = screenSize.getWidth();
-
-            // Try LEFT swipes (card may be off-screen to the right)
-            for (int i = 0; i < 5; i++) {
-                swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
-                        (int)(screenWidth * 0.2), carouselY);
-                if (quickFind(requestBtn)) { found = true; break; }
+            // Under the tab, there may be a sub-carousel of card types (e.g. Platinum, Signature).
+            // If the tab name differs from the card type, scroll the sub-carousel to find the card.
+            if (!tabName.equals(cardType)) {
+                try {
+                    platformActions.scrollHorizontalToText(cardType);
+                    log.info("Found '{}' in sub-carousel under '{}' tab", cardType, tabName);
+                } catch (Exception e) {
+                    log.info("Sub-carousel scroll failed for '{}' — trying manual swipes", cardType);
+                    By specificCard = AppiumBy.xpath("//*[@text='" + cardType + "']");
+                    setImplicitWait(0);
+                    if (!quickFind(specificCard)) {
+                        int carouselY = getCarouselY();
+                        org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
+                        int screenWidth = screenSize.getWidth();
+                        for (int i = 0; i < 5; i++) {
+                            swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
+                                    (int)(screenWidth * 0.2), carouselY);
+                            if (quickFind(specificCard)) break;
+                        }
+                    }
+                    setImplicitWait(3);
+                }
             }
 
+            // After tapping the tab (+ optional sub-carousel), "Request Card" should be visible
+            setImplicitWait(0);
+            boolean found = false;
+            for (int i = 0; i < 5; i++) {
+                if (quickFind(requestBtn)) { found = true; break; }
+                try { Thread.sleep(1000); } catch (Exception ignored) {}
+            }
             if (!found) {
-                // Try RIGHT swipes (may have gone past it)
-                for (int i = 0; i < 8; i++) {
+                // Request Card may be below the fold — scroll down
+                SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
+                for (int i = 0; i < 3; i++) {
+                    smallSwipe.swipeUp();
+                    if (quickFind(requestBtn)) { found = true; break; }
+                }
+            }
+            setImplicitWait(10);
+        } else {
+            // Fallback: old carousel UI — horizontal scroll to find the card
+            setImplicitWait(0);
+            requestBtn = AppiumBy.xpath(
+                    "//*[@text='" + cardType + "']/parent::*//*[@text='Request Card']");
+            try {
+                platformActions.scrollHorizontalToText(cardType);
+                log.info("Found '{}' in carousel using platform horizontal scroll", cardType);
+            } catch (Exception e) {
+                log.info("Platform horizontal scroll failed for '{}'", cardType);
+            }
+
+            boolean found = quickFind(requestBtn);
+            if (!found) {
+                int carouselY = getCarouselY();
+                org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
+                int screenWidth = screenSize.getWidth();
+
+                for (int i = 0; i < 5; i++) {
                     swipe.performSwipe((int)(screenWidth * 0.2), carouselY,
                             (int)(screenWidth * 0.8), carouselY);
                     if (quickFind(requestBtn)) { found = true; break; }
                 }
+                if (!found) {
+                    for (int i = 0; i < 8; i++) {
+                        swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
+                                (int)(screenWidth * 0.2), carouselY);
+                        if (quickFind(requestBtn)) { found = true; break; }
+                    }
+                }
             }
+            setImplicitWait(10);
         }
-        setImplicitWait(10);
 
         waits.waitForClickable(requestBtn, 10).click();
         log.info("Tapped Request Card for: {}", cardType);

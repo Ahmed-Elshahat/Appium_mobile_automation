@@ -156,9 +156,11 @@
     </test>
 
     <!-- ── WAVE 2 FILLER (positions 29-47, 19 tests) ─────────────────────── -->
-    <test name="AlAhli Card"> <!-- ~1021s | card-slot-2: starts ~T=5–8 min (pos 28) -->
+    <!-- AlAhli Card EXCLUDED — card type removed from app (2026-07-29). Keep code for future re-enable.
+    <test name="AlAhli Card">
         <classes><class name="com.urpay.tests.payments.AlAhliCardTest"/></classes>
     </test>
+    -->
 
     <test name="Forgot Passcode Full Tier"> <!-- ~298s -->
         <classes><class name="com.urpay.tests.auth.ForgotPasscodeFullTierTest"/></classes>

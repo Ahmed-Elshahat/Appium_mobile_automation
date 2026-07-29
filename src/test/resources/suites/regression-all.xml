@@ -91,7 +91,7 @@
         <suite-file path="reject-quick-qatta-suite.xml"/>
 
         <!-- ── Cards ─────────────────────────────────────────────── -->
-        <suite-file path="alahli-cards.xml"/>
+        <!-- alahli-cards.xml EXCLUDED — card type removed from app (2026-07-29) -->
         <suite-file path="mada-cards.xml"/>
         <suite-file path="platinum-cards.xml"/>
         <suite-file path="signature-cards.xml"/>

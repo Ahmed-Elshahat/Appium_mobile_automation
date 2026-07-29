@@ -237,24 +237,35 @@ public class TelecomRechargePage extends BasePage {
 
     @Step("Tap Re-order button")
     public void tapReorder() {
-        // Strategy 1: accessibility ID (explicit wait)
+        // Strategy 1: text "Reorder" (Order History list buttons — clickable ancestor)
         java.util.List<WebElement> btns = waitUtils.findQuick(
-                io.appium.java_client.AppiumBy.accessibilityId("testID-primary-action-main"), 5);
+                io.appium.java_client.AppiumBy.xpath(
+                        "//*[@text='Reorder' or contains(@text,'Reorder') or contains(@content-desc,'Reorder')]"), 5);
+        if (!btns.isEmpty()) {
+            // Tap the first Reorder's clickable ancestor (RN buttons may need ancestor tap)
+            WebElement target = btns.get(0);
+            try {
+                WebElement clickable = driver.findElement(
+                        io.appium.java_client.AppiumBy.xpath(
+                                "(//*[@text='Reorder' or contains(@text,'Reorder') or contains(@content-desc,'Reorder')]"
+                                + "/ancestor-or-self::*[@clickable='true'])[1]"));
+                clickable.click();
+                log.info("tapReorder: clicked Reorder via clickable ancestor");
+            } catch (Exception e) {
+                target.click();
+                log.info("tapReorder: clicked Reorder text element directly");
+            }
+            return;
+        }
+        // Strategy 2: accessibility ID (order detail page)
+        btns = waitUtils.findQuick(
+                io.appium.java_client.AppiumBy.accessibilityId("testID-primary-action-main"), 3);
         if (!btns.isEmpty()) {
             btns.get(0).click();
             log.info("tapReorder: clicked via accessibilityId");
             return;
         }
-        // Strategy 2: xpath contains text
-        btns = waitUtils.findQuick(
-                io.appium.java_client.AppiumBy.xpath(
-                        "//*[contains(@text,'Reorder') or contains(@text,'reorder')]"), 3);
-        if (!btns.isEmpty()) {
-            btns.get(0).click();
-            log.info("tapReorder: clicked via text");
-            return;
-        }
-        // Strategy 3: xpath content-desc
+        // Strategy 3: xpath content-desc partial match
         btns = waitUtils.findQuick(
                 io.appium.java_client.AppiumBy.xpath(
                         "(//*[contains(@content-desc,'testID-primary-action')])[1]"), 3);
@@ -263,7 +274,7 @@ public class TelecomRechargePage extends BasePage {
             log.info("tapReorder: clicked via content-desc");
             return;
         }
-        // Strategy 4: scroll and retry
+        // Strategy 4: scroll and retry with text
         swipeDown();
         swipeDown();
         tap(reorderButton);
