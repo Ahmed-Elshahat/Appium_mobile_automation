@@ -227,8 +227,9 @@ public abstract class AbstractCardTest extends BaseTest {
     //  3. TOGGLE ATM TRANSACTIONS
     // ═══════════════════════════════════════════════════
 
+    // DISABLED 2026-07-29: ATM toggle depends on physical card which is removed from app flow.
     @Test(groups = {"payments", "cards"}, priority = 11,
-            dependsOnMethods = "testRequestPhysicalCard")
+            dependsOnMethods = "testRequestPhysicalCard", enabled = false)
     @Story("ATM Transactions Toggle")
     @Description("Disable ATM → verify → Enable → verify (runs after physical card request — ATM only available for physical cards)")
     @Severity(SeverityLevel.NORMAL)
@@ -382,8 +383,9 @@ public abstract class AbstractCardTest extends BaseTest {
     //  10. REQUEST PHYSICAL CARD
     // ═══════════════════════════════════════════════════
 
+    // DISABLED 2026-07-29: Physical card removed from app flow. Keep code for future re-enable.
     @Test(groups = {"payments", "cards"}, priority = 10,
-            dependsOnMethods = "testNavigateToCard")
+            dependsOnMethods = "testNavigateToCard", enabled = false)
     @Story("Request Physical Card")
     @Description("Request physical card copy — skips if already requested or not available")
     @Severity(SeverityLevel.CRITICAL)
