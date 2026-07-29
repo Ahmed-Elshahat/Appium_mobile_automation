@@ -936,24 +936,27 @@ public class CardsFlow {
         log.info("Tapped Change PIN button — PIN entry screen opened");
 
         // Step 3: Wait for PIN entry screen to load
-        // This MUST succeed — if PIN screen didn't open, test fails here
+        // New UI: shows "Change PIN Code" title + 4 PIN boxes + numeric keypad (no Next button).
+        // The PIN boxes auto-advance after 4 digits (same as OTP entry).
         waits.waitForVisible(AppiumBy.xpath(
-                "//*[@text='Next'] | //*[contains(@content-desc,'passcode')]"), 10);
-        log.info("PIN entry screen confirmed visible (Next button found)");
+                "//*[@text='Change PIN Code'] | //*[contains(@text,'Enter a new PIN')] | "
+                + "//*[@text='Next'] | //*[contains(@content-desc,'passcode')]"), 10);
+        log.info("PIN entry screen confirmed visible");
 
-        // Step 4: Enter new PIN using passcode keypad (NOT Actions.sendKeys — keyboard focus is unreliable)
+        // Step 4: Enter new PIN using OTP-style entry (4 digits auto-advance, no Next needed)
         ConfigManager c = ConfigManager.getInstance();
         String newPin = c.get(cardPrefix + ".newPin", "5678");
-        passcodePage.enterPasscode(newPin);
-        log.info("Entered new PIN via keypad: {}", newPin);
-        tapNextButton();
+        otpPage.enterOtp(newPin);
+        log.info("Entered new PIN: {}", newPin);
 
-        // Step 5: Enter confirmation PIN + tap Next
-        passcodePage.enterPasscode(newPin);
-        log.info("Confirmed new PIN via keypad");
-        tapNextButton();
+        // Step 5: Confirm PIN screen appears automatically — enter same PIN again
+        // Wait briefly for the confirm screen to load
+        try { Thread.sleep(1000); } catch (Exception ignored) {}
+        otpPage.enterOtp(newPin);
+        log.info("Confirmed new PIN");
 
         // Step 6: Enter OTP verification code
+        try { Thread.sleep(1000); } catch (Exception ignored) {}
         enterVerificationCode(c.get(cardPrefix + ".verificationCode", "1234"));
         log.info("Entered OTP for PIN change");
 
