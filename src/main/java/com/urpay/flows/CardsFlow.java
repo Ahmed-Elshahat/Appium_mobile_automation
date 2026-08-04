@@ -935,22 +935,20 @@ public class CardsFlow {
         settings.tapChangePin();
         log.info("Tapped Change PIN button — PIN entry screen opened");
 
-        // Step 3: Wait for PIN entry screen to load
-        // New UI: shows "Change PIN Code" title + 4 PIN boxes + numeric keypad (no Next button).
-        // The PIN boxes auto-advance after 4 digits (same as OTP entry).
+        // Step 3: Wait for PIN entry screen. New UI shows 4 auto-advancing PIN boxes with
+        // no Next/passcode-content-desc button (screenshot 2026-08-04).
         waits.waitForVisible(AppiumBy.xpath(
                 "//*[@text='Change PIN Code'] | //*[contains(@text,'Enter a new PIN')] | "
                 + "//*[@text='Next'] | //*[contains(@content-desc,'passcode')]"), 10);
         log.info("PIN entry screen confirmed visible");
 
-        // Step 4: Enter new PIN using OTP-style entry (4 digits auto-advance, no Next needed)
+        // Step 4: Enter new PIN — OTP-style boxes auto-advance after 4 digits, no Next tap needed
         ConfigManager c = ConfigManager.getInstance();
         String newPin = c.get(cardPrefix + ".newPin", "5678");
         otpPage.enterOtp(newPin);
         log.info("Entered new PIN: {}", newPin);
 
-        // Step 5: Confirm PIN screen appears automatically — enter same PIN again
-        // Wait briefly for the confirm screen to load
+        // Step 5: Confirm PIN screen loads automatically — enter same PIN again
         try { Thread.sleep(1000); } catch (Exception ignored) {}
         otpPage.enterOtp(newPin);
         log.info("Confirmed new PIN");
@@ -1002,15 +1000,6 @@ public class CardsFlow {
         for (char c : pin.toCharArray()) {
             actions.sendKeys(String.valueOf(c)).perform();
         }
-    }
-
-    /** Tap "Next" button after PIN entry (Katalon: NextButton → //*[@text="Next"]) */
-    private void tapNextButton() {
-        // Brief pause to let the PIN input register the last digit
-        try { Thread.sleep(500); } catch (Exception ignored) {}
-        By nextBtn = AppiumBy.xpath("//*[@text='Next']");
-        waits.waitForClickable(nextBtn, 10).click();
-        log.info("Tapped Next button");
     }
 
     /** @deprecated Use changeCardPin(String cardPrefix) */
