@@ -314,6 +314,12 @@
         <classes><class name="com.urpay.tests.payments.PlatinumCardTest"/></classes>
     </test>
 
+    <!-- Visitor Card: new card type (2026-08-05), no pre-provisioned account yet — uses fresh
+         registration each run (mirrors PlatinumCardRegistrationTest), lives under "Visa Card" tab. -->
+    <test name="Visitor Card">
+        <classes><class name="com.urpay.tests.payments.VisitorCardRegistrationTest"/></classes>
+    </test>
+
     <!-- ══════════════════════════════════════════════════════════════════════
          DMP (Digital MarketPlace) — 29 tests, profile sit-dmp-all.
          Browse tests need no wallet; order/gift/mokafaa/promo tests need funded

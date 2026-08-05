@@ -1258,7 +1258,7 @@ public class CardsFlow {
                 AppiumBy.xpath("//*[@text='Request Card']"),
                 AppiumBy.accessibilityId("testID-bankCard.data.0"),
                 AppiumBy.xpath("//*[@text='Add new card' or @text='Add New Card']"),
-                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card']")
+                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card']")
         };
         for (By anchor : anchors) {
             try {

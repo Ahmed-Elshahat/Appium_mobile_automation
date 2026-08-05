@@ -95,6 +95,7 @@
         <suite-file path="mada-cards.xml"/>
         <suite-file path="platinum-cards.xml"/>
         <suite-file path="signature-cards.xml"/>
+        <suite-file path="visitor-cards-registration.xml"/>
         <!-- physical-card.xml EXCLUDED — physical card removed from app flow (2026-07-29) -->
         <suite-file path="change-pin.xml"/>
         <suite-file path="card-replacement.xml"/>
