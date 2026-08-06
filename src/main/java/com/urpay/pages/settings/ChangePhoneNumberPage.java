@@ -77,9 +77,11 @@ public class ChangePhoneNumberPage extends BasePage {
 
     @Step("Tap 'Change mobile number'")
     public void tapChangePhoneNumber() {
-        // The Profile screen auto-focuses its search field, popping the keyboard over the
-        // bottom rows (incl. "Change mobile number"). Dismiss it first so the row is visible.
+        // Dismiss keyboard first, then scroll the item into view before tapping.
         platformActions.dismissKeyboard();
+        if (!isPresent(CHANGE_PHONE_BTN, 3)) {
+            scrollToText("Change mobile number");
+        }
         tap(CHANGE_PHONE_BTN);
     }
 
