@@ -18,6 +18,7 @@ import io.qameta.allure.Description;
 import io.qameta.allure.Severity;
 import io.qameta.allure.SeverityLevel;
 import io.qameta.allure.Story;
+import io.restassured.RestAssured;
 
 /**
  * Abstract base for the three tier registration tests (National / IQA / Visitor).
@@ -63,6 +64,7 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
 
     @BeforeClass(alwaysRun = true)
     public void seedSimulators() {
+        RestAssured.useRelaxedHTTPSValidation(); // simulator uses internal CA not trusted by default JVM
         PoiType type = poiType();
         seededMobile = RegistrationApiHelper.generateMobileNumber();
         seededPoi    = RegistrationApiHelper.generatePoiNumber(type.prefix());
