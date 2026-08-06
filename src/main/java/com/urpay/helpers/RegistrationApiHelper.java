@@ -430,6 +430,49 @@ public final class RegistrationApiHelper {
                 .post(simBaseUrl + "/__admin/nafath-info");
     }
 
+    /** Seed the Nafath ELM simulator — required alongside nafath-info for identity verification. */
+    @Step("API seed NafathElm info (simulator) for poi {poiNumber}")
+    public static Response seedNafathElmInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String dobG = config.get("registration.default.birthDateG", "1999-05-30");
+        String dobHStr = config.get("registration.default.dateOfBirthH", "1420-05-08").replace("-", "");
+        int dobH;
+        try { dobH = Integer.parseInt(dobHStr); } catch (NumberFormatException e) { dobH = 14200508; }
+
+        String body = "{"
+                + "\"id\":" + poiNumber + ","
+                + "\"scenario\":\"Completed\","
+                + "\"first_name#ar\":\"أيمن\","
+                + "\"father_name#ar\":\"عبدالإله\","
+                + "\"grand_name#ar\":\"إبراهيم\","
+                + "\"family_name#ar\":\"عباس\","
+                + "\"first_name#en\":\"Ayman\","
+                + "\"father_name#en\":\"Abdulailah\","
+                + "\"grand_name#en\":\"Ibrahim\","
+                + "\"family_name#en\":\"Abbas\","
+                + "\"two_names#ar\":\"أيمن عباس\","
+                + "\"two_names#en\":\"Ayman Abbas\","
+                + "\"full_name#ar\":\"أيمن عبدالإله إبراهيم عباس\","
+                + "\"full_name#en\":\"Ayman Abbas\","
+                + "\"gender\":\"M\","
+                + "\"dob#g\":\"" + dobG + "\","
+                + "\"dob#h\":" + dobH + ","
+                + "\"nationality\":113,"
+                + "\"nationality#ar\":\"المملكة العربية السعودية\","
+                + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
+                + "\"language\":\"A\""
+                + "}";
+        return RestAssured.given()
+                .header("X-Api-Key", apiKey)
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .body(body)
+                .post(simBaseUrl + "/__admin/nafathElm-info");
+    }
+
     /** Backwards-compatible registration (NAT/IQA): no age-verification token, no unverified DOB. */
     static Response registerConsumer(String baseUrl, String mobile, String otpReference,                                             String poi, String poiType, String otpToken) {
         return registerConsumer(baseUrl, mobile, otpReference, poi, poiType, otpToken, null, null);

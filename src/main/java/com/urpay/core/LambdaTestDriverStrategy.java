@@ -101,7 +101,6 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
         // forces true on cloud. With this on, the session's device_logs_url / crash_logs_url
         // are populated and can be fetched post-session via the REST API for crash detection.
         ltOptions.put("devicelog", true);
-        ltOptions.put("network", true);
         ltOptions.put("idleTimeout", 300);
         ltOptions.put("newCommandTimeout", 300);
         ltOptions.put("appiumVersion", "2.12.1");
