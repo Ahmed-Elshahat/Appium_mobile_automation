@@ -79,6 +79,13 @@ public class RegistrationFlow {
         this.otpPage = new OtpPage();
     }
 
+    /** Constructor that accepts pre-generated credentials (used when seeding happened before driver init). */
+    public RegistrationFlow(PoiType poiType, String preGeneratedMobile, String preGeneratedPoi) {
+        this(poiType);
+        this.generatedMobile = preGeneratedMobile;
+        this.generatedPoi    = preGeneratedPoi;
+    }
+
     // ── Public API ─────────────────────────────────────────────────
 
     /** Return the mobile number that was generated and used for this run. */

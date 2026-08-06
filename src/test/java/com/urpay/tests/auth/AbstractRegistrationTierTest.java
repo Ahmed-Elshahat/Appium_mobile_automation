@@ -1,5 +1,7 @@
 package com.urpay.tests.auth;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -7,6 +9,7 @@ import org.testng.annotations.Test;
 import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
 import com.urpay.flows.RegistrationFlow;
+import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.helpers.RegistrationApiHelper.PoiType;
 import com.urpay.pages.auth.RegistrationWizardPage;
 import com.urpay.pages.dashboard.DashboardPage;
@@ -36,6 +39,8 @@ import io.qameta.allure.Story;
  */
 public abstract class AbstractRegistrationTierTest extends BaseTest {
 
+    private static final Logger log = LoggerFactory.getLogger(AbstractRegistrationTierTest.class);
+
     /** @return the POI type under test */
     protected abstract PoiType poiType();
 
@@ -44,20 +49,34 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         return false;
     }
 
+    // Credentials generated during @BeforeClass (pure API — no driver needed at that point)
+    private String seededMobile;
+    private String seededPoi;
+
+    // Flow + page created lazily in testRegisterButtonOpensRegistrationForm (driver available then)
     private RegistrationFlow flow;
     private RegistrationWizardPage wizardPage;
 
     // ══════════════════════════════════════════════════
-    //  PRE-SUITE: SEED SIMULATORS
+    //  PRE-SUITE: SEED SIMULATORS (API only — no driver)
     // ══════════════════════════════════════════════════
 
     @BeforeClass(alwaysRun = true)
     public void seedSimulators() {
-        flow       = new RegistrationFlow(poiType());
-        wizardPage = new RegistrationWizardPage();
-        boolean seeded = flow.seedSimulators();
-        if (!seeded) {
-            throw new IllegalStateException("Simulator seeding failed for " + poiType() + " — check VPN / SIT network");
+        PoiType type = poiType();
+        seededMobile = RegistrationApiHelper.generateMobileNumber();
+        seededPoi    = RegistrationApiHelper.generatePoiNumber(type.prefix());
+
+        log.info("=== Seeding simulators for {} registration ===", type.code());
+        log.info("  mobile : {}", seededMobile);
+        log.info("  poi    : {}", seededPoi);
+
+        var tahaqoq = RegistrationApiHelper.seedTahaqoqInfo(seededPoi, seededMobile);
+        log.info("Tahaqoq seed: status {}", tahaqoq.getStatusCode());
+
+        if (type != PoiType.BOR) {
+            var yakeen = RegistrationApiHelper.seedYakeenInfo(seededPoi);
+            log.info("Yakeen seed: status {}", yakeen.getStatusCode());
         }
     }
 
@@ -70,6 +89,9 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     @Description("Tap the Register button on the landing screen and verify the registration form loads")
     @Severity(SeverityLevel.BLOCKER)
     public void testRegisterButtonOpensRegistrationForm() {
+        // Driver is now available — create flow with credentials seeded in @BeforeClass
+        flow       = new RegistrationFlow(poiType(), seededMobile, seededPoi);
+        wizardPage = new RegistrationWizardPage();
         flow.tapRegisterOnLanding();
         Assert.assertTrue(wizardPage.isRegistrationFormLoaded(),
                 "Registration form should be visible after tapping Register on the landing screen");
