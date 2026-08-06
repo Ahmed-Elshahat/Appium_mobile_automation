@@ -148,9 +148,34 @@ public class RegistrationFlow {
         log.info("Entering mobile '{}' and POI '{}' for {} registration", uiMobile, generatedPoi, poiType.code());
         wizardPage.enterMobileNumber(uiMobile);
         wizardPage.enterIdNumber(generatedPoi);
+        hideKeyboard();
         // Terms + Privacy checkboxes sit on the same credentials form — accept them if present
         wizardPage.acceptTermsAndPrivacyIfPresent();
+        dumpPageSourceLocally("registration-credentials-screen");
         wizardPage.tapNext();
+    }
+
+    /** Dismiss the software keyboard if visible — best-effort. */
+    private void hideKeyboard() {
+        try {
+            ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard();
+            log.info("Keyboard hidden");
+        } catch (Exception e) {
+            log.debug("hideKeyboard no-op: {}", e.getMessage());
+        }
+    }
+
+    /** Write driver.getPageSource() to logcat/ for local inspection. */
+    private void dumpPageSourceLocally(String tag) {
+        try {
+            String xml = driver.getPageSource();
+            String path = "logcat/" + tag + ".xml";
+            new java.io.File("logcat").mkdirs();
+            java.nio.file.Files.writeString(java.nio.file.Path.of(path), xml);
+            log.info("Page source dumped to {}", path);
+        } catch (Exception e) {
+            log.warn("Page source dump failed: {}", e.getMessage());
+        }
     }
 
     /** Enter the OTP on the OTP screen. */

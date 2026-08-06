@@ -65,7 +65,21 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     @BeforeClass(alwaysRun = true)
     public void seedSimulators() {
         RestAssured.useRelaxedHTTPSValidation(); // simulator uses internal CA not trusted by default JVM
+        ConfigManager config = ConfigManager.getInstance();
         PoiType type = poiType();
+        String tierKey = type.name().toLowerCase(); // "nat", "iqa", "bor"
+
+        // Skip API seeding when pre-provisioned creds are configured (diagnostic / offline runs)
+        if ("true".equalsIgnoreCase(config.get("registration.skipSeeding", "false"))) {
+            seededMobile = config.get("registration.preseeded." + tierKey + ".mobile", "");
+            seededPoi    = config.get("registration.preseeded." + tierKey + ".poi", "");
+            if (!seededMobile.isEmpty() && !seededPoi.isEmpty()) {
+                log.info("Skipping API seeding — using pre-seeded creds: mobile={}, poi={}", seededMobile, seededPoi);
+                return;
+            }
+            log.warn("skipSeeding=true but no preseeded creds found for {} — falling through to API seeding", tierKey);
+        }
+
         seededMobile = RegistrationApiHelper.generateMobileNumber();
         seededPoi    = RegistrationApiHelper.generatePoiNumber(type.prefix());
 
