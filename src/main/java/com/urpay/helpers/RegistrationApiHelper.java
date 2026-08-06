@@ -330,7 +330,7 @@ public final class RegistrationApiHelper {
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         return baseHeaders(null)
                 .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json")
+                .header("Content-Type", "application/json; charset=UTF-8")
                 .queryParam("IDNumber", poiNumber)
                 .queryParam("MobileNumber", mobile)
                 .body("{}")
@@ -356,7 +356,7 @@ public final class RegistrationApiHelper {
         String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
         return baseHeaders(null)
                 .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json")
+                .header("Content-Type", "application/json; charset=UTF-8")
                 .queryParam("nin", poiNumber)
                 .queryParam("firstName", "أيمن")
                 .queryParam("fatherName", "عبدالإله")
@@ -425,7 +425,7 @@ public final class RegistrationApiHelper {
                 + "}";
         return RestAssured.given()
                 .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json")
+                .header("Content-Type", "application/json; charset=UTF-8")
                 .body(body)
                 .post(simBaseUrl + "/__admin/nafath-info");
     }
