@@ -322,7 +322,7 @@ public final class RegistrationApiHelper {
 
     /** Seed the Tahaqoq/Nafath simulator so the POI passes ID verification during registration. */
     @Step("API seed Tahaqoq info (simulator)")
-    static Response seedTahaqoqInfo(String poiNumber, String mobile) {
+    public static Response seedTahaqoqInfo(String poiNumber, String mobile) {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
@@ -346,7 +346,7 @@ public final class RegistrationApiHelper {
      * without a code change.
      */
     @Step("API seed Yakeen info (identity + DOB) for poi {poiNumber}")
-    static Response seedYakeenInfo(String poiNumber) {
+    public static Response seedYakeenInfo(String poiNumber) {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
@@ -957,7 +957,7 @@ public final class RegistrationApiHelper {
     }
 
     /** Generate a Luhn-valid 10-digit POI number with the given leading digit. */
-    static String generatePoiNumber(char prefix) {
+    public static String generatePoiNumber(char prefix) {
         StringBuilder id = new StringBuilder().append(prefix);
         for (int i = 1; i <= 8; i++) {
             id.append(RANDOM.nextInt(10));
@@ -977,7 +977,7 @@ public final class RegistrationApiHelper {
     }
 
     /** Generate a Saudi mobile in the {@code +966520XXXXXX} form the API expects. */
-    static String generateMobileNumber() {
+    public static String generateMobileNumber() {
         StringBuilder suffix = new StringBuilder();
         for (int i = 0; i < 6; i++) {
             suffix.append(RANDOM.nextInt(10));
