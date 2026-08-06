@@ -186,18 +186,14 @@ public class RegistrationFlow {
     }
 
     /**
-     * Enter the date of birth on the DOB screen (Visitor/BOR only).
-     * For NAT and IQA this step is skipped — the DOB screen does not appear.
+     * Enter date of birth on the DOB screen (Step 3/5 — shown for ALL tiers).
+     * Drives the native Android date spinner.
      */
-    @Step("Enter date of birth (Visitor/BOR): {dob}")
-    public void enterDateOfBirth(String dob) {
-        if (poiType != PoiType.BOR) {
-            log.info("Skipping DOB step (not a BOR/Visitor registration)");
-            return;
-        }
-        wizardPage.enterDateOfBirth(dob);
-        wizardPage.tapValidateDateNext();
-        log.info("DOB '{}' entered and validated", dob);
+    @Step("Enter date of birth: {month} {day} {year}")
+    public void enterDateOfBirth(String month, String day, String year) {
+        wizardPage.enterDateOfBirth(month, day, year);
+        wizardPage.tapDobNext();
+        log.info("DOB {}/{}/{} entered and Next tapped", month, day, year);
     }
 
     /** Set a new passcode on the Create Passcode screen. */
@@ -236,12 +232,13 @@ public class RegistrationFlow {
      * @return the dashboard page
      */
     @Step("Complete {poiType} registration end-to-end")
-    public DashboardPage completeRegistration(String otp, String passcode, String dob) {
+    public DashboardPage completeRegistration(String otp, String passcode,
+                                              String dobMonth, String dobDay, String dobYear) {
         seedSimulators();
         tapRegisterOnLanding();
         enterCredentialsAndNext();
         enterOtp(otp);
-        enterDateOfBirth(dob);
+        enterDateOfBirth(dobMonth, dobDay, dobYear);
         createPasscode(passcode);
         confirmPasscode(passcode);
         acceptTermsAndSubmit();

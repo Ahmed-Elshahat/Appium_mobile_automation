@@ -25,9 +25,4 @@ public class VisitorRegistrationTest extends AbstractRegistrationTierTest {
     protected PoiType poiType() {
         return PoiType.BOR;
     }
-
-    @Override
-    protected boolean hasDobStep() {
-        return true;
-    }
 }

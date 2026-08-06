@@ -3,6 +3,7 @@ package com.urpay.pages.auth;
 import org.openqa.selenium.By;
 
 import com.urpay.core.BasePage;
+import com.urpay.utils.DatePickerHandler;
 
 import io.appium.java_client.AppiumBy;
 import io.qameta.allure.Step;
@@ -48,16 +49,21 @@ public class RegistrationWizardPage extends BasePage {
     private static final By PASSCODE_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
 
-    // ── Visitor (BOR) — date of birth screen ────────────────────────
-    private static final By DOB_FIELD =
-            AppiumBy.accessibilityId("testID-input-direct-dateOfBirth");
+    // ── Date of birth screen (shown for ALL tiers in registration, Step 3/5) ────────────────
+    // The DatePicker has a UUID-based testID; match by prefix to stay build-independent.
+    // Fallback: any clickable element containing the "Date of birth" placeholder text (lowercase b).
+    private static final By DOB_PICKER = AppiumBy.xpath(
+            "//*[starts-with(@content-desc,'testID-DatePicker.')"
+            + " or (@clickable='true' and .//*[@text='Date of birth'])]");
 
-    // Validate-date / Next on the DOB screen — testID-primary-validateDate-main (middle=validateDate)
-    private static final By VALIDATE_DATE_BTN = AppiumBy.xpath(
-            "//*[@content-desc='testID-primary-validateDate-main'"
-            + " or (starts-with(@content-desc,'testID-primary-')"
-            + " and substring(@content-desc,string-length(@content-desc)-4)='-main')"
-            + " or @text='Next' or @text='Validate']");
+    // DOB screen title used as a stable screen-presence marker
+    private static final By DOB_SCREEN_TITLE = AppiumBy.xpath(
+            "//*[@content-desc='testID-Text.ae1bcb9a-913f-45ca-853b-a44d7495d52c'"
+            + " or @text='Date Of Birth' or @text='Date of Birth']");
+
+    // Calendar OK button (native Android date spinner confirmation)
+    private static final By CALENDAR_OK_BTN =
+            AppiumBy.xpath("//android.widget.Button[@resource-id='android:id/button1']");
 
     // ── Done / Finish screen ─────────────────────────────────────────
     // testID-primary-buttonAction-main; middle segment 'buttonAction' is obfuscated on cloud.
@@ -72,6 +78,11 @@ public class RegistrationWizardPage extends BasePage {
             "//*[@content-desc='testID-primary-buttonAction-main'"
             + " or @text='Done' or @text='Get Started' or @text='Welcome']");
 
+    // Nafath verification screen shown after passcode confirmation
+    private static final By NAFATH_SCREEN_MARKER = AppiumBy.xpath(
+            "//*[@text='Verification Requirements' or @text=\"You're all set!\""
+            + " or @text='Nafath']");
+
     // ══════════════════════════════════════════════════
     //  SCREEN CHECKS
     // ══════════════════════════════════════════════════
@@ -85,7 +96,7 @@ public class RegistrationWizardPage extends BasePage {
     }
 
     public boolean isDobScreenDisplayed(long timeoutSec) {
-        return waitUtils.isPresent(DOB_FIELD, timeoutSec);
+        return waitUtils.isPresent(DOB_SCREEN_TITLE, timeoutSec);
     }
 
     public boolean isTermsScreenDisplayed(long timeoutSec) {
@@ -94,6 +105,10 @@ public class RegistrationWizardPage extends BasePage {
 
     public boolean isFinishScreenDisplayed(long timeoutSec) {
         return waitUtils.isPresent(FINISH_SCREEN_MARKER, timeoutSec);
+    }
+
+    public boolean isNafathVerificationScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(NAFATH_SCREEN_MARKER, timeoutSec);
     }
 
     // ══════════════════════════════════════════════════
@@ -186,20 +201,21 @@ public class RegistrationWizardPage extends BasePage {
     // ── Visitor (BOR) DOB ────────────────────────────────────────────
 
     /**
-     * Enter the date of birth in the registration DOB text field.
-     * The field accepts the date as text (format YYYY-MM-DD or DD/MM/YYYY — use YYYY-MM-DD
-     * as that is what the BE report and config use, e.g. {@code 1994-01-22}).
+     * Enter date of birth via the native Android date spinner.
+     * Opens the DatePicker, drives the spinner to the target date, confirms, then taps Next.
      */
-    @Step("Enter date of birth: {dob}")
-    public void enterDateOfBirth(String dob) {
-        waitUtils.waitForClickable(DOB_FIELD, 20).click();
-        type(DOB_FIELD, dob);
-        log.info("Date of birth entered: {}", dob);
+    @Step("Enter date of birth: {month} {day} {year}")
+    public void enterDateOfBirth(String month, String day, String year) {
+        waitUtils.waitForClickable(DOB_PICKER, 30).click();
+        new DatePickerHandler(driver).selectDate(month, day, year);
+        waitUtils.waitForClickable(CALENDAR_OK_BTN, 10).click();
+        log.info("Date of birth set: {} {} {}", month, day, year);
     }
 
-    @Step("Tap Validate Date / Next on DOB screen")
-    public void tapValidateDateNext() {
-        waitUtils.waitForClickable(VALIDATE_DATE_BTN, 15).click();
+    @Step("Tap Next on DOB screen")
+    public void tapDobNext() {
+        // Next button on the DOB screen uses an obfuscated middle segment; structural match covers it.
+        waitUtils.waitForClickable(NEXT_BTN, 15).click();
     }
 
     // ── Done / Finish ────────────────────────────────────────────────

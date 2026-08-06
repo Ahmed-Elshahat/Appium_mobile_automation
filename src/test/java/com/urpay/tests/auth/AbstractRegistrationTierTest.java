@@ -45,11 +45,6 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     /** @return the POI type under test */
     protected abstract PoiType poiType();
 
-    /** @return {@code true} if the DOB screen appears for this tier (BOR/Visitor only) */
-    protected boolean hasDobStep() {
-        return false;
-    }
-
     // Credentials generated during @BeforeClass (pure API — no driver needed at that point)
     private String seededMobile;
     private String seededPoi;
@@ -141,37 +136,32 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     @Test(groups = {"registration"}, priority = 3,
             dependsOnMethods = "testEnterCredentialsOpensOtpScreen")
     @Story("Registration — enter OTP")
-    @Description("Enter the verification OTP and proceed to the next registration step")
+    @Description("Enter the verification OTP and proceed to the Date of Birth screen")
     @Severity(SeverityLevel.CRITICAL)
     public void testEnterOtpProceeds() {
         String otp = ConfigManager.getInstance().get("registration.otp", "1234");
         flow.enterOtp(otp);
-        if (hasDobStep()) {
-            Assert.assertTrue(wizardPage.isDobScreenDisplayed(20),
-                    "Date of birth screen should appear after OTP for Visitor/BOR");
-        } else {
-            Assert.assertTrue(wizardPage.isPasscodeScreenDisplayed(25),
-                    "Create Passcode screen should appear after OTP for NAT/IQA");
-        }
+        Assert.assertTrue(wizardPage.isDobScreenDisplayed(25),
+                "Date of Birth screen (Step 3/5) should appear after OTP for all tiers");
     }
 
     // ══════════════════════════════════════════════════
-    //  TEST 4 — DATE OF BIRTH (VISITOR ONLY)
+    //  TEST 4 — DATE OF BIRTH (ALL TIERS)
     // ══════════════════════════════════════════════════
 
     @Test(groups = {"registration"}, priority = 4,
             dependsOnMethods = "testEnterOtpProceeds")
-    @Story("Registration — date of birth (Visitor)")
-    @Description("Enter date of birth on the DOB validation screen (Visitor/BOR tier only)")
+    @Story("Registration — date of birth")
+    @Description("Enter date of birth on the DOB screen (Step 3/5 — shown for all tiers)")
     @Severity(SeverityLevel.CRITICAL)
     public void testEnterDateOfBirthProceeds() {
-        if (!hasDobStep()) {
-            return; // no DOB screen for NAT / IQA
-        }
-        String dob = ConfigManager.getInstance().get("registration.visitor.dob", "1994-01-22");
-        flow.enterDateOfBirth(dob);
+        ConfigManager cfg = ConfigManager.getInstance();
+        String month = cfg.get("registration.dob.month", "May");
+        String day   = cfg.get("registration.dob.day",   "30");
+        String year  = cfg.get("registration.dob.year",  "1999");
+        flow.enterDateOfBirth(month, day, year);
         Assert.assertTrue(wizardPage.isPasscodeScreenDisplayed(25),
-                "Create Passcode screen should appear after DOB validation for Visitor/BOR");
+                "Create Passcode screen should appear after DOB entry");
     }
 
     // ══════════════════════════════════════════════════
@@ -196,17 +186,20 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
 
     @Test(groups = {"registration"}, priority = 6,
             dependsOnMethods = "testCreatePasscodeShowsConfirmScreen")
-    @Story("Registration — confirm passcode")
-    @Description("Confirm the passcode on the Confirm Passcode screen")
+    @Story("Registration — confirm passcode and reach finish screen")
+    @Description("Confirm passcode, dismiss the Nafath verification screen, verify the Done/Finish screen")
     @Severity(SeverityLevel.CRITICAL)
     public void testConfirmPasscodeProceedsToTerms() {
         String passcode = ConfigManager.getInstance().get("registration.passcode", "2233");
         flow.confirmPasscode(passcode);
-        // After confirming passcode the app may show a terms screen (some builds) or go straight
-        // to the finish screen — accept terms if present, then wait for finish/done.
-        flow.acceptTermsAndSubmit();
+        // After confirming passcode the app shows a Nafath verification screen ("You're all set!")
+        // before the final Done screen — tap Next to proceed.
+        if (wizardPage.isNafathVerificationScreenDisplayed(15)) {
+            log.info("Nafath verification screen detected — tapping Next");
+            wizardPage.tapNext();
+        }
         Assert.assertTrue(wizardPage.isFinishScreenDisplayed(30),
-                "Registration finish/done screen should appear after confirming passcode");
+                "Registration Done/Finish screen should appear after the passcode is confirmed");
     }
 
     // ══════════════════════════════════════════════════
