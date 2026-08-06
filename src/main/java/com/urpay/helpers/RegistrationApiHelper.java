@@ -358,14 +358,14 @@ public final class RegistrationApiHelper {
                 .header("X-Api-Key", apiKey)
                 .header("Content-Type", "application/json")
                 .queryParam("nin", poiNumber)
-                .queryParam("firstName", "\u0645\u0639\u062A\u0632")
-                .queryParam("fatherName", "\u0635\u0644\u0627\u062D")
-                .queryParam("grandFatherName", "\u0639\u0645\u0631")
-                .queryParam("familyName", "\u0627\u0644\u063A\u0627\u0645\u062F\u064A")
-                .queryParam("englishFirstName", "Mutez")
-                .queryParam("englishSecondName", "Salah")
-                .queryParam("englishThirdName", "Omar")
-                .queryParam("englishLastName", "Alghamdi")
+                .queryParam("firstName", "أيمن")
+                .queryParam("fatherName", "عبدالإله")
+                .queryParam("grandFatherName", "إبراهيم")
+                .queryParam("familyName", "عباس")
+                .queryParam("englishFirstName", "Ayman")
+                .queryParam("englishSecondName", "Abdulailah")
+                .queryParam("englishThirdName", "Ibrahim")
+                .queryParam("englishLastName", "Abbas")
                 .queryParam("idExpiryDate", "2034-10-11T00:00:00")
                 .queryParam("dateOfBirthH", dateOfBirthH)
                 .queryParam("birthDateG", birthDateG)
@@ -403,18 +403,18 @@ public final class RegistrationApiHelper {
                 + "\"card_issue_place#ar\":null,"
                 + "\"card_issue_place#en\":null,"
                 + "\"scenario\":\"Accepted\","
-                + "\"first_name#ar\":\"معتز\","
-                + "\"father_name#ar\":\"صلاح\","
-                + "\"grand_name#ar\":\"عمر\","
-                + "\"family_name#ar\":\"الغامدي\","
-                + "\"first_name#en\":\"Mutez\","
-                + "\"father_name#en\":\"Salah\","
-                + "\"grand_name#en\":\"Omar\","
-                + "\"family_name#en\":\"Alghamdi\","
-                + "\"two_names#ar\":\"معتز الغامدي\","
-                + "\"two_names#en\":\"Mutez Alghamdi\","
-                + "\"full_name#ar\":\"معتز صلاح عمر الغامدي\","
-                + "\"full_name#en\":\"Mutez Alghamdi\","
+                + "\"first_name#ar\":\"أيمن\","
+                + "\"father_name#ar\":\"عبدالإله\","
+                + "\"grand_name#ar\":\"إبراهيم\","
+                + "\"family_name#ar\":\"عباس\","
+                + "\"first_name#en\":\"Ayman\","
+                + "\"father_name#en\":\"Abdulailah\","
+                + "\"grand_name#en\":\"Ibrahim\","
+                + "\"family_name#en\":\"Abbas\","
+                + "\"two_names#ar\":\"أيمن عباس\","
+                + "\"two_names#en\":\"Ayman Abbas\","
+                + "\"full_name#ar\":\"أيمن عبدالإله إبراهيم عباس\","
+                + "\"full_name#en\":\"Ayman Abbas\","
                 + "\"gender\":\"M\","
                 + "\"dob#g\":\"" + dobG + "\","
                 + "\"dob#h\":" + dobH + ","
