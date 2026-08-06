@@ -148,6 +148,8 @@ public class RegistrationFlow {
         log.info("Entering mobile '{}' and POI '{}' for {} registration", uiMobile, generatedPoi, poiType.code());
         wizardPage.enterMobileNumber(uiMobile);
         wizardPage.enterIdNumber(generatedPoi);
+        // Terms + Privacy checkboxes sit on the same credentials form — accept them if present
+        wizardPage.acceptTermsAndPrivacyIfPresent();
         wizardPage.tapNext();
     }
 

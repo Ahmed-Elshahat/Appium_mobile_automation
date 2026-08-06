@@ -128,7 +128,7 @@ public class RegistrationWizardPage extends BasePage {
     }
 
     /**
-     * Accept both Terms and Privacy Policy checkboxes, then tap Next to submit registration.
+     * Accept Terms + Privacy Policy and submit registration (later-screen variant).
      * If only one checkbox is present the second tap is a no-op (best-effort).
      */
     @Step("Accept Terms + Privacy Policy and submit registration")
@@ -138,6 +138,23 @@ public class RegistrationWizardPage extends BasePage {
             acceptPrivacyPolicy();
         }
         tapNext();
+    }
+
+    /**
+     * Best-effort accept of Terms + Privacy on the credentials entry form.
+     * On the current build these checkboxes sit on the same screen as mobile/ID.
+     * If they are absent (different build / later screen) this is a no-op.
+     */
+    @Step("Accept Terms + Privacy Policy on credentials form (if present)")
+    public void acceptTermsAndPrivacyIfPresent() {
+        if (waitUtils.isPresent(TERMS_CHECKBOX, 5)) {
+            tap(TERMS_CHECKBOX);
+            log.info("Accepted Terms checkbox on credentials form");
+        }
+        if (waitUtils.isPresent(PRIVACY_CHECKBOX, 3)) {
+            tap(PRIVACY_CHECKBOX);
+            log.info("Accepted Privacy Policy checkbox on credentials form");
+        }
     }
 
     /**

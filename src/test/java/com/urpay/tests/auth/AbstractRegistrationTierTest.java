@@ -188,31 +188,19 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     public void testConfirmPasscodeProceedsToTerms() {
         String passcode = ConfigManager.getInstance().get("registration.passcode", "2233");
         flow.confirmPasscode(passcode);
-        Assert.assertTrue(wizardPage.isTermsScreenDisplayed(20),
-                "Terms + Privacy Policy screen should appear after confirming the passcode");
+        // After confirming passcode the app may show a terms screen (some builds) or go straight
+        // to the finish screen — accept terms if present, then wait for finish/done.
+        flow.acceptTermsAndSubmit();
+        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(30),
+                "Registration finish/done screen should appear after confirming passcode");
     }
 
     // ══════════════════════════════════════════════════
-    //  TEST 7 — ACCEPT TERMS AND SUBMIT
+    //  TEST 7 — TAP DONE → DASHBOARD
     // ══════════════════════════════════════════════════
 
     @Test(groups = {"registration"}, priority = 7,
             dependsOnMethods = "testConfirmPasscodeProceedsToTerms")
-    @Story("Registration — accept terms")
-    @Description("Accept the Terms of Service and Privacy Policy, then submit registration")
-    @Severity(SeverityLevel.CRITICAL)
-    public void testAcceptTermsCompletesRegistration() {
-        flow.acceptTermsAndSubmit();
-        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(30),
-                "Registration Done/Finish screen should appear after accepting terms");
-    }
-
-    // ══════════════════════════════════════════════════
-    //  TEST 8 — TAP DONE → DASHBOARD
-    // ══════════════════════════════════════════════════
-
-    @Test(groups = {"registration"}, priority = 8,
-            dependsOnMethods = "testAcceptTermsCompletesRegistration")
     @Story("Registration — complete and reach dashboard")
     @Description("Tap Done on the finish screen and verify the dashboard is displayed")
     @Severity(SeverityLevel.BLOCKER)
