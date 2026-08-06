@@ -78,10 +78,15 @@ public class RegistrationWizardPage extends BasePage {
             "//*[@content-desc='testID-primary-buttonAction-main'"
             + " or @text='Done' or @text='Get Started' or @text='Welcome']");
 
-    // Nafath verification screen shown after passcode confirmation
+    // Nafath "Verification Requirements" screen shown after passcode confirmation
     private static final By NAFATH_SCREEN_MARKER = AppiumBy.xpath(
             "//*[@text='Verification Requirements' or @text=\"You're all set!\""
             + " or @text='Nafath']");
+
+    // Nafath number-match screen shown after tapping Next on the requirements screen
+    private static final By NAFATH_NUMBER_SCREEN_MARKER = AppiumBy.xpath(
+            "//*[@text='Nafath Verification' or @text='Open Nafath App'"
+            + " or @content-desc='testID-Steps.42a2f0a1-933a-4201-8c6e-46536e98761c']");
 
     // ══════════════════════════════════════════════════
     //  SCREEN CHECKS
@@ -109,6 +114,29 @@ public class RegistrationWizardPage extends BasePage {
 
     public boolean isNafathVerificationScreenDisplayed(long timeoutSec) {
         return waitUtils.isPresent(NAFATH_SCREEN_MARKER, timeoutSec);
+    }
+
+    public boolean isNafathNumberScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(NAFATH_NUMBER_SCREEN_MARKER, timeoutSec);
+    }
+
+    /**
+     * Wait on the Nafath number-match screen until it disappears (SIT auto-verifies in ~30s).
+     * Returns true if the screen cleared within the timeout, false if still showing.
+     */
+    @Step("Wait for Nafath auto-verification to complete")
+    public boolean waitUntilNafathAutoVerifies(long timeoutSec) {
+        log.info("Waiting up to {}s for Nafath auto-verification...", timeoutSec);
+        long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
+        while (System.currentTimeMillis() < deadline) {
+            if (!waitUtils.isPresent(NAFATH_NUMBER_SCREEN_MARKER, 3)) {
+                log.info("Nafath number-match screen cleared — verification complete");
+                return true;
+            }
+            log.info("Nafath number-match screen still showing — waiting...");
+        }
+        log.warn("Nafath auto-verification did not complete within {}s", timeoutSec);
+        return false;
     }
 
     // ══════════════════════════════════════════════════

@@ -192,13 +192,16 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     public void testConfirmPasscodeProceedsToTerms() {
         String passcode = ConfigManager.getInstance().get("registration.passcode", "2233");
         flow.confirmPasscode(passcode);
-        // After confirming passcode the app shows a Nafath verification screen ("You're all set!")
-        // before the final Done screen — tap Next, then wait up to 90s for Nafath auto-verification.
+        // Screen 1 after passcode: "Verification Requirements" ("You're all set!") → tap Next
         if (wizardPage.isNafathVerificationScreenDisplayed(15)) {
-            log.info("Nafath verification screen detected — tapping Next (Nafath auto-verifies in ~30s)");
+            log.info("Nafath requirements screen detected — tapping Next");
             wizardPage.tapNext();
         }
-        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(90),
+        // Screen 2: "Nafath Verification" number-match screen — SIT auto-verifies in ~30s
+        if (wizardPage.isNafathNumberScreenDisplayed(10)) {
+            wizardPage.waitUntilNafathAutoVerifies(120);
+        }
+        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(30),
                 "Registration Done/Finish screen should appear after Nafath auto-verification");
     }
 
