@@ -13,6 +13,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.chrono.HijrahDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
@@ -430,7 +432,7 @@ public final class RegistrationApiHelper {
                 .post(simBaseUrl + "/__admin/nafath-info");
     }
 
-    /** Seed the Nafath ELM simulator — required alongside nafath-info for identity verification. */
+    /** Seed the Nafath ELM simulator for identity verification. */
     @Step("API seed NafathElm info (simulator) for poi {poiNumber}")
     public static Response seedNafathElmInfo(String poiNumber) {
         ConfigManager config = ConfigManager.getInstance();
@@ -439,13 +441,13 @@ public final class RegistrationApiHelper {
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String dobG = config.get("registration.default.birthDateG", "1999-05-30");
-        String dobHStr = config.get("registration.default.dateOfBirthH", "1420-05-08").replace("-", "");
-        int dobH;
-        try { dobH = Integer.parseInt(dobHStr); } catch (NumberFormatException e) { dobH = 14200508; }
+        int dobH = toHijriIntFromGregorianDate(dobG);
+        String errorStatus = config.get("registration.nafathElm.errorStatus", "422-031-046");
 
         String body = "{"
                 + "\"id\":" + poiNumber + ","
                 + "\"scenario\":\"Completed\","
+            + "\"error_status\":\"" + errorStatus + "\","
                 + "\"first_name#ar\":\"أيمن\","
                 + "\"father_name#ar\":\"عبدالإله\","
                 + "\"grand_name#ar\":\"إبراهيم\","
@@ -471,6 +473,20 @@ public final class RegistrationApiHelper {
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .body(body)
                 .post(simBaseUrl + "/__admin/nafathElm-info");
+    }
+
+    /** Convert Gregorian yyyy-MM-dd to Hijri YYYYMMDD integer for simulator fields like dob#h. */
+    private static int toHijriIntFromGregorianDate(String dobG) {
+        try {
+            LocalDate gregorian = LocalDate.parse(dobG);
+            HijrahDate hijri = HijrahDate.from(gregorian);
+            return (hijri.get(java.time.temporal.ChronoField.YEAR_OF_ERA) * 10000)
+                    + (hijri.get(java.time.temporal.ChronoField.MONTH_OF_YEAR) * 100)
+                    + hijri.get(java.time.temporal.ChronoField.DAY_OF_MONTH);
+        } catch (Exception e) {
+            log.warn("Invalid birthDateG '{}' — falling back to default Hijri DOB 14200508", dobG);
+            return 14200508;
+        }
     }
 
     /** Backwards-compatible registration (NAT/IQA): no age-verification token, no unverified DOB. */
