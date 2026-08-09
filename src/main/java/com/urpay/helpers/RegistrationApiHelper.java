@@ -289,37 +289,43 @@ public final class RegistrationApiHelper {
 
     @Step("API pre-login")
     static Response preLogin(String baseUrl, String mobile, String poi, String poiType) {
+        String endpoint = baseUrl + "/authentication/consumers/pre-login";
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"poi\":{\"poiNumber\":\"" + poi
                 + "\",\"poiType\":\"" + poiType + "\"}}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's pre-login header set: no X-Client-Secret, plus X-Forwarded-For.
         return baseHeaders(null, false)
                 .header("X-Forwarded-For", "51.235.115.205")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/authentication/consumers/pre-login");
+            .post(endpoint);
     }
 
     @Step("API generate OTP")
     static Response generateOtp(String baseUrl, String mobile) {
+        String endpoint = baseUrl + "/otp/generate";
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"001\"}";
+        logApiRequest("POST", endpoint, body);
         return baseHeaders(null)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/otp/generate");
+            .post(endpoint);
     }
 
     @Step("API verify OTP")
     static Response verifyOtp(String baseUrl, String mobile, String otpReference, String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/otp/verify";
         String otp = config.get("registration.otp", "1234");
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp + "\",\"otpReference\":\""
                 + otpReference + "\",\"purpose\":\"001\"}";
+        logApiRequest("POST", endpoint, body);
         return baseHeaders(otpToken)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/otp/verify");
+            .post(endpoint);
     }
 
     /** Seed the Tahaqoq/Nafath simulator so the POI passes ID verification during registration. */
@@ -328,15 +334,19 @@ public final class RegistrationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String body = "{}";
+        logApiRequest("POST", endpoint,
+            "{\"IDNumber\":\"" + poiNumber + "\",\"MobileNumber\":\"" + mobile + "\",\"body\":" + body + "}");
         return baseHeaders(null)
                 .header("X-Api-Key", apiKey)
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .queryParam("IDNumber", poiNumber)
                 .queryParam("MobileNumber", mobile)
-                .body("{}")
-                .post(simBaseUrl + "/__admin/tahaqoq-info");
+            .body(body)
+            .post(endpoint);
     }
 
     /**
@@ -352,10 +362,29 @@ public final class RegistrationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/yakeen-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String birthDateG = config.get("registration.default.birthDateG", "1999-05-30");
         String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
+        String requestView = "{"
+            + "\"nin\":\"" + poiNumber + "\","
+            + "\"firstName\":\"أيمن\","
+            + "\"fatherName\":\"عبدالإله\","
+            + "\"grandFatherName\":\"إبراهيم\","
+            + "\"familyName\":\"عباس\","
+            + "\"englishFirstName\":\"Ayman\","
+            + "\"englishSecondName\":\"Abdulailah\","
+            + "\"englishThirdName\":\"Ibrahim\","
+            + "\"englishLastName\":\"Abbas\","
+            + "\"idExpiryDate\":\"2034-10-11T00:00:00\","
+            + "\"dateOfBirthH\":\"" + dateOfBirthH + "\","
+            + "\"birthDateG\":\"" + birthDateG + "\","
+            + "\"gender\":\"M\","
+            + "\"idExpirationDateH\":\"1456-07-28\","
+            + "\"placeOfBirth\":\"الرياض\""
+            + "}";
+        logApiRequest("POST", endpoint, requestView);
         return baseHeaders(null)
                 .header("X-Api-Key", apiKey)
                 .header("Content-Type", "application/json; charset=UTF-8")
@@ -374,7 +403,7 @@ public final class RegistrationApiHelper {
                 .queryParam("gender", "M")
                 .queryParam("idExpirationDateH", "1456-07-28")
                 .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636")
-                .post(simBaseUrl + "/__admin/yakeen-info");
+                .post(endpoint);
     }
 
     /**
@@ -387,6 +416,7 @@ public final class RegistrationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/nafath-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String dobG   = config.get("registration.default.birthDateG", "1999-05-30");
@@ -425,11 +455,12 @@ public final class RegistrationApiHelper {
                 + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
                 + "\"language\":\"A\""
                 + "}";
+            logApiRequest("POST", endpoint, body);
         return RestAssured.given()
                 .header("X-Api-Key", apiKey)
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .body(body)
-                .post(simBaseUrl + "/__admin/nafath-info");
+                .post(endpoint);
     }
 
     /** Seed the Nafath ELM simulator for identity verification. */
@@ -438,6 +469,7 @@ public final class RegistrationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/nafathElm-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String dobG = config.get("registration.default.birthDateG", "1999-05-30");
@@ -447,7 +479,7 @@ public final class RegistrationApiHelper {
         String body = "{"
                 + "\"id\":" + poiNumber + ","
                 + "\"scenario\":\"Completed\","
-            + "\"error_status\":\"" + errorStatus + "\","
+                + "\"error_status\":\"" + errorStatus + "\","
                 + "\"first_name#ar\":\"أيمن\","
                 + "\"father_name#ar\":\"عبدالإله\","
                 + "\"grand_name#ar\":\"إبراهيم\","
@@ -468,11 +500,12 @@ public final class RegistrationApiHelper {
                 + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
                 + "\"language\":\"A\""
                 + "}";
+            logApiRequest("POST", endpoint, body);
         return RestAssured.given()
                 .header("X-Api-Key", apiKey)
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .body(body)
-                .post(simBaseUrl + "/__admin/nafathElm-info");
+                .post(endpoint);
     }
 
     /** Convert Gregorian yyyy-MM-dd to Hijri YYYYMMDD integer for simulator fields like dob#h. */
@@ -498,6 +531,7 @@ public final class RegistrationApiHelper {
     static Response registerConsumer(String baseUrl, String mobile, String otpReference,
                                              String poi, String poiType, String otpToken,
                                              String verificationToken, String unverifiedDob) {
+        String endpoint = baseUrl + "/consumers/registration";
         ConfigManager config = ConfigManager.getInstance();
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         StringBuilder body = new StringBuilder("{\"mobileNumber\":\"" + mobile + "\",\"otpReference\":\""
@@ -508,6 +542,7 @@ public final class RegistrationApiHelper {
             body.append(",\"unverifiedDateOfBirth\":\"").append(unverifiedDob).append("\"");
         }
         body.append("}");
+        logApiRequest("POST", endpoint, body.toString());
 
         // No Thread.sleep (framework rule): instead retry to absorb the brief propagation
         // delay between the Tahaqoq seed and the registration becoming accepted.
@@ -523,7 +558,7 @@ public final class RegistrationApiHelper {
                 spec = spec.header("X-Verification-Token", verificationToken);
             }
             response = spec.body(body.toString())
-                    .post(baseUrl + "/consumers/registration");
+                    .post(endpoint);
             int status = response.getStatusCode();
             if (status >= 200 && status < 300) {
                 return response;
@@ -542,12 +577,14 @@ public final class RegistrationApiHelper {
      */
     @Step("API validate age (Visitor/BOR)")
     static String validateAge(String baseUrl, String dateOfBirth, String poiType, String otpToken) {
+        String endpoint = baseUrl + "/consumers/age/validate";
         String body = "{\"dateOfBirth\":\"" + dateOfBirth + "\",\"poiType\":\"" + poiType + "\"}";
+        logApiRequest("POST", endpoint, body);
         Response resp = baseHeaders(otpToken)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/consumers/age/validate");
+            .post(endpoint);
         String token = resp.getHeader("X-Verification-Token");
         log.info("Age validate ({}) status {} -> isAdult {} | verification token {}",
                 poiType, resp.getStatusCode(), resp.jsonPath().getString("body.isAdult"),
@@ -559,9 +596,11 @@ public final class RegistrationApiHelper {
     private static Response deviceRegister(String baseUrl, String mobile, String poi, String poiType,
                                            String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/devices/register";
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"poi\":{\"poiNumber\":\"" + poi + "\",\"poiType\":\"" + poiType
                 + "\"},\"mobileNumber\":\"" + mobile + "\",\"passCode\":\"" + passcodeBlob + "\"}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's devices/register header set exactly: no X-Client-Secret,
         // no X-Api-Key, no X-Device-Token; adds X-Latitude/X-Longitude/X-Forwarded-For.
         return RestAssured.given()
@@ -578,15 +617,17 @@ public final class RegistrationApiHelper {
                 .header("X-Forwarded-For", "51.235.115.207")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/devices/register");
+                .post(endpoint);
     }
 
     @Step("API consumer login")
     private static Response consumerLogin(String baseUrl, String deviceToken, String requestId,
                                           String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/authentication/consumers/login";
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"passCode\":\"" + passcodeBlob + "\",\"firstLoginFlg\":false}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's consumers/login header set exactly: NO X-Client-Secret, NO X-Api-Key,
         // NO X-Host-IP; X-Request-Id is a fresh UUID; real X-Device-Token + X-OTP-Token; lat/long/fwd-for
         // and x-push-notification-os-enabled-flag included.
@@ -608,7 +649,7 @@ public final class RegistrationApiHelper {
         if (deviceToken != null) {
             spec = spec.header(DEVICE_TOKEN_HEADER, deviceToken);
         }
-        return spec.post(baseUrl + "/authentication/consumers/login");
+        return spec.post(endpoint);
     }
 
     /** Re-run pre-login → otp → device register → consumer login to log the new user in. */
@@ -885,6 +926,7 @@ public final class RegistrationApiHelper {
             log.warn("KYC skipped: login returned no consumerId");
             return;
         }
+        String endpoint = baseUrl + "/consumers/" + session.consumerId + "/kyc";
         String body = "{"
                 + "\"additionalIncomeSource\":\"SALARY\","
                 + "\"basicIncomeSource\":\"SALARY\","
@@ -894,9 +936,10 @@ public final class RegistrationApiHelper {
                 + "\"incomeRange\":\"1\","
                 + "\"jobCategory\":\"21\""
                 + "}";
+        logApiRequest("PUT", endpoint, body);
         Response resp = authedRequest(session)
                 .body(body)
-                .put(baseUrl + "/consumers/" + session.consumerId + "/kyc");
+            .put(endpoint);
         log.info("KYC for consumer {} -> status {} body {}", session.consumerId,
                 resp.getStatusCode(), resp.getBody().asString());
     }
@@ -909,12 +952,14 @@ public final class RegistrationApiHelper {
     @Step("API accept new terms after login")
     static void acceptNewTerms(String baseUrl, Session session) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/consumers/new-terms/accept/after-login";
         String termsVersion = config.get("registration.termsVersion", "16");
         String body = "{\"termsVersion\":\"" + termsVersion + "\"}";
+        logApiRequest("POST", endpoint, body);
         Response resp = authedRequest(session)
                 .header("X-Principle-Type", "Consumer")
                 .body(body)
-                .post(baseUrl + "/consumers/new-terms/accept/after-login");
+            .post(endpoint);
         log.info("Accept new terms (v{}) -> status {} body {}", termsVersion,
                 resp.getStatusCode(), resp.getBody().asString());
     }
@@ -948,9 +993,12 @@ public final class RegistrationApiHelper {
                 "tnc_UrPay,pv_UrPay,UrPayMCSMS,UrPayMCPN");
         String policyVersion = config.get("registration.consentPolicyVersion", "NONE");
         String channelType = config.get("registration.consentChannelType", "Urpay");
+        String inquiryEndpoint = baseUrl + "/consumers/party-consents";
+        String createEndpoint = baseUrl + "/consumers/party-consents";
 
         // The app first inquires the existing consents (GET) before creating them.
-        Response inquiry = authedRequest(session).get(baseUrl + "/consumers/party-consents");
+        logApiRequest("GET", inquiryEndpoint, "{}");
+        Response inquiry = authedRequest(session).get(inquiryEndpoint);
         log.info("Party consents inquiry -> status {} body {}", inquiry.getStatusCode(),
                 inquiry.getBody().asString());
 
@@ -971,12 +1019,17 @@ public final class RegistrationApiHelper {
                     .append("\"}");
         }
         String body = "{\"partyConsents\":[" + consents + "],\"partyId\":\"" + partyId + "\"}";
+        logApiRequest("POST", createEndpoint, body);
         Response resp = authedRequest(session)
                 .body(body)
-                .post(baseUrl + "/consumers/party-consents");
+            .post(createEndpoint);
         log.info("Accept party consents ({}) -> status {} body {}", policies,
                 resp.getStatusCode(), resp.getBody().asString());
     }
+
+        private static void logApiRequest(String method, String endpoint, String body) {
+        log.info("API Request > {} {} body {}", method, endpoint, body);
+        }
 
     /**
      * Re-activate a consumer after KYC. {@code /consumers/{id}/kyc} flips the consumer to INACTIVE;
