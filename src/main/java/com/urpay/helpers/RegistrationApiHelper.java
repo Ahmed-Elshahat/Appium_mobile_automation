@@ -338,9 +338,8 @@ public final class RegistrationApiHelper {
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String cookie = config.get("registration.simCookie", "");
-        String body = "{}";
-        logApiRequest("POST", endpoint,
-            "{\"IDNumber\":\"" + poiNumber + "\",\"MobileNumber\":\"" + mobile + "\",\"body\":" + body + "}");
+        String tahaqoqUrl = endpoint + "?IDNumber=" + poiNumber + "&MobileNumber=" + mobile;
+        logApiRequest("POST", tahaqoqUrl, "");
         RequestSpecification spec = RestAssured.given()
             .header("X-Do-Not-Track", apiKey)
             .header("x-api-key", apiKey)
@@ -394,25 +393,23 @@ public final class RegistrationApiHelper {
             + "\"convertDate\":{\"dateString\":\"" + dateOfBirthH + "\"}"
             + "}"
             + "}";
-        String requestView = "{"
-            + "\"nin\":\"" + poiNumber + "\","
-            + "\"firstName\":\"أيمن\","
-            + "\"fatherName\":\"عبدالإله\","
-            + "\"grandFatherName\":\"إبراهيم\","
-            + "\"familyName\":\"عباس\","
-            + "\"englishFirstName\":\"Ayman\","
-            + "\"englishSecondName\":\"Abdulailah\","
-            + "\"englishThirdName\":\"Ibrahim\","
-            + "\"englishLastName\":\"Abbas\","
-            + "\"idExpiryDate\":\"2034-10-11T00:00:00\","
-            + "\"dateOfBirthH\":\"" + dateOfBirthH + "\","
-            + "\"birthDateG\":\"" + birthDateG + "\","
-            + "\"gender\":\"M\","
-            + "\"idExpirationDateH\":\"1456-07-28\","
-            + "\"placeOfBirth\":\"الرياض\","
-            + "\"body\":" + body
-            + "}";
-        logApiRequest("POST", endpoint, requestView);
+        String yakeenUrl = endpoint
+            + "?nin=" + poiNumber
+            + "&firstName=أيمن"
+            + "&fatherName=عبدالإله"
+            + "&grandFatherName=إبراهيم"
+            + "&familyName=عباس"
+            + "&englishFirstName=Ayman"
+            + "&englishSecondName=Abdulailah"
+            + "&englishThirdName=Ibrahim"
+            + "&englishLastName=Abbas"
+            + "&idExpiryDate=2034-10-11T00:00:00"
+            + "&dateOfBirthH=" + dateOfBirthH
+            + "&birthDateG=" + birthDateG
+            + "&gender=M"
+            + "&idExpirationDateH=1456-07-28"
+            + "&placeOfBirth=الرياض";
+        logApiRequest("POST", yakeenUrl, body);
         RequestSpecification spec = RestAssured.given()
             .header("x-api-key", apiKey)
             .header("Content-Type", "application/json")
