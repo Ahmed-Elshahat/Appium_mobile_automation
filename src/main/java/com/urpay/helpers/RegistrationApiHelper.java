@@ -341,10 +341,10 @@ public final class RegistrationApiHelper {
         String body = "{}";
         logApiRequest("POST", endpoint,
             "{\"IDNumber\":\"" + poiNumber + "\",\"MobileNumber\":\"" + mobile + "\",\"body\":" + body + "}");
-        RequestSpecification spec = baseHeaders(null)
+        RequestSpecification spec = RestAssured.given()
             .header("X-Do-Not-Track", apiKey)
             .header("x-api-key", apiKey)
-                .queryParam("IDNumber", poiNumber)
+            .queryParam("IDNumber", poiNumber)
             .queryParam("MobileNumber", mobile);
         if (!cookie.isEmpty()) {
             spec = spec.header("Cookie", cookie);
@@ -375,24 +375,6 @@ public final class RegistrationApiHelper {
         String visaExpiryDate = config.get("registration.default.visaExpiryDate", "2025-08-21T00:00:00");
         String nationalityCode = config.get("registration.default.nationalityCode", "113");
         String nationalityDescAr = config.get("registration.default.nationalityDescAr", "المملكة العربية السعودية");
-        String requestView = "{"
-            + "\"nin\":\"" + poiNumber + "\","
-            + "\"firstName\":\"أيمن\","
-            + "\"fatherName\":\"عبدالإله\","
-            + "\"grandFatherName\":\"إبراهيم\","
-            + "\"familyName\":\"عباس\","
-            + "\"englishFirstName\":\"Ayman\","
-            + "\"englishSecondName\":\"Abdulailah\","
-            + "\"englishThirdName\":\"Ibrahim\","
-            + "\"englishLastName\":\"Abbas\","
-            + "\"idExpiryDate\":\"2034-10-11T00:00:00\","
-            + "\"dateOfBirthH\":\"" + dateOfBirthH + "\","
-            + "\"birthDateG\":\"" + birthDateG + "\","
-            + "\"gender\":\"M\","
-            + "\"idExpirationDateH\":\"1456-07-28\","
-            + "\"placeOfBirth\":\"الرياض\""
-            + "}";
-        logApiRequest("POST", endpoint, requestView);
         String body = "{"
             + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
             + "\"personBasicInfo\":{"
@@ -412,8 +394,26 @@ public final class RegistrationApiHelper {
             + "\"convertDate\":{\"dateString\":\"" + dateOfBirthH + "\"}"
             + "}"
             + "}";
-        logApiRequest("POST", endpoint, body);
-        RequestSpecification spec = baseHeaders(null)
+        String requestView = "{"
+            + "\"nin\":\"" + poiNumber + "\","
+            + "\"firstName\":\"أيمن\","
+            + "\"fatherName\":\"عبدالإله\","
+            + "\"grandFatherName\":\"إبراهيم\","
+            + "\"familyName\":\"عباس\","
+            + "\"englishFirstName\":\"Ayman\","
+            + "\"englishSecondName\":\"Abdulailah\","
+            + "\"englishThirdName\":\"Ibrahim\","
+            + "\"englishLastName\":\"Abbas\","
+            + "\"idExpiryDate\":\"2034-10-11T00:00:00\","
+            + "\"dateOfBirthH\":\"" + dateOfBirthH + "\","
+            + "\"birthDateG\":\"" + birthDateG + "\","
+            + "\"gender\":\"M\","
+            + "\"idExpirationDateH\":\"1456-07-28\","
+            + "\"placeOfBirth\":\"الرياض\","
+            + "\"body\":" + body
+            + "}";
+        logApiRequest("POST", endpoint, requestView);
+        RequestSpecification spec = RestAssured.given()
             .header("x-api-key", apiKey)
             .header("Content-Type", "application/json")
                 .queryParam("nin", poiNumber)
@@ -1064,7 +1064,23 @@ public final class RegistrationApiHelper {
     }
 
         private static void logApiRequest(String method, String endpoint, String body) {
-        log.info("API Request > {} {} body {}", method, endpoint, body);
+            log.info("API Request > {} {} body {}", method, endpoint, toAsciiSafe(body));
+        }
+
+        private static String toAsciiSafe(String text) {
+            if (text == null) {
+                return "";
+            }
+            StringBuilder escaped = new StringBuilder(text.length());
+            for (int i = 0; i < text.length(); i++) {
+                char ch = text.charAt(i);
+                if ((ch >= 32 && ch <= 126) || ch == '\n' || ch == '\r' || ch == '\t') {
+                    escaped.append(ch);
+                } else {
+                    escaped.append(String.format("\\u%04X", (int) ch));
+                }
+            }
+            return escaped.toString();
         }
 
     /**
