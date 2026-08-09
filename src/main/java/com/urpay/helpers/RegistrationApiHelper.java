@@ -337,16 +337,19 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String cookie = config.get("registration.simCookie", "");
         String body = "{}";
         logApiRequest("POST", endpoint,
             "{\"IDNumber\":\"" + poiNumber + "\",\"MobileNumber\":\"" + mobile + "\",\"body\":" + body + "}");
-        return baseHeaders(null)
-                .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json; charset=UTF-8")
+        RequestSpecification spec = baseHeaders(null)
+            .header("X-Do-Not-Track", apiKey)
+            .header("x-api-key", apiKey)
                 .queryParam("IDNumber", poiNumber)
-                .queryParam("MobileNumber", mobile)
-            .body(body)
-            .post(endpoint);
+            .queryParam("MobileNumber", mobile);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
     }
 
     /**
@@ -365,8 +368,13 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/yakeen-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String cookie = config.get("registration.simCookie", "");
         String birthDateG = config.get("registration.default.birthDateG", "1999-05-30");
         String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
+        String birthDateGIso = birthDateG.contains("T") ? birthDateG : birthDateG + "T00:00:00";
+        String visaExpiryDate = config.get("registration.default.visaExpiryDate", "2025-08-21T00:00:00");
+        String nationalityCode = config.get("registration.default.nationalityCode", "113");
+        String nationalityDescAr = config.get("registration.default.nationalityDescAr", "المملكة العربية السعودية");
         String requestView = "{"
             + "\"nin\":\"" + poiNumber + "\","
             + "\"firstName\":\"أيمن\","
@@ -385,9 +393,29 @@ public final class RegistrationApiHelper {
             + "\"placeOfBirth\":\"الرياض\""
             + "}";
         logApiRequest("POST", endpoint, requestView);
-        return baseHeaders(null)
-                .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json; charset=UTF-8")
+        String body = "{"
+            + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
+            + "\"personBasicInfo\":{"
+            + "\"birthDateG\":\"" + birthDateGIso + "\","
+            + "\"familyName\":\"عباس\","
+            + "\"familyNameT\":\"Abbas\","
+            + "\"fatherName\":\"عبدالإله\","
+            + "\"fatherNameT\":\"Abdulailah\","
+            + "\"firstName\":\"أيمن\","
+            + "\"firstNameT\":\"Ayman\","
+            + "\"grandFatherName\":\"إبراهيم\","
+            + "\"grandFatherNameT\":\"Ibrahim\","
+            + "\"nationalityCode\":\"" + nationalityCode + "\","
+            + "\"nationalityDescAr\":\"" + nationalityDescAr + "\","
+            + "\"sexCode\":\"1\","
+            + "\"sexDescAr\":\"ذكر\","
+            + "\"convertDate\":{\"dateString\":\"" + dateOfBirthH + "\"}"
+            + "}"
+            + "}";
+        logApiRequest("POST", endpoint, body);
+        RequestSpecification spec = baseHeaders(null)
+            .header("x-api-key", apiKey)
+            .header("Content-Type", "application/json")
                 .queryParam("nin", poiNumber)
                 .queryParam("firstName", "أيمن")
                 .queryParam("fatherName", "عبدالإله")
@@ -403,7 +431,11 @@ public final class RegistrationApiHelper {
                 .queryParam("gender", "M")
                 .queryParam("idExpirationDateH", "1456-07-28")
                 .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636")
-                .post(endpoint);
+                .body(body);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
     }
 
     /**
@@ -472,6 +504,7 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/nafathElm-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String cookie = config.get("registration.simCookie", "");
         String dobG = config.get("registration.default.birthDateG", "1999-05-30");
         int dobH = toHijriIntFromGregorianDate(dobG);
         String errorStatus = config.get("registration.nafathElm.errorStatus", "422-031-046");
@@ -501,11 +534,14 @@ public final class RegistrationApiHelper {
                 + "\"language\":\"A\""
                 + "}";
             logApiRequest("POST", endpoint, body);
-        return RestAssured.given()
-                .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json; charset=UTF-8")
-                .body(body)
-                .post(endpoint);
+            RequestSpecification spec = RestAssured.given()
+                .header("x-api-key", apiKey)
+                .header("Content-Type", "text/plain")
+                .body(body);
+            if (!cookie.isEmpty()) {
+                spec = spec.header("Cookie", cookie);
+            }
+            return spec.post(endpoint);
     }
 
     /** Convert Gregorian yyyy-MM-dd to Hijri YYYYMMDD integer for simulator fields like dob#h. */
