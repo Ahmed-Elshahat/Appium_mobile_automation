@@ -376,9 +376,11 @@
     <test name="DMP - Full Cycle MarketPlace Order">
         <classes><class name="com.urpay.tests.dmp.FullCycleMarketPlaceOrderTest"/></classes>
     </test>
+    <!-- EXCLUDED: PlaceOrderWithPhysicalProduct — SIT physical SKU out of stock (data-blocked).
     <test name="DMP - Place Order With Physical Product">
         <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
     </test>
+    -->
     <test name="DMP - Discount Per Item">
         <classes><class name="com.urpay.tests.dmp.promo.DiscountPerItemTest"/></classes>
     </test>

@@ -1,0 +1,3 @@
+@echo off
+echo Running Visitor (BOR) Registration suite...
+mvn test -Dsuite=suites/registration-visitor.xml -Dprofile=sit-wmv -Dmaven.test.failure.ignore=true

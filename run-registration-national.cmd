@@ -1,0 +1,3 @@
+@echo off
+echo Running National (NAT) Registration suite...
+mvn test -Dsuite=suites/registration-national.xml -Dprofile=sit-wmv -Dmaven.test.failure.ignore=true

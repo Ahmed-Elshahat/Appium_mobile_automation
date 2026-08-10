@@ -86,9 +86,15 @@ public class AccountStatementTest extends BaseTest {
 
     @Step("View account statement and verify response")
     private void viewAndVerifyStatement(AccountStatementPage page) {
+        // Capture the date-range form BEFORE tapping View — the resulting statement opens in a PDF
+        // viewer (a secure SurfaceView) where getScreenshotAs returns empty, so a post-tap capture
+        // is often blank. This pre-tap shot guarantees evidence of the state that triggered the flow.
+        captureScreenshot("Account Statement - Before View (form)");
         page.tapViewAccountStatement();
         boolean pdfShown = page.isPdfVisible();
         boolean noDataShown = page.isNoDataMessageVisible();
+        // Best-effort capture of the result screen (may be blank if the PDF renders on a secure surface).
+        captureScreenshot("Account Statement - View Result");
         Assert.assertTrue(pdfShown || noDataShown,
                 "Expected either PDF statement or 'no data' message after tapping View Account Statement");
         if (pdfShown) {

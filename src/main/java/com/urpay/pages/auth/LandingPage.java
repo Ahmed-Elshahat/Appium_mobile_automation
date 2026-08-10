@@ -1,6 +1,7 @@
 package com.urpay.pages.auth;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
@@ -29,6 +30,11 @@ public class LandingPage extends BasePage {
             + " or @name='testID-primary-register-main' or @name='testID-primary--main'"
             + " or @text='Register' or @label='Register']");
 
+        // Google Play Services location-accuracy prompt that intermittently overlays the landing page.
+        private static final By LOCATION_ACCURACY_NO_THANKS = AppiumBy.xpath(
+            "//*[@resource-id='android:id/button2'"
+            + " or @text='No thanks' or @text='NO THANKS']");
+
     @Step("Tap Login button on landing page")
     public void clickLogin() {
         tap(loginButton, 30);
@@ -36,7 +42,25 @@ public class LandingPage extends BasePage {
 
     @Step("Tap Register button on landing page")
     public void clickRegister() {
-        tap(REGISTER_BTN);
+        dismissLocationAccuracyPromptIfPresent();
+        try {
+            tap(REGISTER_BTN);
+        } catch (TimeoutException e) {
+            dismissLocationAccuracyPromptIfPresent();
+            tap(REGISTER_BTN);
+        }
+    }
+
+    private void dismissLocationAccuracyPromptIfPresent() {
+        try {
+            var buttons = waitUtils.findQuick(LOCATION_ACCURACY_NO_THANKS, 2);
+            if (!buttons.isEmpty() && buttons.get(0).isDisplayed()) {
+                buttons.get(0).click();
+                log.info("Dismissed Location Accuracy prompt using 'No thanks'");
+            }
+        } catch (Exception ignored) {
+            // Prompt not present or already gone.
+        }
     }
 
     public boolean isLoaded() {

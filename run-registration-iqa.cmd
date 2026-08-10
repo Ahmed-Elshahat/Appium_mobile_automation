@@ -1,0 +1,3 @@
+@echo off
+echo Running IQA (Resident) Registration suite...
+mvn test -Dsuite=suites/registration-iqa.xml -Dprofile=sit-wmv -Dmaven.test.failure.ignore=true

@@ -63,6 +63,12 @@ public class ChangePhoneNumberFlow {
         navigateToChangePhoneNumber();
         page.enterNewMobileNumber(originalNumber);
         page.tapNext();
+        // If the original number is already in use (taken by another SIT account or the number
+        // was never changed), dismiss the popup — no Thank You will follow.
+        if (page.isNumberAlreadyInUseDisplayed()) {
+            page.dismissAlreadyInUsePopup();
+            return page;
+        }
         page.enterVerificationCode(verificationCode);
         return page;
     }

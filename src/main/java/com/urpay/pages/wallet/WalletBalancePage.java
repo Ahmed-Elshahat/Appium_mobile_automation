@@ -37,14 +37,19 @@ public class WalletBalancePage extends BasePage {
             + "[@content-desc='testID-Icons.3c4eedac-9f12-49c9-ae8b-01a187949e18']]"
             + "/*[@class='com.horcrux.svg.PathView']");
 
-    @Step("Reveal the wallet balance (tap the eye icon if present)")
+    @Step("Reveal the wallet balance (tap the eye icon only if the balance is not already shown)")
     public void revealBalance() {
+        // If the balance amount is already visible, nothing to do.
+        if (!waitUtils.findQuick(BALANCE_AMOUNT, 5).isEmpty()) {
+            return;
+        }
+        // Balance is hidden — tap the eye icon to reveal it.
         List<WebElement> eye = waitUtils.findQuick(EYE_ICON, 5);
         if (!eye.isEmpty()) {
             try {
                 eye.get(0).click();
             } catch (Exception ignored) {
-                // already revealed or toggle went stale — nothing to do
+                // toggle went stale — nothing to do
             }
         }
     }

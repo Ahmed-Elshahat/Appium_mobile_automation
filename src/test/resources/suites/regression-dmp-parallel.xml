@@ -81,9 +81,11 @@
     </test>
 
     <!-- ── Lane D: Physical Order / Gift / Mokafaa (needs funded wallet) ── -->
+    <!-- EXCLUDED: PlaceOrderWithPhysicalProduct — SIT physical SKU out of stock (data-blocked).
     <test name="DMP - Place Order With Physical Product">
         <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
     </test>
+    -->
 
     <!-- ── Lane E: Promo Code ── -->
     <test name="DMP - Discount Per Item">

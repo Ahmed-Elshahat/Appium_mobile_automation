@@ -1,0 +1,8 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Registration — Visitor (BOR)" verbose="1">
+    <test name="VisitorRegistration" preserve-order="true">
+        <classes>
+            <class name="com.urpay.tests.auth.VisitorRegistrationTest"/>
+        </classes>
+    </test>
+</suite>

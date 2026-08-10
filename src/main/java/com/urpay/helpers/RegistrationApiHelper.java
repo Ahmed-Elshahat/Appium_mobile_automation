@@ -8,11 +8,15 @@ import io.restassured.specification.RequestSpecification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.chrono.HijrahDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
@@ -287,54 +291,71 @@ public final class RegistrationApiHelper {
 
     @Step("API pre-login")
     static Response preLogin(String baseUrl, String mobile, String poi, String poiType) {
+        String endpoint = baseUrl + "/authentication/consumers/pre-login";
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"poi\":{\"poiNumber\":\"" + poi
                 + "\",\"poiType\":\"" + poiType + "\"}}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's pre-login header set: no X-Client-Secret, plus X-Forwarded-For.
         return baseHeaders(null, false)
                 .header("X-Forwarded-For", "51.235.115.205")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/authentication/consumers/pre-login");
+            .post(endpoint);
     }
 
     @Step("API generate OTP")
     static Response generateOtp(String baseUrl, String mobile) {
+        String endpoint = baseUrl + "/otp/generate";
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"001\"}";
+        logApiRequest("POST", endpoint, body);
         return baseHeaders(null)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/otp/generate");
+            .post(endpoint);
     }
 
     @Step("API verify OTP")
     static Response verifyOtp(String baseUrl, String mobile, String otpReference, String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/otp/verify";
         String otp = config.get("registration.otp", "1234");
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp + "\",\"otpReference\":\""
                 + otpReference + "\",\"purpose\":\"001\"}";
+        logApiRequest("POST", endpoint, body);
         return baseHeaders(otpToken)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/otp/verify");
+            .post(endpoint);
     }
 
     /** Seed the Tahaqoq/Nafath simulator so the POI passes ID verification during registration. */
     @Step("API seed Tahaqoq info (simulator)")
-    static Response seedTahaqoqInfo(String poiNumber, String mobile) {
+    public static Response seedTahaqoqInfo(String poiNumber, String mobile) {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
-        return baseHeaders(null)
-                .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json")
-                .queryParam("IDNumber", poiNumber)
-                .queryParam("MobileNumber", mobile)
-                .body("{}")
-                .post(simBaseUrl + "/__admin/tahaqoq-info");
+        String cookie = config.get("registration.simCookie",
+            "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String tahaqoqUrl = endpoint + "?"
+            + encodeQueryParam("IDNumber", poiNumber)
+            + "&"
+            + encodeQueryParam("MobileNumber", mobile);
+        logApiRequest("POST", tahaqoqUrl, "");
+        RequestSpecification spec = RestAssured.given()
+            .urlEncodingEnabled(true)
+            .header("X-Do-Not-Track", apiKey)
+            .header("x-api-key", apiKey)
+            .queryParam("IDNumber", poiNumber)
+            .queryParam("MobileNumber", mobile);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
     }
 
     /**
@@ -346,38 +367,309 @@ public final class RegistrationApiHelper {
      * without a code change.
      */
     @Step("API seed Yakeen info (identity + DOB) for poi {poiNumber}")
-    static Response seedYakeenInfo(String poiNumber) {
+    public static Response seedYakeenInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/yakeen-info";
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String cookie = config.get("registration.simCookie",
+                "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2025-08-21T00:00:00");
+        String birthDateGIso = identity.birthDateG + "T00:00:00";
+        String nationalityCode = config.get("registration.identity.nationalityCode", "113");
+        String nationalityDescAr = config.get("registration.identity.nationalityDescAr", identity.nationalityAr);
+        String idExpiryDate = config.get("registration.identity.idExpiryDate", "2027-01-01T00:00:00");
+        String idExpirationDateH = config.get("registration.identity.idExpirationDateH", "1448-07-22");
+        String body = "{"
+            + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
+            + "\"personBasicInfo\":{"
+            + "\"birthDateG\":\"" + birthDateGIso + "\","
+            + "\"familyName\":\"" + identity.familyNameAr + "\","
+            + "\"familyNameT\":\"" + identity.familyNameEn + "\","
+            + "\"fatherName\":\"" + identity.fatherNameAr + "\","
+            + "\"fatherNameT\":\"" + identity.fatherNameEn + "\","
+            + "\"firstName\":\"" + identity.firstNameAr + "\","
+            + "\"firstNameT\":\"" + identity.firstNameEn + "\","
+            + "\"grandFatherName\":\"" + identity.grandNameAr + "\","
+            + "\"grandFatherNameT\":\"" + identity.grandNameEn + "\","
+            + "\"nationalityCode\":\"" + nationalityCode + "\","
+            + "\"nationalityDescAr\":\"" + nationalityDescAr + "\","
+            + "\"sexCode\":\"1\","
+            + "\"sexDescAr\":\"ذكر\","
+            + "\"convertDate\":{\"dateString\":\"" + identity.dateOfBirthH + "\"}"
+            + "}"
+            + "}";
+        String yakeenUrl = endpoint + "?" + toQueryString(
+            "nin", poiNumber,
+            "firstName", identity.firstNameAr,
+            "fatherName", identity.fatherNameAr,
+            "grandFatherName", identity.grandNameAr,
+            "familyName", identity.familyNameAr,
+            "englishFirstName", identity.firstNameEn,
+            "englishSecondName", identity.fatherNameEn,
+            "englishThirdName", identity.grandNameEn,
+            "englishLastName", identity.familyNameEn,
+            "idExpiryDate", idExpiryDate,
+            "dateOfBirthH", identity.dateOfBirthH,
+            "gender", identity.gender,
+            "placeOfBirth", identity.placeOfBirthAr,
+            "birthDateG", identity.birthDateG,
+            "idExpirationDateH", idExpirationDateH
+        );
+        logApiRequest("POST", yakeenUrl, body);
+        RequestSpecification spec = RestAssured.given()
+            .urlEncodingEnabled(true)
+            .header("x-api-key", apiKey)
+            .header("Content-Type", "application/json")
+                .queryParam("nin", poiNumber)
+            .queryParam("firstName", identity.firstNameAr)
+            .queryParam("fatherName", identity.fatherNameAr)
+            .queryParam("grandFatherName", identity.grandNameAr)
+            .queryParam("familyName", identity.familyNameAr)
+            .queryParam("englishFirstName", identity.firstNameEn)
+            .queryParam("englishSecondName", identity.fatherNameEn)
+            .queryParam("englishThirdName", identity.grandNameEn)
+            .queryParam("englishLastName", identity.familyNameEn)
+            .queryParam("idExpiryDate", idExpiryDate)
+            .queryParam("dateOfBirthH", identity.dateOfBirthH)
+            .queryParam("birthDateG", identity.birthDateG)
+            .queryParam("gender", identity.gender)
+            .queryParam("idExpirationDateH", idExpirationDateH)
+            .queryParam("placeOfBirth", identity.placeOfBirthAr)
+                .body(body);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
+    }
+
+    /**
+     * Seed the Nafath simulator so the POI passes Nafath identity verification during registration.
+     * Uses a JSON body (not query params) matching the /__admin/nafath-info contract.
+     * DOB Hijri is stored as an integer YYYYMMDD (e.g. 14200508 for 1420-05-08).
+     */
+    @Step("API seed Nafath info (simulator) for poi {poiNumber}")
+    public static Response seedNafathInfo(String poiNumber) {
         ConfigManager config = ConfigManager.getInstance();
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/nafath-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
-        String birthDateG = config.get("registration.default.birthDateG", "1999-05-30");
-        String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
-        return baseHeaders(null)
+        String dobG   = config.get("registration.default.birthDateG", "1999-05-30");
+        // Hijri DOB as integer YYYYMMDD — strip the dashes from the H date
+        String dobHStr = config.get("registration.default.dateOfBirthH", "1420-05-08").replace("-", "");
+        int dobH;
+        try { dobH = Integer.parseInt(dobHStr); } catch (NumberFormatException e) { dobH = 14200508; }
+
+        String body = "{"
+                + "\"id\":\"" + poiNumber + "\","
+                + "\"id_version\":null,"
+                + "\"id_issue_date#g\":null,"
+                + "\"id_issue_date#h\":null,"
+                + "\"id_expiry_date#g\":\"2034-10-11\","
+                + "\"id_expiry_date#h\":14560728,"
+                + "\"card_issue_place#ar\":null,"
+                + "\"card_issue_place#en\":null,"
+                + "\"scenario\":\"Accepted\","
+                + "\"first_name#ar\":\"أيمن\","
+                + "\"father_name#ar\":\"عبدالإله\","
+                + "\"grand_name#ar\":\"إبراهيم\","
+                + "\"family_name#ar\":\"عباس\","
+                + "\"first_name#en\":\"Ayman\","
+                + "\"father_name#en\":\"Abdulailah\","
+                + "\"grand_name#en\":\"Ibrahim\","
+                + "\"family_name#en\":\"Abbas\","
+                + "\"two_names#ar\":\"أيمن عباس\","
+                + "\"two_names#en\":\"Ayman Abbas\","
+                + "\"full_name#ar\":\"أيمن عبدالإله إبراهيم عباس\","
+                + "\"full_name#en\":\"Ayman Abbas\","
+                + "\"gender\":\"M\","
+                + "\"dob#g\":\"" + dobG + "\","
+                + "\"dob#h\":" + dobH + ","
+                + "\"nationality\":113,"
+                + "\"nationality#ar\":\"المملكة العربية السعودية\","
+                + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
+                + "\"language\":\"A\""
+                + "}";
+            logApiRequest("POST", endpoint, body);
+        return RestAssured.given()
                 .header("X-Api-Key", apiKey)
-                .header("Content-Type", "application/json")
-                .queryParam("nin", poiNumber)
-                .queryParam("firstName", "\u0645\u0639\u062A\u0632")
-                .queryParam("fatherName", "\u0635\u0644\u0627\u062D")
-                .queryParam("grandFatherName", "\u0639\u0645\u0631")
-                .queryParam("familyName", "\u0627\u0644\u063A\u0627\u0645\u062F\u064A")
-                .queryParam("englishFirstName", "Mutez")
-                .queryParam("englishSecondName", "Salah")
-                .queryParam("englishThirdName", "Omar")
-                .queryParam("englishLastName", "Alghamdi")
-                .queryParam("idExpiryDate", "2034-10-11T00:00:00")
-                .queryParam("dateOfBirthH", dateOfBirthH)
-                .queryParam("birthDateG", birthDateG)
-                .queryParam("gender", "M")
-                .queryParam("idExpirationDateH", "1456-07-28")
-                .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636")
-                .post(simBaseUrl + "/__admin/yakeen-info");
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .body(body)
+                .post(endpoint);
+    }
+
+    /** Seed the Nafath ELM simulator for identity verification. */
+    @Step("API seed NafathElm info (simulator) for poi {poiNumber}")
+    public static Response seedNafathElmInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/nafathElm-info";
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String cookie = config.get("registration.simCookie",
+                "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String errorStatus = config.get("registration.nafathElm.errorStatus", "422-031-046");
+
+        String body = "{"
+                + "\"id\":" + poiNumber + ","
+                + "\"scenario\":\"Completed\","
+                + "\"error_status\":\"" + errorStatus + "\","
+                + "\"first_name#ar\":\"" + identity.firstNameAr + "\","
+                + "\"father_name#ar\":\"" + identity.fatherNameAr + "\","
+                + "\"grand_name#ar\":\"" + identity.grandNameAr + "\","
+                + "\"family_name#ar\":\"" + identity.familyNameAr + "\","
+                + "\"first_name#en\":\"" + identity.firstNameEn + "\","
+                + "\"father_name#en\":\"" + identity.fatherNameEn + "\","
+                + "\"grand_name#en\":\"" + identity.grandNameEn + "\","
+                + "\"family_name#en\":\"" + identity.familyNameEn + "\","
+                + "\"two_names#ar\":\"" + identity.twoNamesAr + "\","
+                + "\"two_names#en\":\"" + identity.twoNamesEn + "\","
+                + "\"full_name#ar\":\"" + identity.fullNameAr + "\","
+                + "\"full_name#en\":\"" + identity.fullNameEn + "\","
+                + "\"gender\":\"" + identity.gender + "\","
+                + "\"dob#g\":\"" + identity.birthDateG + "\","
+                + "\"dob#h\":" + identity.dobHAsInt + ","
+                + "\"nationality\":113,"
+                + "\"nationality#ar\":\"" + identity.nationalityAr + "\","
+                + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
+                + "\"language\":\"A\""
+                + "}";
+        logApiRequest("POST", endpoint, body);
+        RequestSpecification spec = RestAssured.given()
+                .header("x-api-key", apiKey)
+                .header("Content-Type", "text/plain")
+                .body(body);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
+    }
+
+    static SeedIdentity buildSeedIdentity(ConfigManager config) {
+        String firstNameAr = config.get("registration.identity.firstNameAr", "محمد");
+        String fatherNameAr = config.get("registration.identity.fatherNameAr", "عبدالله");
+        String grandNameAr = config.get("registration.identity.grandNameAr", "محمد");
+        String familyNameAr = config.get("registration.identity.familyNameAr", "الحمري");
+        String firstNameEn = config.get("registration.identity.firstNameEn", "Mohamed");
+        String fatherNameEn = config.get("registration.identity.fatherNameEn", "Abdullah");
+        String grandNameEn = config.get("registration.identity.grandNameEn", "Mohammed");
+        String familyNameEn = config.get("registration.identity.familyNameEn", "Al-Ahmari");
+        String birthDateG = config.get("registration.identity.birthDateG", "2001-08-11");
+        String dateOfBirthH = config.get("registration.identity.dateOfBirthH", "1422-05-21");
+        String nationalityAr = config.get("registration.identity.nationalityAr", "المملكة العربية السعودية");
+        String placeOfBirthAr = config.get("registration.identity.placeOfBirthAr", "الرياض");
+        return new SeedIdentity(
+                firstNameAr,
+                fatherNameAr,
+                grandNameAr,
+                familyNameAr,
+                firstNameEn,
+                fatherNameEn,
+                grandNameEn,
+                familyNameEn,
+                birthDateG,
+                dateOfBirthH,
+                nationalityAr,
+                placeOfBirthAr,
+                config.get("registration.identity.gender", "M")
+        );
+    }
+
+    static final class SeedIdentity {
+        final String firstNameAr;
+        final String fatherNameAr;
+        final String grandNameAr;
+        final String familyNameAr;
+        final String firstNameEn;
+        final String fatherNameEn;
+        final String grandNameEn;
+        final String familyNameEn;
+        final String twoNamesAr;
+        final String twoNamesEn;
+        final String fullNameAr;
+        final String fullNameEn;
+        final String birthDateG;
+        final String dateOfBirthH;
+        final int dobHAsInt;
+        final String nationalityAr;
+        final String placeOfBirthAr;
+        final String gender;
+
+        SeedIdentity(String firstNameAr, String fatherNameAr, String grandNameAr, String familyNameAr,
+                     String firstNameEn, String fatherNameEn, String grandNameEn, String familyNameEn,
+                     String birthDateG, String dateOfBirthH, String nationalityAr,
+                     String placeOfBirthAr, String gender) {
+            this.firstNameAr = firstNameAr;
+            this.fatherNameAr = fatherNameAr;
+            this.grandNameAr = grandNameAr;
+            this.familyNameAr = familyNameAr;
+            this.firstNameEn = firstNameEn;
+            this.fatherNameEn = fatherNameEn;
+            this.grandNameEn = grandNameEn;
+            this.familyNameEn = familyNameEn;
+            this.twoNamesAr = firstNameAr + " " + familyNameAr;
+            this.twoNamesEn = firstNameEn + " " + familyNameEn;
+            this.fullNameAr = firstNameAr + " " + fatherNameAr + " " + grandNameAr + " " + familyNameAr;
+            this.fullNameEn = firstNameEn + " " + fatherNameEn + " " + grandNameEn + " " + familyNameEn;
+            this.birthDateG = birthDateG;
+            this.dateOfBirthH = dateOfBirthH;
+            this.dobHAsInt = parseHijriAsInt(dateOfBirthH, 14220521);
+            this.nationalityAr = nationalityAr;
+            this.placeOfBirthAr = placeOfBirthAr;
+            this.gender = gender;
+        }
+    }
+
+    private static int parseHijriAsInt(String dateOfBirthH, int fallback) {
+        try {
+            return Integer.parseInt(dateOfBirthH.replace("-", ""));
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    static String toQueryString(String... keyValues) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            if (sb.length() > 0) {
+                sb.append('&');
+            }
+            sb.append(encodeQueryParam(keyValues[i], keyValues[i + 1]));
+        }
+        return sb.toString();
+    }
+
+    static String encodeQueryParam(String key, String value) {
+        return urlEncode(key) + "=" + urlEncode(value);
+    }
+
+    static String urlEncode(String input) {
+        return URLEncoder.encode(input, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    /** Convert Gregorian yyyy-MM-dd to Hijri YYYYMMDD integer for simulator fields like dob#h. */
+    private static int toHijriIntFromGregorianDate(String dobG) {
+        try {
+            LocalDate gregorian = LocalDate.parse(dobG);
+            HijrahDate hijri = HijrahDate.from(gregorian);
+            return (hijri.get(java.time.temporal.ChronoField.YEAR_OF_ERA) * 10000)
+                    + (hijri.get(java.time.temporal.ChronoField.MONTH_OF_YEAR) * 100)
+                    + hijri.get(java.time.temporal.ChronoField.DAY_OF_MONTH);
+        } catch (Exception e) {
+            log.warn("Invalid birthDateG '{}' — falling back to default Hijri DOB 14200508", dobG);
+            return 14200508;
+        }
     }
 
     /** Backwards-compatible registration (NAT/IQA): no age-verification token, no unverified DOB. */
-    static Response registerConsumer(String baseUrl, String mobile, String otpReference,
-                                             String poi, String poiType, String otpToken) {
+    static Response registerConsumer(String baseUrl, String mobile, String otpReference,                                             String poi, String poiType, String otpToken) {
         return registerConsumer(baseUrl, mobile, otpReference, poi, poiType, otpToken, null, null);
     }
 
@@ -385,6 +677,7 @@ public final class RegistrationApiHelper {
     static Response registerConsumer(String baseUrl, String mobile, String otpReference,
                                              String poi, String poiType, String otpToken,
                                              String verificationToken, String unverifiedDob) {
+        String endpoint = baseUrl + "/consumers/registration";
         ConfigManager config = ConfigManager.getInstance();
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         StringBuilder body = new StringBuilder("{\"mobileNumber\":\"" + mobile + "\",\"otpReference\":\""
@@ -395,6 +688,7 @@ public final class RegistrationApiHelper {
             body.append(",\"unverifiedDateOfBirth\":\"").append(unverifiedDob).append("\"");
         }
         body.append("}");
+        logApiRequest("POST", endpoint, body.toString());
 
         // No Thread.sleep (framework rule): instead retry to absorb the brief propagation
         // delay between the Tahaqoq seed and the registration becoming accepted.
@@ -410,7 +704,7 @@ public final class RegistrationApiHelper {
                 spec = spec.header("X-Verification-Token", verificationToken);
             }
             response = spec.body(body.toString())
-                    .post(baseUrl + "/consumers/registration");
+                    .post(endpoint);
             int status = response.getStatusCode();
             if (status >= 200 && status < 300) {
                 return response;
@@ -429,12 +723,14 @@ public final class RegistrationApiHelper {
      */
     @Step("API validate age (Visitor/BOR)")
     static String validateAge(String baseUrl, String dateOfBirth, String poiType, String otpToken) {
+        String endpoint = baseUrl + "/consumers/age/validate";
         String body = "{\"dateOfBirth\":\"" + dateOfBirth + "\",\"poiType\":\"" + poiType + "\"}";
+        logApiRequest("POST", endpoint, body);
         Response resp = baseHeaders(otpToken)
                 .header("X-Forwarded-For", "1")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/consumers/age/validate");
+            .post(endpoint);
         String token = resp.getHeader("X-Verification-Token");
         log.info("Age validate ({}) status {} -> isAdult {} | verification token {}",
                 poiType, resp.getStatusCode(), resp.jsonPath().getString("body.isAdult"),
@@ -446,9 +742,11 @@ public final class RegistrationApiHelper {
     private static Response deviceRegister(String baseUrl, String mobile, String poi, String poiType,
                                            String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/devices/register";
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"poi\":{\"poiNumber\":\"" + poi + "\",\"poiType\":\"" + poiType
                 + "\"},\"mobileNumber\":\"" + mobile + "\",\"passCode\":\"" + passcodeBlob + "\"}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's devices/register header set exactly: no X-Client-Secret,
         // no X-Api-Key, no X-Device-Token; adds X-Latitude/X-Longitude/X-Forwarded-For.
         return RestAssured.given()
@@ -465,15 +763,17 @@ public final class RegistrationApiHelper {
                 .header("X-Forwarded-For", "51.235.115.207")
                 .header("Content-Type", "application/json")
                 .body(body)
-                .post(baseUrl + "/devices/register");
+                .post(endpoint);
     }
 
     @Step("API consumer login")
     private static Response consumerLogin(String baseUrl, String deviceToken, String requestId,
                                           String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/authentication/consumers/login";
         String passcodeBlob = config.get("registration.passcodeBlob", PASSCODE_2233_BLOB);
         String body = "{\"passCode\":\"" + passcodeBlob + "\",\"firstLoginFlg\":false}";
+        logApiRequest("POST", endpoint, body);
         // Matches the BE report's consumers/login header set exactly: NO X-Client-Secret, NO X-Api-Key,
         // NO X-Host-IP; X-Request-Id is a fresh UUID; real X-Device-Token + X-OTP-Token; lat/long/fwd-for
         // and x-push-notification-os-enabled-flag included.
@@ -495,7 +795,7 @@ public final class RegistrationApiHelper {
         if (deviceToken != null) {
             spec = spec.header(DEVICE_TOKEN_HEADER, deviceToken);
         }
-        return spec.post(baseUrl + "/authentication/consumers/login");
+        return spec.post(endpoint);
     }
 
     /** Re-run pre-login → otp → device register → consumer login to log the new user in. */
@@ -772,6 +1072,7 @@ public final class RegistrationApiHelper {
             log.warn("KYC skipped: login returned no consumerId");
             return;
         }
+        String endpoint = baseUrl + "/consumers/" + session.consumerId + "/kyc";
         String body = "{"
                 + "\"additionalIncomeSource\":\"SALARY\","
                 + "\"basicIncomeSource\":\"SALARY\","
@@ -781,9 +1082,10 @@ public final class RegistrationApiHelper {
                 + "\"incomeRange\":\"1\","
                 + "\"jobCategory\":\"21\""
                 + "}";
+        logApiRequest("PUT", endpoint, body);
         Response resp = authedRequest(session)
                 .body(body)
-                .put(baseUrl + "/consumers/" + session.consumerId + "/kyc");
+            .put(endpoint);
         log.info("KYC for consumer {} -> status {} body {}", session.consumerId,
                 resp.getStatusCode(), resp.getBody().asString());
     }
@@ -796,12 +1098,14 @@ public final class RegistrationApiHelper {
     @Step("API accept new terms after login")
     static void acceptNewTerms(String baseUrl, Session session) {
         ConfigManager config = ConfigManager.getInstance();
+        String endpoint = baseUrl + "/consumers/new-terms/accept/after-login";
         String termsVersion = config.get("registration.termsVersion", "16");
         String body = "{\"termsVersion\":\"" + termsVersion + "\"}";
+        logApiRequest("POST", endpoint, body);
         Response resp = authedRequest(session)
                 .header("X-Principle-Type", "Consumer")
                 .body(body)
-                .post(baseUrl + "/consumers/new-terms/accept/after-login");
+            .post(endpoint);
         log.info("Accept new terms (v{}) -> status {} body {}", termsVersion,
                 resp.getStatusCode(), resp.getBody().asString());
     }
@@ -835,9 +1139,12 @@ public final class RegistrationApiHelper {
                 "tnc_UrPay,pv_UrPay,UrPayMCSMS,UrPayMCPN");
         String policyVersion = config.get("registration.consentPolicyVersion", "NONE");
         String channelType = config.get("registration.consentChannelType", "Urpay");
+        String inquiryEndpoint = baseUrl + "/consumers/party-consents";
+        String createEndpoint = baseUrl + "/consumers/party-consents";
 
         // The app first inquires the existing consents (GET) before creating them.
-        Response inquiry = authedRequest(session).get(baseUrl + "/consumers/party-consents");
+        logApiRequest("GET", inquiryEndpoint, "{}");
+        Response inquiry = authedRequest(session).get(inquiryEndpoint);
         log.info("Party consents inquiry -> status {} body {}", inquiry.getStatusCode(),
                 inquiry.getBody().asString());
 
@@ -858,12 +1165,33 @@ public final class RegistrationApiHelper {
                     .append("\"}");
         }
         String body = "{\"partyConsents\":[" + consents + "],\"partyId\":\"" + partyId + "\"}";
+        logApiRequest("POST", createEndpoint, body);
         Response resp = authedRequest(session)
                 .body(body)
-                .post(baseUrl + "/consumers/party-consents");
+            .post(createEndpoint);
         log.info("Accept party consents ({}) -> status {} body {}", policies,
                 resp.getStatusCode(), resp.getBody().asString());
     }
+
+        private static void logApiRequest(String method, String endpoint, String body) {
+            log.info("API Request > {} {} body {}", method, endpoint, toAsciiSafe(body));
+        }
+
+        private static String toAsciiSafe(String text) {
+            if (text == null) {
+                return "";
+            }
+            StringBuilder escaped = new StringBuilder(text.length());
+            for (int i = 0; i < text.length(); i++) {
+                char ch = text.charAt(i);
+                if ((ch >= 32 && ch <= 126) || ch == '\n' || ch == '\r' || ch == '\t') {
+                    escaped.append(ch);
+                } else {
+                    escaped.append(String.format("\\u%04X", (int) ch));
+                }
+            }
+            return escaped.toString();
+        }
 
     /**
      * Re-activate a consumer after KYC. {@code /consumers/{id}/kyc} flips the consumer to INACTIVE;
@@ -957,7 +1285,7 @@ public final class RegistrationApiHelper {
     }
 
     /** Generate a Luhn-valid 10-digit POI number with the given leading digit. */
-    static String generatePoiNumber(char prefix) {
+    public static String generatePoiNumber(char prefix) {
         StringBuilder id = new StringBuilder().append(prefix);
         for (int i = 1; i <= 8; i++) {
             id.append(RANDOM.nextInt(10));
@@ -977,7 +1305,7 @@ public final class RegistrationApiHelper {
     }
 
     /** Generate a Saudi mobile in the {@code +966520XXXXXX} form the API expects. */
-    static String generateMobileNumber() {
+    public static String generateMobileNumber() {
         StringBuilder suffix = new StringBuilder();
         for (int i = 0; i < 6; i++) {
             suffix.append(RANDOM.nextInt(10));
