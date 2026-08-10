@@ -153,6 +153,10 @@ public class RegistrationFlow {
         wizardPage.acceptTermsAndPrivacyIfPresent();
         dumpPageSourceLocally("registration-credentials-screen");
         wizardPage.tapNext();
+        if (wizardPage.isRegistrationFormLoaded(5)) {
+            log.warn("Registration form still visible after first Next tap — retrying submit once");
+            wizardPage.tapNext();
+        }
     }
 
     /** Dismiss the software keyboard if visible — best-effort. */

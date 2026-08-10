@@ -49,17 +49,13 @@ public class RegistrationWizardPage extends BasePage {
     private static final By PASSCODE_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
 
-    // ── Date of birth screen (shown for ALL tiers in registration, Step 3/5) ────────────────
-    // The DatePicker has a UUID-based testID; match by prefix to stay build-independent.
-    // Fallback: any clickable element containing the "Date of birth" placeholder text (lowercase b).
+        // ── Date of birth screen (shown for ALL tiers in registration, Step 3/5) ────────────────
+        // The DatePicker has a UUID-based testID; match by prefix to stay build-independent.
+        // Fallbacks cover text-only renders of the same field label.
     private static final By DOB_PICKER = AppiumBy.xpath(
             "//*[starts-with(@content-desc,'testID-DatePicker.')"
+            + " or @text='Date of birth' or @text='Date Of Birth' or @text='Date of Birth'"
             + " or (@clickable='true' and .//*[@text='Date of birth'])]");
-
-    // DOB screen title used as a stable screen-presence marker
-    private static final By DOB_SCREEN_TITLE = AppiumBy.xpath(
-            "//*[@content-desc='testID-Text.ae1bcb9a-913f-45ca-853b-a44d7495d52c'"
-            + " or @text='Date Of Birth' or @text='Date of Birth']");
 
     // Calendar OK button (native Android date spinner confirmation)
     private static final By CALENDAR_OK_BTN =
@@ -96,12 +92,16 @@ public class RegistrationWizardPage extends BasePage {
         return waitUtils.isPresent(MOBILE_FIELD, 20);
     }
 
+    public boolean isRegistrationFormLoaded(long timeoutSec) {
+        return waitUtils.isPresent(MOBILE_FIELD, timeoutSec);
+    }
+
     public boolean isPasscodeScreenDisplayed(long timeoutSec) {
         return waitUtils.isPresent(PASSCODE_SCREEN_MARKER, timeoutSec);
     }
 
     public boolean isDobScreenDisplayed(long timeoutSec) {
-        return waitUtils.isPresent(DOB_SCREEN_TITLE, timeoutSec);
+        return waitUtils.isPresent(DOB_PICKER, timeoutSec);
     }
 
     public boolean isTermsScreenDisplayed(long timeoutSec) {

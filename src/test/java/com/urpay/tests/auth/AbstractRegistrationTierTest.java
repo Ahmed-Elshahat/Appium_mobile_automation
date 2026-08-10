@@ -201,7 +201,16 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         if (wizardPage.isNafathNumberScreenDisplayed(10)) {
             wizardPage.waitUntilNafathAutoVerifies(120);
         }
-        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(30),
+        // Some builds route to a terms/consent screen after Nafath auto-verification.
+        // Handle it explicitly: tick checkbox(es) then tap Next.
+        if (wizardPage.isTermsScreenDisplayed(10)) {
+            log.info("Post-Nafath terms screen detected — accepting checkbox(es) and tapping Next");
+            for (int attempt = 1; attempt <= 3 && wizardPage.isTermsScreenDisplayed(5); attempt++) {
+                log.info("Post-Nafath terms handling attempt {}", attempt);
+                wizardPage.acceptTermsAndSubmit();
+            }
+        }
+        Assert.assertTrue(wizardPage.isFinishScreenDisplayed(45),
                 "Registration Done/Finish screen should appear after Nafath auto-verification");
     }
 
