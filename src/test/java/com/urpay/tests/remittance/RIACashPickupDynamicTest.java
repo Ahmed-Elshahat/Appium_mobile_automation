@@ -136,7 +136,13 @@ public class RIACashPickupDynamicTest extends BaseTest {
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("RIA")
-                .serviceProviderIndex(0)
+                // TODO: position on the provider screen is unconfirmed on device — the MQ/DB step
+                // only confirms RIA has an enabled corridor + its country/currency/delivery data,
+                // it does NOT tell us where RIA sits among the on-screen provider cards. Index 1
+                // is a placeholder (position 0 is invalid XPath and always misses); byName("RIA")
+                // is tried first in selectServiceProvider, so this index is only the last-resort
+                // fallback until a real device run confirms the true position or a brand marker.
+                .serviceProviderIndex(1)
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Cash Pickup")
                 .amountSar("15.50")

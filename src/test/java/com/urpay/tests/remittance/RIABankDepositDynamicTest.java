@@ -143,7 +143,9 @@ public class RIABankDepositDynamicTest extends BaseTest {
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("RIA")
-                .serviceProviderIndex(0)
+                // TODO: position on the provider screen is unconfirmed on device — see the same
+                // note in RIACashPickupDynamicTest. Placeholder until a real device run confirms it.
+                .serviceProviderIndex(1)
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Account Deposit")
                 .amountSar("20.50")
