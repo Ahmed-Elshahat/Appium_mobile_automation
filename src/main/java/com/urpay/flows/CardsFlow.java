@@ -204,10 +204,11 @@ public class CardsFlow {
         // Config: cardTab property maps the card to its tab (defaults to cardType for backward compat).
         // Tap the matching tab first, then find the specific card's "Request Card" below.
         String tabName = c.get(cardPrefix + ".cardTab", cardType);
-        // Scope "Request Card" to THIS card's title — a tab can render multiple cards at once
-        // (e.g. Mada Card + Visitor Card both visible under the "Mada Card" tab), so the generic
-        // "//*[@text='Request Card']" would match whichever card's button comes first in the DOM.
-        By requestBtn = AppiumBy.xpath("//*[@text='" + cardType + "']/parent::*//*[@text='Request Card']");
+        // Multiple cards can be rendered under one tab at once (e.g. Mada Card + Visitor Card
+        // both visible under the "Mada Card" tab) — detect via the generic locator, then tap
+        // the "Request Card" button geometrically NEAREST to this card's own title (see
+        // clickNearestRequestCard), since parent/ancestor xpath scoping is unreliable across
+        // the RN view hierarchy depths.
         By genericRequestBtn = AppiumBy.xpath("//*[@text='Request Card']");
 
         // Try tab-based UI first: tap the tab chip
@@ -242,11 +243,11 @@ public class CardsFlow {
                 }
             }
 
-            // After tapping the tab (+ optional sub-carousel), the scoped "Request Card" should be visible
+            // After tapping the tab (+ optional sub-carousel), a "Request Card" button should be visible
             setImplicitWait(0);
             boolean found = false;
             for (int i = 0; i < 5; i++) {
-                if (quickFind(requestBtn)) { found = true; break; }
+                if (quickFind(genericRequestBtn)) { found = true; break; }
                 try { Thread.sleep(1000); } catch (Exception ignored) {}
             }
             if (!found) {
@@ -254,14 +255,8 @@ public class CardsFlow {
                 SwipeUtils smallSwipe = new SwipeUtils(driver, 0.30);
                 for (int i = 0; i < 3; i++) {
                     smallSwipe.swipeUp();
-                    if (quickFind(requestBtn)) { found = true; break; }
+                    if (quickFind(genericRequestBtn)) { found = true; break; }
                 }
-            }
-            if (!found) {
-                // Last resort: single-card tab where the title/button aren't siblings under
-                // one parent — fall back to the generic locator (safe only when one card is shown).
-                log.info("Scoped Request Card locator not found for '{}' — falling back to generic", cardType);
-                requestBtn = genericRequestBtn;
             }
             setImplicitWait(10);
         } else {
@@ -274,7 +269,7 @@ public class CardsFlow {
                 log.info("Platform horizontal scroll failed for '{}'", cardType);
             }
 
-            boolean found = quickFind(requestBtn);
+            boolean found = quickFind(genericRequestBtn);
             if (!found) {
                 int carouselY = getCarouselY();
                 org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
@@ -283,23 +278,20 @@ public class CardsFlow {
                 for (int i = 0; i < 5; i++) {
                     swipe.performSwipe((int)(screenWidth * 0.2), carouselY,
                             (int)(screenWidth * 0.8), carouselY);
-                    if (quickFind(requestBtn)) { found = true; break; }
+                    if (quickFind(genericRequestBtn)) { found = true; break; }
                 }
                 if (!found) {
                     for (int i = 0; i < 8; i++) {
                         swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
                                 (int)(screenWidth * 0.2), carouselY);
-                        if (quickFind(requestBtn)) { found = true; break; }
+                        if (quickFind(genericRequestBtn)) { found = true; break; }
                     }
                 }
-            }
-            if (!quickFind(requestBtn)) {
-                requestBtn = genericRequestBtn;
             }
             setImplicitWait(10);
         }
 
-        waits.waitForClickable(requestBtn, 10).click();
+        clickNearestRequestCard(cardType);
         log.info("Tapped Request Card for: {}", cardType);
 
         // ── Step 5: Next → Accept → Confirm (adaptive — skip if not present) ──
@@ -1286,6 +1278,41 @@ public class CardsFlow {
         int fallback = (int) (driver.manage().window().getSize().getHeight() * 0.40);
         log.debug("Carousel Y fallback: {}", fallback);
         return fallback;
+    }
+
+    /**
+     * Tap the "Request Card" button belonging to {@code cardType}, not just the first one in the
+     * DOM. A tab can render more than one card side by side (e.g. Mada Card + Visitor Card under
+     * the "Mada Card" tab) with BOTH "Request Card" buttons present/displayed at once, so a plain
+     * xpath match — or even ancestor/parent scoping — can grab the wrong card's button depending
+     * on view-hierarchy depth. Instead, match geometrically: pick whichever "Request Card" button
+     * is horizontally closest to this card's own title (cards sit side by side in the carousel,
+     * so the correct button shares the title's X position; other cards' buttons are offset).
+     */
+    private void clickNearestRequestCard(String cardType) {
+        setImplicitWait(0);
+        var titleEls = driver.findElements(AppiumBy.xpath("//*[@text='" + cardType + "']"));
+        var btnEls = driver.findElements(AppiumBy.xpath("//*[@text='Request Card']"));
+        setImplicitWait(10);
+
+        org.openqa.selenium.WebElement target = null;
+        if (!titleEls.isEmpty() && titleEls.get(0).isDisplayed() && !btnEls.isEmpty()) {
+            int titleX = titleEls.get(0).getLocation().getX() + titleEls.get(0).getSize().getWidth() / 2;
+            int minDist = Integer.MAX_VALUE;
+            for (var btn : btnEls) {
+                if (!btn.isDisplayed()) continue;
+                int btnX = btn.getLocation().getX() + btn.getSize().getWidth() / 2;
+                int dist = Math.abs(btnX - titleX);
+                if (dist < minDist) { minDist = dist; target = btn; }
+            }
+            log.info("Matched Request Card button for '{}' by X-proximity (dist={})", cardType, minDist);
+        }
+        if (target == null) {
+            // Fallback: only one (or no) title match — use the generic clickable wait.
+            log.warn("Could not geometrically match Request Card for '{}' — using first visible button", cardType);
+            target = waits.waitForClickable(AppiumBy.xpath("//*[@text='Request Card']"), 10);
+        }
+        target.click();
     }
 
     /** Set implicit wait in seconds. Use 0 for instant checks. */
