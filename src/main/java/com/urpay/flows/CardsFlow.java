@@ -218,6 +218,8 @@ public class CardsFlow {
         if (!tabEls.isEmpty()) {
             tabEls.get(0).click();
             log.info("Tapped '{}' tab at the top of Add New Product", tabName);
+            // Let the tab-switch animation/render settle before scrolling the sub-carousel
+            try { Thread.sleep(800); } catch (Exception ignored) {}
 
             // Under the tab, there may be a sub-carousel of card types (e.g. Platinum, Signature).
             // If the tab name differs from the card type, scroll the sub-carousel to find the card.
@@ -237,12 +239,27 @@ public class CardsFlow {
                     org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
                     int screenWidth = screenSize.getWidth();
                     for (int i = 0; i < 5 && !cardVisible; i++) {
-                        swipe.performSwipe((int)(screenWidth * 0.9), carouselY,
-                                (int)(screenWidth * 0.1), carouselY);
+                        swipe.performSwipeSteps((int)(screenWidth * 0.9), carouselY,
+                                (int)(screenWidth * 0.1), carouselY, 8);
                         cardVisible = quickFind(specificCard);
                     }
                     if (!cardVisible) {
                         log.warn("'{}' still not visible after manual swipes in sub-carousel under '{}'", cardType, tabName);
+                        // Diagnostic dump: log the Y anchor used and every "*Card*" text node
+                        // currently on screen, so a failed run tells us WHAT rendered instead of
+                        // requiring a screenshot round-trip.
+                        try {
+                            log.warn("Swipe anchor carouselY={}, screenWidth={}", carouselY, screenWidth);
+                            var visibleCardTexts = driver.findElements(AppiumBy.xpath("//*[contains(@text,'Card')]"));
+                            for (var el : visibleCardTexts) {
+                                if (el.isDisplayed()) {
+                                    log.warn("  visible text node: '{}' at x={},y={}", el.getText(),
+                                            el.getLocation().getX(), el.getLocation().getY());
+                                }
+                            }
+                        } catch (Exception diagEx) {
+                            log.warn("Diagnostic dump failed: {}", diagEx.getMessage());
+                        }
                     }
                 }
                 setImplicitWait(3);
@@ -280,14 +297,14 @@ public class CardsFlow {
                 int screenWidth = screenSize.getWidth();
 
                 for (int i = 0; i < 5; i++) {
-                    swipe.performSwipe((int)(screenWidth * 0.1), carouselY,
-                            (int)(screenWidth * 0.9), carouselY);
+                    swipe.performSwipeSteps((int)(screenWidth * 0.1), carouselY,
+                            (int)(screenWidth * 0.9), carouselY, 8);
                     if (quickFind(genericRequestBtn)) { found = true; break; }
                 }
                 if (!found) {
                     for (int i = 0; i < 8; i++) {
-                        swipe.performSwipe((int)(screenWidth * 0.9), carouselY,
-                                (int)(screenWidth * 0.1), carouselY);
+                        swipe.performSwipeSteps((int)(screenWidth * 0.9), carouselY,
+                                (int)(screenWidth * 0.1), carouselY, 8);
                         if (quickFind(genericRequestBtn)) { found = true; break; }
                     }
                 }

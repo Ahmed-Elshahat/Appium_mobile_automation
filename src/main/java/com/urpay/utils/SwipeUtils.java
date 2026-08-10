@@ -197,6 +197,45 @@ public class SwipeUtils {
         throw last;
     }
 
+    /**
+     * Multi-step swipe: sends several intermediate pointer-move events instead of one big jump.
+     * Some RN carousels (custom PanResponder/react-native-reanimated, not a native ScrollView)
+     * need multiple move samples to compute drag velocity/direction — a single start→end jump via
+     * {@link #performSwipe} can be ignored or read as a tap. Use this for gesture-driven carousels
+     * that don't respond to a plain two-point swipe.
+     */
+    public void performSwipeSteps(int startX, int startY, int endX, int endY, int steps) {
+        org.openqa.selenium.WebDriverException last = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+                Sequence swipe = new Sequence(finger, 0);
+
+                swipe.addAction(finger.createPointerMove(
+                        Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
+                swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+                swipe.addAction(new Pause(finger, Duration.ofMillis(PRESS_DURATION_MS)));
+
+                int stepDurationMs = Math.max(30, SWIPE_DURATION_MS / Math.max(1, steps));
+                for (int i = 1; i <= steps; i++) {
+                    int x = startX + (endX - startX) * i / steps;
+                    int y = startY + (endY - startY) * i / steps;
+                    swipe.addAction(finger.createPointerMove(
+                            Duration.ofMillis(stepDurationMs), PointerInput.Origin.viewport(), x, y));
+                }
+                swipe.addAction(new Pause(finger, Duration.ofMillis(PRESS_DURATION_MS)));
+                swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+
+                driver.perform(Collections.singletonList(swipe));
+                return;
+            } catch (org.openqa.selenium.WebDriverException e) {
+                last = e;
+                log.warn("Multi-step swipe attempt {}/3 failed ({}); retrying", attempt, e.getClass().getSimpleName());
+            }
+        }
+        throw last;
+    }
+
     private Dimension getScreenSize() {
         return driver.manage().window().getSize();
     }
