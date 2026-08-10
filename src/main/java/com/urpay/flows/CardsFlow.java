@@ -199,12 +199,16 @@ public class CardsFlow {
         // ── Step 4: Select card type ──
         // New UI (2026-07): tab chips at the top ("Visa Card", "Mada Card", "Mada Bracelet").
         // Each tab is a CATEGORY — under each tab there's a sub-carousel of specific card types.
-        //   "Visa Card" tab → Platinum Card, Signature Card
-        //   "Mada Card" tab → Mada Card
+        //   "Visa Card" tab → Visitor Card, Platinum Card, Signature Card
+        //   "Mada Card" tab → Mada Card, Visitor Card (Mada variant)
         // Config: cardTab property maps the card to its tab (defaults to cardType for backward compat).
         // Tap the matching tab first, then find the specific card's "Request Card" below.
         String tabName = c.get(cardPrefix + ".cardTab", cardType);
-        By requestBtn = AppiumBy.xpath("//*[@text='Request Card']");
+        // Scope "Request Card" to THIS card's title — a tab can render multiple cards at once
+        // (e.g. Mada Card + Visitor Card both visible under the "Mada Card" tab), so the generic
+        // "//*[@text='Request Card']" would match whichever card's button comes first in the DOM.
+        By requestBtn = AppiumBy.xpath("//*[@text='" + cardType + "']/parent::*//*[@text='Request Card']");
+        By genericRequestBtn = AppiumBy.xpath("//*[@text='Request Card']");
 
         // Try tab-based UI first: tap the tab chip
         setImplicitWait(3);
@@ -238,7 +242,7 @@ public class CardsFlow {
                 }
             }
 
-            // After tapping the tab (+ optional sub-carousel), "Request Card" should be visible
+            // After tapping the tab (+ optional sub-carousel), the scoped "Request Card" should be visible
             setImplicitWait(0);
             boolean found = false;
             for (int i = 0; i < 5; i++) {
@@ -253,12 +257,16 @@ public class CardsFlow {
                     if (quickFind(requestBtn)) { found = true; break; }
                 }
             }
+            if (!found) {
+                // Last resort: single-card tab where the title/button aren't siblings under
+                // one parent — fall back to the generic locator (safe only when one card is shown).
+                log.info("Scoped Request Card locator not found for '{}' — falling back to generic", cardType);
+                requestBtn = genericRequestBtn;
+            }
             setImplicitWait(10);
         } else {
             // Fallback: old carousel UI — horizontal scroll to find the card
             setImplicitWait(0);
-            requestBtn = AppiumBy.xpath(
-                    "//*[@text='" + cardType + "']/parent::*//*[@text='Request Card']");
             try {
                 platformActions.scrollHorizontalToText(cardType);
                 log.info("Found '{}' in carousel using platform horizontal scroll", cardType);
@@ -284,6 +292,9 @@ public class CardsFlow {
                         if (quickFind(requestBtn)) { found = true; break; }
                     }
                 }
+            }
+            if (!quickFind(requestBtn)) {
+                requestBtn = genericRequestBtn;
             }
             setImplicitWait(10);
         }
