@@ -8,6 +8,8 @@ import io.restassured.specification.RequestSpecification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -339,9 +341,13 @@ public final class RegistrationApiHelper {
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String cookie = config.get("registration.simCookie",
             "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
-        String tahaqoqUrl = endpoint + "?IDNumber=" + poiNumber + "&MobileNumber=" + mobile;
+        String tahaqoqUrl = endpoint + "?"
+            + encodeQueryParam("IDNumber", poiNumber)
+            + "&"
+            + encodeQueryParam("MobileNumber", mobile);
         logApiRequest("POST", tahaqoqUrl, "");
         RequestSpecification spec = RestAssured.given()
+            .urlEncodingEnabled(true)
             .header("X-Do-Not-Track", apiKey)
             .header("x-api-key", apiKey)
             .queryParam("IDNumber", poiNumber)
@@ -363,6 +369,7 @@ public final class RegistrationApiHelper {
     @Step("API seed Yakeen info (identity + DOB) for poi {poiNumber}")
     public static Response seedYakeenInfo(String poiNumber) {
         ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
         String endpoint = simBaseUrl + "/__admin/yakeen-info";
@@ -370,61 +377,68 @@ public final class RegistrationApiHelper {
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String cookie = config.get("registration.simCookie",
                 "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
-        String visaExpiryDate = "2025-08-21T00:00:00";
+        String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2025-08-21T00:00:00");
+        String birthDateGIso = identity.birthDateG + "T00:00:00";
+        String nationalityCode = config.get("registration.identity.nationalityCode", "113");
+        String nationalityDescAr = config.get("registration.identity.nationalityDescAr", identity.nationalityAr);
+        String idExpiryDate = config.get("registration.identity.idExpiryDate", "2027-01-01T00:00:00");
+        String idExpirationDateH = config.get("registration.identity.idExpirationDateH", "1448-07-22");
         String body = "{"
             + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
             + "\"personBasicInfo\":{"
-            + "\"birthDateG\":\"2000-01-01T00:00:00\","
-            + "\"familyName\":\"سفيان\","
-            + "\"familyNameT\":\"Sufyan\","
-            + "\"fatherName\":\"أمجد\","
-            + "\"fatherNameT\":\"Amjad\","
-            + "\"firstName\":\"أنور\","
-            + "\"firstNameT\":\"Anwar\","
-            + "\"grandFatherName\":\"كمال\","
-            + "\"grandFatherNameT\":\"Kamal\","
-            + "\"nationalityCode\":\"428\","
-            + "\"nationalityDescAr\":\"ليسوتو\","
+            + "\"birthDateG\":\"" + birthDateGIso + "\","
+            + "\"familyName\":\"" + identity.familyNameAr + "\","
+            + "\"familyNameT\":\"" + identity.familyNameEn + "\","
+            + "\"fatherName\":\"" + identity.fatherNameAr + "\","
+            + "\"fatherNameT\":\"" + identity.fatherNameEn + "\","
+            + "\"firstName\":\"" + identity.firstNameAr + "\","
+            + "\"firstNameT\":\"" + identity.firstNameEn + "\","
+            + "\"grandFatherName\":\"" + identity.grandNameAr + "\","
+            + "\"grandFatherNameT\":\"" + identity.grandNameEn + "\","
+            + "\"nationalityCode\":\"" + nationalityCode + "\","
+            + "\"nationalityDescAr\":\"" + nationalityDescAr + "\","
             + "\"sexCode\":\"1\","
             + "\"sexDescAr\":\"ذكر\","
-            + "\"convertDate\":{\"dateString\":\"1420-09-24\"}"
+            + "\"convertDate\":{\"dateString\":\"" + identity.dateOfBirthH + "\"}"
             + "}"
             + "}";
-        String yakeenUrl = endpoint
-            + "?nin=" + poiNumber
-            + "&firstName=."
-            + "&fatherName=ثامر"
-            + "&grandFatherName=عمر"
-            + "&familyName=الغام"
-            + "&englishFirstName=a"
-            + "&englishSecondName=Salah"
-            + "&englishThirdName=Omar"
-            + "&englishLastName=abdullah"
-            + "&idExpiryDate=2027-01-01T00:00:00"
-            + "&dateOfBirthH=1410-06-04"
-            + "&birthDateG=1990-01-01"
-            + "&gender=M"
-            + "&idExpirationDateH=1448-07-22"
-            + "&placeOfBirth=الرياض";
+        String yakeenUrl = endpoint + "?" + toQueryString(
+            "nin", poiNumber,
+            "firstName", identity.firstNameAr,
+            "fatherName", identity.fatherNameAr,
+            "grandFatherName", identity.grandNameAr,
+            "familyName", identity.familyNameAr,
+            "englishFirstName", identity.firstNameEn,
+            "englishSecondName", identity.fatherNameEn,
+            "englishThirdName", identity.grandNameEn,
+            "englishLastName", identity.familyNameEn,
+            "idExpiryDate", idExpiryDate,
+            "dateOfBirthH", identity.dateOfBirthH,
+            "gender", identity.gender,
+            "placeOfBirth", identity.placeOfBirthAr,
+            "birthDateG", identity.birthDateG,
+            "idExpirationDateH", idExpirationDateH
+        );
         logApiRequest("POST", yakeenUrl, body);
         RequestSpecification spec = RestAssured.given()
+            .urlEncodingEnabled(true)
             .header("x-api-key", apiKey)
             .header("Content-Type", "application/json")
                 .queryParam("nin", poiNumber)
-                .queryParam("firstName", ".")
-                .queryParam("fatherName", "ثامر")
-                .queryParam("grandFatherName", "عمر")
-                .queryParam("familyName", "الغام")
-                .queryParam("englishFirstName", "a")
-                .queryParam("englishSecondName", "Salah")
-                .queryParam("englishThirdName", "Omar")
-                .queryParam("englishLastName", "abdullah")
-                .queryParam("idExpiryDate", "2027-01-01T00:00:00")
-                .queryParam("dateOfBirthH", "1410-06-04")
-                .queryParam("birthDateG", "1990-01-01")
-                .queryParam("gender", "M")
-                .queryParam("idExpirationDateH", "1448-07-22")
-                .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636")
+            .queryParam("firstName", identity.firstNameAr)
+            .queryParam("fatherName", identity.fatherNameAr)
+            .queryParam("grandFatherName", identity.grandNameAr)
+            .queryParam("familyName", identity.familyNameAr)
+            .queryParam("englishFirstName", identity.firstNameEn)
+            .queryParam("englishSecondName", identity.fatherNameEn)
+            .queryParam("englishThirdName", identity.grandNameEn)
+            .queryParam("englishLastName", identity.familyNameEn)
+            .queryParam("idExpiryDate", idExpiryDate)
+            .queryParam("dateOfBirthH", identity.dateOfBirthH)
+            .queryParam("birthDateG", identity.birthDateG)
+            .queryParam("gender", identity.gender)
+            .queryParam("idExpirationDateH", idExpirationDateH)
+            .queryParam("placeOfBirth", identity.placeOfBirthAr)
                 .body(body);
         if (!cookie.isEmpty()) {
             spec = spec.header("Cookie", cookie);
@@ -493,50 +507,151 @@ public final class RegistrationApiHelper {
     @Step("API seed NafathElm info (simulator) for poi {poiNumber}")
     public static Response seedNafathElmInfo(String poiNumber) {
         ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
         String endpoint = simBaseUrl + "/__admin/nafathElm-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String cookie = config.get("registration.simCookie",
-            "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
-        String dobG = "2001-08-11";
-        int dobH = 14220521;
-        String errorStatus = "422-031-046";
+                "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String errorStatus = config.get("registration.nafathElm.errorStatus", "422-031-046");
 
         String body = "{"
                 + "\"id\":" + poiNumber + ","
                 + "\"scenario\":\"Completed\","
                 + "\"error_status\":\"" + errorStatus + "\","
-                + "\"first_name#ar\":\"محمد\","
-                + "\"father_name#ar\":\"هعبدالل\","
-                + "\"grand_name#ar\":\"محمد\","
-                + "\"family_name#ar\":\"هالحمري\","
-                + "\"first_name#en\":\"Mohamed\","
-                + "\"father_name#en\":\"Abdullah\","
-                + "\"grand_name#en\":\"Mohammed\","
-                + "\"family_name#en\":\"Al-Ahmari\","
-                + "\"two_names#ar\":\"همحمدهالحمري\","
-                + "\"two_names#en\":\"Mohamed Al-Ahmari\","
-                + "\"full_name#ar\":\"محمدهعبداللهمحمدهالحمري\","
-                + "\"full_name#en\":\"Mohamed Abdullah Mohammed Al-Ahmari\","
-                + "\"gender\":\"M\","
-                + "\"dob#g\":\"" + dobG + "\","
-                + "\"dob#h\":" + dobH + ","
+                + "\"first_name#ar\":\"" + identity.firstNameAr + "\","
+                + "\"father_name#ar\":\"" + identity.fatherNameAr + "\","
+                + "\"grand_name#ar\":\"" + identity.grandNameAr + "\","
+                + "\"family_name#ar\":\"" + identity.familyNameAr + "\","
+                + "\"first_name#en\":\"" + identity.firstNameEn + "\","
+                + "\"father_name#en\":\"" + identity.fatherNameEn + "\","
+                + "\"grand_name#en\":\"" + identity.grandNameEn + "\","
+                + "\"family_name#en\":\"" + identity.familyNameEn + "\","
+                + "\"two_names#ar\":\"" + identity.twoNamesAr + "\","
+                + "\"two_names#en\":\"" + identity.twoNamesEn + "\","
+                + "\"full_name#ar\":\"" + identity.fullNameAr + "\","
+                + "\"full_name#en\":\"" + identity.fullNameEn + "\","
+                + "\"gender\":\"" + identity.gender + "\","
+                + "\"dob#g\":\"" + identity.birthDateG + "\","
+                + "\"dob#h\":" + identity.dobHAsInt + ","
                 + "\"nationality\":113,"
-                + "\"nationality#ar\":\"المملكةهالعربيةهالسعودية\","
+                + "\"nationality#ar\":\"" + identity.nationalityAr + "\","
                 + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
                 + "\"language\":\"A\""
                 + "}";
-            logApiRequest("POST", endpoint, body);
-            RequestSpecification spec = RestAssured.given()
+        logApiRequest("POST", endpoint, body);
+        RequestSpecification spec = RestAssured.given()
                 .header("x-api-key", apiKey)
                 .header("Content-Type", "text/plain")
                 .body(body);
-            if (!cookie.isEmpty()) {
-                spec = spec.header("Cookie", cookie);
+        if (!cookie.isEmpty()) {
+            spec = spec.header("Cookie", cookie);
+        }
+        return spec.post(endpoint);
+    }
+
+    static SeedIdentity buildSeedIdentity(ConfigManager config) {
+        String firstNameAr = config.get("registration.identity.firstNameAr", "محمد");
+        String fatherNameAr = config.get("registration.identity.fatherNameAr", "عبدالله");
+        String grandNameAr = config.get("registration.identity.grandNameAr", "محمد");
+        String familyNameAr = config.get("registration.identity.familyNameAr", "الحمري");
+        String firstNameEn = config.get("registration.identity.firstNameEn", "Mohamed");
+        String fatherNameEn = config.get("registration.identity.fatherNameEn", "Abdullah");
+        String grandNameEn = config.get("registration.identity.grandNameEn", "Mohammed");
+        String familyNameEn = config.get("registration.identity.familyNameEn", "Al-Ahmari");
+        String birthDateG = config.get("registration.identity.birthDateG", "2001-08-11");
+        String dateOfBirthH = config.get("registration.identity.dateOfBirthH", "1422-05-21");
+        String nationalityAr = config.get("registration.identity.nationalityAr", "المملكة العربية السعودية");
+        String placeOfBirthAr = config.get("registration.identity.placeOfBirthAr", "الرياض");
+        return new SeedIdentity(
+                firstNameAr,
+                fatherNameAr,
+                grandNameAr,
+                familyNameAr,
+                firstNameEn,
+                fatherNameEn,
+                grandNameEn,
+                familyNameEn,
+                birthDateG,
+                dateOfBirthH,
+                nationalityAr,
+                placeOfBirthAr,
+                config.get("registration.identity.gender", "M")
+        );
+    }
+
+    static final class SeedIdentity {
+        final String firstNameAr;
+        final String fatherNameAr;
+        final String grandNameAr;
+        final String familyNameAr;
+        final String firstNameEn;
+        final String fatherNameEn;
+        final String grandNameEn;
+        final String familyNameEn;
+        final String twoNamesAr;
+        final String twoNamesEn;
+        final String fullNameAr;
+        final String fullNameEn;
+        final String birthDateG;
+        final String dateOfBirthH;
+        final int dobHAsInt;
+        final String nationalityAr;
+        final String placeOfBirthAr;
+        final String gender;
+
+        SeedIdentity(String firstNameAr, String fatherNameAr, String grandNameAr, String familyNameAr,
+                     String firstNameEn, String fatherNameEn, String grandNameEn, String familyNameEn,
+                     String birthDateG, String dateOfBirthH, String nationalityAr,
+                     String placeOfBirthAr, String gender) {
+            this.firstNameAr = firstNameAr;
+            this.fatherNameAr = fatherNameAr;
+            this.grandNameAr = grandNameAr;
+            this.familyNameAr = familyNameAr;
+            this.firstNameEn = firstNameEn;
+            this.fatherNameEn = fatherNameEn;
+            this.grandNameEn = grandNameEn;
+            this.familyNameEn = familyNameEn;
+            this.twoNamesAr = firstNameAr + " " + familyNameAr;
+            this.twoNamesEn = firstNameEn + " " + familyNameEn;
+            this.fullNameAr = firstNameAr + " " + fatherNameAr + " " + grandNameAr + " " + familyNameAr;
+            this.fullNameEn = firstNameEn + " " + fatherNameEn + " " + grandNameEn + " " + familyNameEn;
+            this.birthDateG = birthDateG;
+            this.dateOfBirthH = dateOfBirthH;
+            this.dobHAsInt = parseHijriAsInt(dateOfBirthH, 14220521);
+            this.nationalityAr = nationalityAr;
+            this.placeOfBirthAr = placeOfBirthAr;
+            this.gender = gender;
+        }
+    }
+
+    private static int parseHijriAsInt(String dateOfBirthH, int fallback) {
+        try {
+            return Integer.parseInt(dateOfBirthH.replace("-", ""));
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    static String toQueryString(String... keyValues) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            if (sb.length() > 0) {
+                sb.append('&');
             }
-            return spec.post(endpoint);
+            sb.append(encodeQueryParam(keyValues[i], keyValues[i + 1]));
+        }
+        return sb.toString();
+    }
+
+    static String encodeQueryParam(String key, String value) {
+        return urlEncode(key) + "=" + urlEncode(value);
+    }
+
+    static String urlEncode(String input) {
+        return URLEncoder.encode(input, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     /** Convert Gregorian yyyy-MM-dd to Hijri YYYYMMDD integer for simulator fields like dob#h. */
