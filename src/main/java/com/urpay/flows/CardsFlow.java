@@ -1290,9 +1290,20 @@ public class CardsFlow {
         for (By anchor : anchors) {
             try {
                 var els = driver.findElements(anchor);
-                if (!els.isEmpty() && els.get(0).isDisplayed()) {
-                    var el = els.get(0);
-                    int y = el.getLocation().getY() + el.getSize().getHeight() / 2;
+                // Card title text can ALSO match the tab pill above it (e.g. the "Mada Card" tab
+                // label and the "Mada Card" card title are the same string) — the tab bar renders
+                // first/above, so picking els.get(0) would anchor on the tab, not the card below
+                // it, and swiping there does nothing. Pick the BOTTOM-MOST displayed match instead,
+                // since the carousel content always sits below the tab bar / page header.
+                org.openqa.selenium.WebElement lowest = null;
+                int maxY = Integer.MIN_VALUE;
+                for (var el : els) {
+                    if (!el.isDisplayed()) continue;
+                    int y = el.getLocation().getY();
+                    if (y > maxY) { maxY = y; lowest = el; }
+                }
+                if (lowest != null) {
+                    int y = lowest.getLocation().getY() + lowest.getSize().getHeight() / 2;
                     log.debug("Carousel Y anchored on {}: y={}", anchor, y);
                     return y;
                 }
