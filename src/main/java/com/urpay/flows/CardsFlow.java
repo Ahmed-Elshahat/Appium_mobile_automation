@@ -230,7 +230,7 @@ public class CardsFlow {
                 By specificCard = AppiumBy.xpath("//*[@text='" + cardType + "']");
                 platformActions.scrollHorizontalToText(cardType);
                 setImplicitWait(0);
-                boolean cardVisible = quickFind(specificCard);
+                boolean cardVisible = isCenteredOnScreen(specificCard);
                 if (cardVisible) {
                     log.info("Found '{}' in sub-carousel under '{}' tab", cardType, tabName);
                 } else {
@@ -241,7 +241,7 @@ public class CardsFlow {
                     for (int i = 0; i < 5 && !cardVisible; i++) {
                         swipe.performSwipeSteps((int)(screenWidth * 0.9), carouselY,
                                 (int)(screenWidth * 0.1), carouselY, 8);
-                        cardVisible = quickFind(specificCard);
+                        cardVisible = isCenteredOnScreen(specificCard);
                     }
                     if (!cardVisible) {
                         log.warn("'{}' still not visible after manual swipes in sub-carousel under '{}'", cardType, tabName);
@@ -1330,17 +1330,32 @@ public class CardsFlow {
         var btnEls = driver.findElements(AppiumBy.xpath("//*[@text='Request Card']"));
         setImplicitWait(10);
 
+        int screenWidth = driver.manage().window().getSize().getWidth();
+        // A genuinely-matching button should sit close to the title horizontally. If the closest
+        // candidate is still far away, there's only ONE (wrong) button rendered — e.g. the
+        // neighboring card's — and blindly tapping it silently issues the WRONG card. Treat this
+        // as untrustworthy rather than accepting any distance.
+        int maxTrustedDist = (int) (screenWidth * 0.35);
+
         org.openqa.selenium.WebElement target = null;
+        int minDist = Integer.MAX_VALUE;
         if (!titleEls.isEmpty() && titleEls.get(0).isDisplayed() && !btnEls.isEmpty()) {
             int titleX = titleEls.get(0).getLocation().getX() + titleEls.get(0).getSize().getWidth() / 2;
-            int minDist = Integer.MAX_VALUE;
             for (var btn : btnEls) {
                 if (!btn.isDisplayed()) continue;
                 int btnX = btn.getLocation().getX() + btn.getSize().getWidth() / 2;
                 int dist = Math.abs(btnX - titleX);
                 if (dist < minDist) { minDist = dist; target = btn; }
             }
-            log.info("Matched Request Card button for '{}' by X-proximity (dist={})", cardType, minDist);
+            log.info("Matched Request Card button for '{}' by X-proximity (dist={}, threshold={})",
+                    cardType, minDist, maxTrustedDist);
+        }
+        if (target != null && minDist > maxTrustedDist) {
+            log.error("Request Card match for '{}' is {}px away (> {}px threshold) — the card's own "
+                    + "button isn't rendered/aligned; refusing to tap a different card's button", cardType, minDist, maxTrustedDist);
+            throw new IllegalStateException("Could not reliably locate the Request Card button for '"
+                    + cardType + "' — closest candidate was " + minDist + "px away from the title "
+                    + "(card likely not fully scrolled into view)");
         }
         if (target == null) {
             // Fallback: only one (or no) title match — use the generic clickable wait.
@@ -1348,6 +1363,27 @@ public class CardsFlow {
             target = waits.waitForClickable(AppiumBy.xpath("//*[@text='Request Card']"), 10);
         }
         target.click();
+    }
+
+    /**
+     * True if a locator resolves to a displayed element whose horizontal center sits within the
+     * inner 70% of the screen width. Appium's isDisplayed() returns true even for an element that
+     * is merely PEEKING at the screen edge (e.g. the next carousel card, only 5% visible) — which
+     * previously made the sub-carousel scroll think it had "found" the target card when it had
+     * only barely started to appear, before its own action buttons had rendered.
+     */
+    private boolean isCenteredOnScreen(By locator) {
+        var els = driver.findElements(locator);
+        if (els.isEmpty() || !els.get(0).isDisplayed()) return false;
+        var el = els.get(0);
+        int centerX = el.getLocation().getX() + el.getSize().getWidth() / 2;
+        int screenWidth = driver.manage().window().getSize().getWidth();
+        boolean centered = centerX > screenWidth * 0.15 && centerX < screenWidth * 0.85;
+        if (!centered) {
+            log.debug("Element at x-center={} is at the screen edge (width={}) — treating as not yet in view",
+                    centerX, screenWidth);
+        }
+        return centered;
     }
 
     /** Set implicit wait in seconds. Use 0 for instant checks. */
