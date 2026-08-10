@@ -337,7 +337,8 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
-        String cookie = config.get("registration.simCookie", "");
+        String cookie = config.get("registration.simCookie",
+            "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
         String tahaqoqUrl = endpoint + "?IDNumber=" + poiNumber + "&MobileNumber=" + mobile;
         logApiRequest("POST", tahaqoqUrl, "");
         RequestSpecification spec = RestAssured.given()
@@ -367,66 +368,62 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/yakeen-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
-        String cookie = config.get("registration.simCookie", "");
-        String birthDateG = config.get("registration.default.birthDateG", "1999-05-30");
-        String dateOfBirthH = config.get("registration.default.dateOfBirthH", "1420-05-08");
-        String birthDateGIso = birthDateG.contains("T") ? birthDateG : birthDateG + "T00:00:00";
-        String visaExpiryDate = config.get("registration.default.visaExpiryDate", "2025-08-21T00:00:00");
-        String nationalityCode = config.get("registration.default.nationalityCode", "113");
-        String nationalityDescAr = config.get("registration.default.nationalityDescAr", "المملكة العربية السعودية");
+        String cookie = config.get("registration.simCookie",
+                "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String visaExpiryDate = "2025-08-21T00:00:00";
         String body = "{"
             + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
             + "\"personBasicInfo\":{"
-            + "\"birthDateG\":\"" + birthDateGIso + "\","
-            + "\"familyName\":\"عباس\","
-            + "\"familyNameT\":\"Abbas\","
-            + "\"fatherName\":\"عبدالإله\","
-            + "\"fatherNameT\":\"Abdulailah\","
-            + "\"firstName\":\"أيمن\","
-            + "\"firstNameT\":\"Ayman\","
-            + "\"grandFatherName\":\"إبراهيم\","
-            + "\"grandFatherNameT\":\"Ibrahim\","
-            + "\"nationalityCode\":\"" + nationalityCode + "\","
-            + "\"nationalityDescAr\":\"" + nationalityDescAr + "\","
+            + "\"birthDateG\":\"2000-01-01T00:00:00\","
+            + "\"familyName\":\"سفيان\","
+            + "\"familyNameT\":\"Sufyan\","
+            + "\"fatherName\":\"أمجد\","
+            + "\"fatherNameT\":\"Amjad\","
+            + "\"firstName\":\"أنور\","
+            + "\"firstNameT\":\"Anwar\","
+            + "\"grandFatherName\":\"كمال\","
+            + "\"grandFatherNameT\":\"Kamal\","
+            + "\"nationalityCode\":\"428\","
+            + "\"nationalityDescAr\":\"ليسوتو\","
             + "\"sexCode\":\"1\","
             + "\"sexDescAr\":\"ذكر\","
-            + "\"convertDate\":{\"dateString\":\"" + dateOfBirthH + "\"}"
+            + "\"convertDate\":{\"dateString\":\"1420-09-24\"}"
             + "}"
             + "}";
         String yakeenUrl = endpoint
             + "?nin=" + poiNumber
-            + "&firstName=أيمن"
-            + "&fatherName=عبدالإله"
-            + "&grandFatherName=إبراهيم"
-            + "&familyName=عباس"
-            + "&englishFirstName=Ayman"
-            + "&englishSecondName=Abdulailah"
-            + "&englishThirdName=Ibrahim"
-            + "&englishLastName=Abbas"
-            + "&idExpiryDate=2034-10-11T00:00:00"
-            + "&dateOfBirthH=" + dateOfBirthH
-            + "&birthDateG=" + birthDateG
+            + "&firstName=."
+            + "&fatherName=ثامر"
+            + "&grandFatherName=عمر"
+            + "&familyName=الغام"
+            + "&englishFirstName=a"
+            + "&englishSecondName=Salah"
+            + "&englishThirdName=Omar"
+            + "&englishLastName=abdullah"
+            + "&idExpiryDate=2027-01-01T00:00:00"
+            + "&dateOfBirthH=1410-06-04"
+            + "&birthDateG=1990-01-01"
             + "&gender=M"
-            + "&idExpirationDateH=1456-07-28"
+            + "&idExpirationDateH=1448-07-22"
             + "&placeOfBirth=الرياض";
         logApiRequest("POST", yakeenUrl, body);
         RequestSpecification spec = RestAssured.given()
             .header("x-api-key", apiKey)
             .header("Content-Type", "application/json")
                 .queryParam("nin", poiNumber)
-                .queryParam("firstName", "أيمن")
-                .queryParam("fatherName", "عبدالإله")
-                .queryParam("grandFatherName", "إبراهيم")
-                .queryParam("familyName", "عباس")
-                .queryParam("englishFirstName", "Ayman")
-                .queryParam("englishSecondName", "Abdulailah")
-                .queryParam("englishThirdName", "Ibrahim")
-                .queryParam("englishLastName", "Abbas")
-                .queryParam("idExpiryDate", "2034-10-11T00:00:00")
-                .queryParam("dateOfBirthH", dateOfBirthH)
-                .queryParam("birthDateG", birthDateG)
+                .queryParam("firstName", ".")
+                .queryParam("fatherName", "ثامر")
+                .queryParam("grandFatherName", "عمر")
+                .queryParam("familyName", "الغام")
+                .queryParam("englishFirstName", "a")
+                .queryParam("englishSecondName", "Salah")
+                .queryParam("englishThirdName", "Omar")
+                .queryParam("englishLastName", "abdullah")
+                .queryParam("idExpiryDate", "2027-01-01T00:00:00")
+                .queryParam("dateOfBirthH", "1410-06-04")
+                .queryParam("birthDateG", "1990-01-01")
                 .queryParam("gender", "M")
-                .queryParam("idExpirationDateH", "1456-07-28")
+                .queryParam("idExpirationDateH", "1448-07-22")
                 .queryParam("placeOfBirth", "\u0627\u0644\u0631\u064A\u0627\u0636")
                 .body(body);
         if (!cookie.isEmpty()) {
@@ -501,32 +498,33 @@ public final class RegistrationApiHelper {
         String endpoint = simBaseUrl + "/__admin/nafathElm-info";
         String apiKey = config.get("registration.simApiKey",
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
-        String cookie = config.get("registration.simCookie", "");
-        String dobG = config.get("registration.default.birthDateG", "1999-05-30");
-        int dobH = toHijriIntFromGregorianDate(dobG);
-        String errorStatus = config.get("registration.nafathElm.errorStatus", "422-031-046");
+        String cookie = config.get("registration.simCookie",
+            "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
+        String dobG = "2001-08-11";
+        int dobH = 14220521;
+        String errorStatus = "422-031-046";
 
         String body = "{"
                 + "\"id\":" + poiNumber + ","
                 + "\"scenario\":\"Completed\","
                 + "\"error_status\":\"" + errorStatus + "\","
-                + "\"first_name#ar\":\"أيمن\","
-                + "\"father_name#ar\":\"عبدالإله\","
-                + "\"grand_name#ar\":\"إبراهيم\","
-                + "\"family_name#ar\":\"عباس\","
-                + "\"first_name#en\":\"Ayman\","
-                + "\"father_name#en\":\"Abdulailah\","
-                + "\"grand_name#en\":\"Ibrahim\","
-                + "\"family_name#en\":\"Abbas\","
-                + "\"two_names#ar\":\"أيمن عباس\","
-                + "\"two_names#en\":\"Ayman Abbas\","
-                + "\"full_name#ar\":\"أيمن عبدالإله إبراهيم عباس\","
-                + "\"full_name#en\":\"Ayman Abbas\","
+                + "\"first_name#ar\":\"محمد\","
+                + "\"father_name#ar\":\"هعبدالل\","
+                + "\"grand_name#ar\":\"محمد\","
+                + "\"family_name#ar\":\"هالحمري\","
+                + "\"first_name#en\":\"Mohamed\","
+                + "\"father_name#en\":\"Abdullah\","
+                + "\"grand_name#en\":\"Mohammed\","
+                + "\"family_name#en\":\"Al-Ahmari\","
+                + "\"two_names#ar\":\"همحمدهالحمري\","
+                + "\"two_names#en\":\"Mohamed Al-Ahmari\","
+                + "\"full_name#ar\":\"محمدهعبداللهمحمدهالحمري\","
+                + "\"full_name#en\":\"Mohamed Abdullah Mohammed Al-Ahmari\","
                 + "\"gender\":\"M\","
                 + "\"dob#g\":\"" + dobG + "\","
                 + "\"dob#h\":" + dobH + ","
                 + "\"nationality\":113,"
-                + "\"nationality#ar\":\"المملكة العربية السعودية\","
+                + "\"nationality#ar\":\"المملكةهالعربيةهالسعودية\","
                 + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
                 + "\"language\":\"A\""
                 + "}";
