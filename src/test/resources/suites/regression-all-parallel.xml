@@ -320,6 +320,12 @@
         <classes><class name="com.urpay.tests.payments.VisitorCardRegistrationTest"/></classes>
     </test>
 
+    <!-- Visitor Card also exists under the "Mada Card" tab (2026-08-10) — separate config prefix
+         (visitorMadaCard) since it's a distinct product instance from the Visa-tab one above. -->
+    <test name="Visitor Card - Mada Tab">
+        <classes><class name="com.urpay.tests.payments.VisitorMadaCardRegistrationTest"/></classes>
+    </test>
+
     <!-- ══════════════════════════════════════════════════════════════════════
          DMP (Digital MarketPlace) — 29 tests, profile sit-dmp-all.
          Browse tests need no wallet; order/gift/mokafaa/promo tests need funded

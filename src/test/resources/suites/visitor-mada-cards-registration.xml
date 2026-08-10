@@ -1,0 +1,23 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Visitor Card (Mada Tab) with Fresh Registration" verbose="1">
+    <!--
+        Registers a fresh full-tier NAT user via backend API,
+        then runs all card management tests with card issuance + IVR skip.
+        This is the Visitor Card instance under the "Mada Card" tab (distinct from
+        the Visa Card tab's Visitor Card — see visitor-cards-registration.xml).
+
+        Requires:
+          - SIT backend access (registration API + IVR callback)
+          - Oracle DB access (EAI_MESSAGE_DUMP for IVR x-request-id)
+          - Backend simulator (tahaqoq seeding)
+
+        Run:
+          mvn clean test "-Dsuite=suites/visitor-mada-cards-registration.xml" "-Dprofile=sit-cards"
+              -Denv=SIT -Dremote=true
+    -->
+    <test name="Visitor Card - Mada Tab (Fresh User)">
+        <classes>
+            <class name="com.urpay.tests.payments.VisitorMadaCardRegistrationTest"/>
+        </classes>
+    </test>
+</suite>
