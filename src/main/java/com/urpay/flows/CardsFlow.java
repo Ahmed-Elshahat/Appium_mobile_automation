@@ -221,26 +221,31 @@ public class CardsFlow {
 
             // Under the tab, there may be a sub-carousel of card types (e.g. Platinum, Signature).
             // If the tab name differs from the card type, scroll the sub-carousel to find the card.
+            // NOTE: scrollHorizontalToText() swallows its own exceptions (UiScrollable doesn't work
+            // on RN carousels that aren't marked scrollable=true), so it NEVER throws — checking for
+            // an exception here is a no-op. We must explicitly verify the card became visible instead.
             if (!tabName.equals(cardType)) {
-                try {
-                    platformActions.scrollHorizontalToText(cardType);
+                By specificCard = AppiumBy.xpath("//*[@text='" + cardType + "']");
+                platformActions.scrollHorizontalToText(cardType);
+                setImplicitWait(0);
+                boolean cardVisible = quickFind(specificCard);
+                if (cardVisible) {
                     log.info("Found '{}' in sub-carousel under '{}' tab", cardType, tabName);
-                } catch (Exception e) {
-                    log.info("Sub-carousel scroll failed for '{}' — trying manual swipes", cardType);
-                    By specificCard = AppiumBy.xpath("//*[@text='" + cardType + "']");
-                    setImplicitWait(0);
-                    if (!quickFind(specificCard)) {
-                        int carouselY = getCarouselY();
-                        org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
-                        int screenWidth = screenSize.getWidth();
-                        for (int i = 0; i < 5; i++) {
-                            swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
-                                    (int)(screenWidth * 0.2), carouselY);
-                            if (quickFind(specificCard)) break;
-                        }
+                } else {
+                    log.info("UiScrollable did not reveal '{}' — trying manual swipes", cardType);
+                    int carouselY = getCarouselY();
+                    org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
+                    int screenWidth = screenSize.getWidth();
+                    for (int i = 0; i < 5 && !cardVisible; i++) {
+                        swipe.performSwipe((int)(screenWidth * 0.9), carouselY,
+                                (int)(screenWidth * 0.1), carouselY);
+                        cardVisible = quickFind(specificCard);
                     }
-                    setImplicitWait(3);
+                    if (!cardVisible) {
+                        log.warn("'{}' still not visible after manual swipes in sub-carousel under '{}'", cardType, tabName);
+                    }
                 }
+                setImplicitWait(3);
             }
 
             // After tapping the tab (+ optional sub-carousel), a "Request Card" button should be visible
@@ -260,30 +265,29 @@ public class CardsFlow {
             }
             setImplicitWait(10);
         } else {
-            // Fallback: old carousel UI — horizontal scroll to find the card
+            // Fallback: old carousel UI — horizontal scroll to find the card.
+            // scrollHorizontalToText() swallows its own exceptions, so it never throws — verify
+            // the card actually became visible instead of trusting a caught exception.
             setImplicitWait(0);
-            try {
-                platformActions.scrollHorizontalToText(cardType);
-                log.info("Found '{}' in carousel using platform horizontal scroll", cardType);
-            } catch (Exception e) {
-                log.info("Platform horizontal scroll failed for '{}'", cardType);
-            }
-
+            platformActions.scrollHorizontalToText(cardType);
             boolean found = quickFind(genericRequestBtn);
-            if (!found) {
+            if (found) {
+                log.info("Found '{}' in carousel using platform horizontal scroll", cardType);
+            } else {
+                log.info("Platform horizontal scroll did not reveal '{}' — trying manual swipes", cardType);
                 int carouselY = getCarouselY();
                 org.openqa.selenium.Dimension screenSize = driver.manage().window().getSize();
                 int screenWidth = screenSize.getWidth();
 
                 for (int i = 0; i < 5; i++) {
-                    swipe.performSwipe((int)(screenWidth * 0.2), carouselY,
-                            (int)(screenWidth * 0.8), carouselY);
+                    swipe.performSwipe((int)(screenWidth * 0.1), carouselY,
+                            (int)(screenWidth * 0.9), carouselY);
                     if (quickFind(genericRequestBtn)) { found = true; break; }
                 }
                 if (!found) {
                     for (int i = 0; i < 8; i++) {
-                        swipe.performSwipe((int)(screenWidth * 0.8), carouselY,
-                                (int)(screenWidth * 0.2), carouselY);
+                        swipe.performSwipe((int)(screenWidth * 0.9), carouselY,
+                                (int)(screenWidth * 0.1), carouselY);
                         if (quickFind(genericRequestBtn)) { found = true; break; }
                     }
                 }
@@ -1253,15 +1257,18 @@ public class CardsFlow {
 
     /**
      * Find the vertical center of the card carousel for horizontal swiping.
-     * Looks for any visible card indicator ("Request Card" button, card element, or "Add new card")
-     * and returns its Y center. Falls back to 40% of screen height (typical carousel position).
+     * Prefers the card TITLE text (non-interactive) over the "Request Card"/"Add new card"
+     * buttons — starting a drag gesture ON a Touchable button can get intercepted as a tap/press
+     * by the button instead of being forwarded to the parent carousel as a scroll, which silently
+     * "freezes" the swipe (button anchors tried last, as a fallback only).
+     * Falls back to 40% of screen height (typical carousel position).
      */
     private int getCarouselY() {
         By[] anchors = {
-                AppiumBy.xpath("//*[@text='Request Card']"),
+                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card']"),
                 AppiumBy.accessibilityId("testID-bankCard.data.0"),
                 AppiumBy.xpath("//*[@text='Add new card' or @text='Add New Card']"),
-                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card']")
+                AppiumBy.xpath("//*[@text='Request Card']")
         };
         for (By anchor : anchors) {
             try {
