@@ -101,7 +101,7 @@
         </classes>
     </test>
 
-    <!-- ── RIA — Bank Deposit (ria.bankDeposit.user.*) ── -->
+    <!-- RIA Bank Deposit EXCLUDED — RIA only supports Cash Pickup for now (2026-08-11).
     <test name="RIA Bank Deposit">
         <classes>
             <class name="com.urpay.tests.remittance.RIATransferTest">
@@ -109,5 +109,6 @@
             </class>
         </classes>
     </test>
+    -->
 
 </suite>
