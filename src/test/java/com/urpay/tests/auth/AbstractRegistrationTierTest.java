@@ -201,6 +201,13 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         if (wizardPage.isNafathNumberScreenDisplayed(10)) {
             wizardPage.waitUntilNafathAutoVerifies(120);
         }
+        // Some builds open Absher consent after Nafath; dismiss it with the top-right X.
+        wizardPage.dismissAbsherConsentIfPresent(10);
+        // Some runs land on a KYC personal-information form before finish.
+        if (wizardPage.isKycPersonalInformationScreenDisplayed(10)) {
+            log.info("Post-Nafath KYC screen detected — auto-filling required fields");
+            wizardPage.completeKycPersonalInformationRandomly(20);
+        }
         // Some builds route to a terms/consent screen after Nafath auto-verification.
         // Handle it explicitly: tick checkbox(es) then tap Next.
         if (wizardPage.isTermsScreenDisplayed(10)) {
@@ -210,6 +217,8 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
                 wizardPage.acceptTermsAndSubmit();
             }
         }
+        // Some users get an optional card PIN setup screen before completion.
+        wizardPage.skipCardPinSetupIfPresent(15);
         Assert.assertTrue(wizardPage.isFinishScreenDisplayed(45),
                 "Registration Done/Finish screen should appear after Nafath auto-verification");
     }
