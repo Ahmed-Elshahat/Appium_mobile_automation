@@ -111,6 +111,7 @@ public class RIACashPickupDynamicTest extends BaseTest {
                 .beneficiaryType("Others")
                 .beneficiaryName(beneficiaryName)
                 .beneficiaryNickname(beneficiaryName.split(" ")[0])
+                .purposeOfFunds("Family Support")
                 .build();
 
         boolean submitted = new InternationalTransferFlow()

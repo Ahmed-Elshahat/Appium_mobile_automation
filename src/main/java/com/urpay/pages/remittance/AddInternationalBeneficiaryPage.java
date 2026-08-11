@@ -295,7 +295,12 @@ public class AddInternationalBeneficiaryPage extends BasePage {
         selectDropdownIfPresent("branch", branch);
         selectDropdownIfPresent("cityName", city);
         selectDropdownIfPresent("city", city);
-        selectDropdownIfPresent("purposeOfFunds", purposeOfFunds);
+        // "Purpose of Funds" also appears on Send-to-Wallet (not just Bank Deposit) and blocks
+        // Next until selected — same testID-variance issue as Bank Name, so use the same
+        // try-keys-then-label-fallback approach.
+        if (!selectDropdownByKeys(new String[]{"purposeOfFunds", "purposeOfFund", "purpose"}, purposeOfFunds)) {
+            selectDropdownByLabel("Purpose of Funds", purposeOfFunds);
+        }
         // Send-to-Wallet: mobile wallet operator (dropdown) + wallet number (the account field).
         selectDropdownIfPresent("beneficiaryWalletOperator", "");
         enterInputIfPresent("beneficiaryWalletNumber", accountNumber);
