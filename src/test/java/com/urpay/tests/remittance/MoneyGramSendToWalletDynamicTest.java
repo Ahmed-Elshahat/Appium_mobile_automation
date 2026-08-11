@@ -135,7 +135,9 @@ public class MoneyGramSendToWalletDynamicTest extends BaseTest {
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
-                .serviceProviderMarker("Easy to track")
+                // "Easy to track" ALONE is not unique — see the same note in
+                // MoneyGramCashPickupDynamicTest. Require BOTH tags to avoid matching Transfast.
+                .serviceProviderMarker("Easy to track+Anywallet")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Send to Wallet")
                 .amountSar("100.5")
@@ -147,6 +149,9 @@ public class MoneyGramSendToWalletDynamicTest extends BaseTest {
         if (result == InternationalTransferFlow.TransferResult.NO_BENEFICIARY) {
             throw new SkipException("MoneyGram Send to Wallet beneficiary '" + beneficiaryName
                     + "' not found on the account after activation");
+        }
+        if (result == InternationalTransferFlow.TransferResult.PROVIDER_UNAVAILABLE) {
+            throw new SkipException("MoneyGram is not offered as a provider for this corridor right now");
         }
         Assert.assertEquals(result, InternationalTransferFlow.TransferResult.SUCCESS,
                 "MoneyGram Send to Wallet transfer should complete successfully (Thank You screen)");

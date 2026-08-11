@@ -303,33 +303,53 @@ public class InternationalTransferPage extends BasePage {
      * reliable discriminator is the provider's brand MARKER text — MoneyGram (red logo) shows
      * "Easy to track" / "Anywallet". Tap the clickable card that contains the marker; fall back to
      * a card whose text contains the provider name, then the Nth provider card.
+     *
+     * <p>IMPORTANT: "Easy to track" alone is NOT unique — on some routes (e.g. Pakistan) BOTH
+     * MoneyGram AND a live/available Transfast card show it (Transfast's second tag is
+     * "Anywhere"/"Anybank", MoneyGram's is "Anywallet"). Pass a compound marker joined with '+'
+     * (e.g. "Easy to track+Anywallet") to require ALL parts on the SAME card and avoid matching
+     * the wrong provider when tags overlap.
      */
     @Step("Select service provider: {providerName} (marker '{marker}', index {index})")
     public void selectServiceProvider(String providerName, String marker, int index) {
         if (marker != null && !marker.isEmpty()) {
+            String[] markerParts = marker.split("\\+");
+            StringBuilder markerPredicate = new StringBuilder();
+            for (String part : markerParts) {
+                markerPredicate.append("[.//*[@text='").append(part.trim()).append("']]");
+            }
             // MoneyGram (red logo) is the AVAILABLE provider card — it has a "Details" button (not
-            // the "currently unavailable"/"Refresh" one) AND shows the brand marker (e.g. "Easy to
-            // track"); other available providers (e.g. Western Union) don't show that marker. Scope
-            // to the available card so a DOWN provider that shares the marker (e.g. Transfast) is
-            // not matched, then tap the marker's nearest clickable ancestor to select the card.
+            // the "currently unavailable"/"Refresh" one) AND shows ALL of its brand marker tags
+            // (e.g. "Easy to track" + "Anywallet"); a look-alike provider that only shares ONE tag
+            // (e.g. Transfast's "Easy to track"+"Anywhere") won't match every part. Scope to the
+            // available card, then tap the FIRST marker part's nearest clickable ancestor.
             By availableCard = AppiumBy.xpath(
                     "//android.view.ViewGroup[@content-desc='testID-data-undefined']"
                     + "[.//*[@text='Details']]"
                     + "[not(.//*[contains(@text,'unavailable') or @text='Refresh'])]"
-                    + "[.//*[@text='" + marker + "']]"
-                    + "//*[@text='" + marker + "']/ancestor::*[@clickable='true'][1]");
+                    + markerPredicate
+                    + "//*[@text='" + markerParts[0].trim() + "']/ancestor::*[@clickable='true'][1]");
             if (isPresent(availableCard, 8)) {
                 tap(availableCard);
                 return;
             }
-            // Fallback (single-provider-with-marker routes, e.g. Egypt): nearest clickable
-            // ancestor of the marker text.
-            By anyMarkerCard = AppiumBy.xpath(
-                    "//*[@text='" + marker + "']/ancestor::*[@clickable='true'][1]");
+            // Fallback (single-provider-with-marker routes, e.g. Egypt): same compound predicate
+            // WITHOUT the "Details"/"available" scoping (still requires ALL marker parts on one
+            // card, so a look-alike provider sharing only the first tag is still rejected).
+            By anyMarkerCard = AppiumBy.xpath("//*" + markerPredicate
+                    + "//*[@text='" + markerParts[0].trim() + "']/ancestor::*[@clickable='true'][1]");
             if (isPresent(anyMarkerCard, 4)) {
                 tap(anyMarkerCard);
                 return;
             }
+            // A marker was specified but NO card matched ALL of its parts — this MTO is genuinely
+            // not offered on this route (e.g. MoneyGram absent from the provider list; a route-mate
+            // sharing only ONE tag, like Transfast's "Easy to track", must NOT be mistaken for it).
+            // Fail loudly instead of silently falling through to a name/index guess that could tap
+            // the WRONG provider and transfer real money to it.
+            throw new IllegalStateException("Service provider '" + providerName
+                    + "' (marker '" + marker + "') not found among the available provider cards "
+                    + "on this route — it may not be offered for this corridor right now");
         }
         // Fallback: a card whose text contains the provider name.
         By byName = AppiumBy.xpath(

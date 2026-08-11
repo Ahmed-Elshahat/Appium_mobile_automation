@@ -136,9 +136,11 @@ public class MoneyGramCashPickupDynamicTest extends BaseTest {
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
-                // MoneyGram provider cards show no name text, only a logo — select via its unique
-                // brand marker (validated across existing MoneyGram tests), not a guessed index.
-                .serviceProviderMarker("Easy to track")
+                // MoneyGram provider cards show no name text, only a logo. "Easy to track" ALONE
+                // is not unique — on some routes (e.g. Pakistan) an available Transfast card ALSO
+                // shows it (Transfast's second tag is "Anywhere", MoneyGram's is "Anywallet"), which
+                // caused the wrong card (Transfast) to be selected. Require BOTH tags together.
+                .serviceProviderMarker("Easy to track+Anywallet")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Cash Pickup")
                 .amountSar("15.50")
@@ -150,6 +152,9 @@ public class MoneyGramCashPickupDynamicTest extends BaseTest {
         if (result == InternationalTransferFlow.TransferResult.NO_BENEFICIARY) {
             throw new SkipException("MoneyGram Cash Pickup beneficiary '" + beneficiaryName
                     + "' not found on the account after activation");
+        }
+        if (result == InternationalTransferFlow.TransferResult.PROVIDER_UNAVAILABLE) {
+            throw new SkipException("MoneyGram is not offered as a provider for this corridor right now");
         }
         Assert.assertEquals(result, InternationalTransferFlow.TransferResult.SUCCESS,
                 "MoneyGram Cash Pickup transfer should complete successfully (Thank You screen)");

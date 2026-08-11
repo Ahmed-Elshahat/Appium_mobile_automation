@@ -142,7 +142,9 @@ public class MoneyGramBankDepositDynamicTest extends BaseTest {
 
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
-                .serviceProviderMarker("Easy to track")
+                // "Easy to track" ALONE is not unique — see the same note in
+                // MoneyGramCashPickupDynamicTest. Require BOTH tags to avoid matching Transfast.
+                .serviceProviderMarker("Easy to track+Anywallet")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 // Confirmation screen shows this MTO's Bank Deposit as "Account Deposit" branding
                 // (differs from the generic "Bank Deposit" add-wizard option text).
@@ -156,6 +158,9 @@ public class MoneyGramBankDepositDynamicTest extends BaseTest {
         if (result == InternationalTransferFlow.TransferResult.NO_BENEFICIARY) {
             throw new SkipException("MoneyGram Bank Deposit beneficiary '" + beneficiaryName
                     + "' not found on the account after activation");
+        }
+        if (result == InternationalTransferFlow.TransferResult.PROVIDER_UNAVAILABLE) {
+            throw new SkipException("MoneyGram is not offered as a provider for this corridor right now");
         }
         Assert.assertEquals(result, InternationalTransferFlow.TransferResult.SUCCESS,
                 "MoneyGram Bank Deposit transfer should complete successfully (Thank You screen)");

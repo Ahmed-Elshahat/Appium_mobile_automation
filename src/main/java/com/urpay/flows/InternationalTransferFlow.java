@@ -49,7 +49,7 @@ public class InternationalTransferFlow {
      * Outcome of {@link #performTransfer}. Distinguishes a missing beneficiary (the test should
      * SKIP) from a genuine failure (the test should FAIL) so "false" is never ambiguous.
      */
-    public enum TransferResult { SUCCESS, NO_BENEFICIARY, FAILED }
+    public enum TransferResult { SUCCESS, NO_BENEFICIARY, PROVIDER_UNAVAILABLE, FAILED }
 
     // ── Navigation ─────────────────────────────────────
     private static final String INTERNATIONAL_DEEP_LINK = "urpay://international";
@@ -165,7 +165,16 @@ public class InternationalTransferFlow {
      */
     @Step("Perform international transfer: {data}")
     public TransferResult performTransfer(InternationalTransferData data, String otp) {
-        InternationalTransferPage page = openConfirmation(data);
+        InternationalTransferPage page;
+        try {
+            page = openConfirmation(data);
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found among the available provider")) {
+                log.warn("Provider unavailable for this corridor: {}", e.getMessage());
+                return TransferResult.PROVIDER_UNAVAILABLE;
+            }
+            throw e;
+        }
         if (page == null) {
             return TransferResult.NO_BENEFICIARY;
         }
