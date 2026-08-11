@@ -292,7 +292,14 @@ public class AddInternationalBeneficiaryPage extends BasePage {
         if (!selectDropdownByKeys(new String[]{"BANKNAME", "bankName", "bank", "bankCode"}, bankName)) {
             selectDropdownByLabel("Bank Name", bankName);
         }
-        selectDropdownIfPresent("branch", branch);
+        // Branch options are populated dependent on the chosen bank — give the screen a moment
+        // to render them before trying to open the Branch dropdown.
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+        // "Branch" is a DEPENDENT dropdown (populated after Bank Name is chosen, e.g. India IFSC
+        // routes) with the same testID-variance issue — try known keys, then the visible label.
+        if (!selectDropdownByKeys(new String[]{"branch", "Branch", "branchName"}, branch)) {
+            selectDropdownByLabel("Branch", branch);
+        }
         selectDropdownIfPresent("cityName", city);
         selectDropdownIfPresent("city", city);
         // "Purpose of Funds" also appears on Send-to-Wallet (not just Bank Deposit) and blocks
