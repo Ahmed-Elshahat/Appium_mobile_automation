@@ -368,8 +368,8 @@ public class CardsFlow {
         // both visible under the "Mada Card" tab) — detect via the generic locator, then tap
         // the "Request Card" button geometrically NEAREST to this card's own title (see
         // clickNearestRequestCard), since parent/ancestor xpath scoping is unreliable across
-        // the RN view hierarchy depths.
-        By genericRequestBtn = AppiumBy.xpath("//*[@text='Request Card']");
+        // the RN view hierarchy depths. Bracelet uses its OWN label "Request Bracelet".
+        By genericRequestBtn = AppiumBy.xpath("//*[@text='Request Card' or @text='Request Bracelet']");
 
         // Try tab-based UI first: tap the tab chip
         setImplicitWait(3);
@@ -1347,7 +1347,7 @@ public class CardsFlow {
                 AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card' or @text='Mada Bracelet']"),
                 AppiumBy.accessibilityId("testID-bankCard.data.0"),
                 AppiumBy.xpath("//*[@text='Add new card' or @text='Add New Card']"),
-                AppiumBy.xpath("//*[@text='Request Card']")
+                AppiumBy.xpath("//*[@text='Request Card' or @text='Request Bracelet']")
         };
         for (By anchor : anchors) {
             try {
@@ -1389,7 +1389,7 @@ public class CardsFlow {
     private void clickNearestRequestCard(String cardType) {
         setImplicitWait(0);
         var titleEls = driver.findElements(AppiumBy.xpath("//*[@text='" + cardType + "']"));
-        var btnEls = driver.findElements(AppiumBy.xpath("//*[@text='Request Card']"));
+        var btnEls = driver.findElements(AppiumBy.xpath("//*[@text='Request Card' or @text='Request Bracelet']"));
         setImplicitWait(10);
 
         int screenWidth = driver.manage().window().getSize().getWidth();
@@ -1422,7 +1422,7 @@ public class CardsFlow {
         if (target == null) {
             // Fallback: only one (or no) title match — use the generic clickable wait.
             log.warn("Could not geometrically match Request Card for '{}' — using first visible button", cardType);
-            target = waits.waitForClickable(AppiumBy.xpath("//*[@text='Request Card']"), 10);
+            target = waits.waitForClickable(AppiumBy.xpath("//*[@text='Request Card' or @text='Request Bracelet']"), 10);
         }
         target.click();
     }
