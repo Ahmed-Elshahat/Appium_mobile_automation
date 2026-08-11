@@ -143,8 +143,9 @@ public class MoneyGramBankDepositDynamicTest extends BaseTest {
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
                 // "Easy to track" ALONE is not unique — see the same note in
-                // MoneyGramCashPickupDynamicTest. Require BOTH tags to avoid matching Transfast.
-                .serviceProviderMarker("Easy to track+Anywallet")
+                // MoneyGramCashPickupDynamicTest. Exclude Transfast's tags instead of requiring
+                // MoneyGram's (inconsistent across routes) second tag.
+                .serviceProviderMarker("Easy to track+!Anybank+!Anywhere")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 // Confirmation screen shows this MTO's Bank Deposit as "Account Deposit" branding
                 // (differs from the generic "Bank Deposit" add-wizard option text).

@@ -137,8 +137,9 @@ public class MoneyGramSendToWalletDynamicTest extends BaseTest {
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
                 // "Easy to track" ALONE is not unique — see the same note in
-                // MoneyGramCashPickupDynamicTest. Require BOTH tags to avoid matching Transfast.
-                .serviceProviderMarker("Easy to track+Anywallet")
+                // MoneyGramCashPickupDynamicTest. Exclude Transfast's tags instead of requiring
+                // MoneyGram's (inconsistent across routes) second tag.
+                .serviceProviderMarker("Easy to track+!Anybank+!Anywhere")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Send to Wallet")
                 .amountSar("100.5")

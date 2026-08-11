@@ -301,52 +301,66 @@ public class InternationalTransferPage extends BasePage {
      * Select the MTO service-provider card. On this screen the cards render only the provider
      * LOGO (no "MoneyGram" text) and the clickable card containers carry no stable testID, so the
      * reliable discriminator is the provider's brand MARKER text — MoneyGram (red logo) shows
-     * "Easy to track" / "Anywallet". Tap the clickable card that contains the marker; fall back to
-     * a card whose text contains the provider name, then the Nth provider card.
+     * "Easy to track" (sometimes also "Anywallet", but NOT always — it varies by route). Tap the
+     * clickable card that contains the marker; fall back to a card whose text contains the
+     * provider name, then the Nth provider card.
      *
-     * <p>IMPORTANT: "Easy to track" alone is NOT unique — on some routes (e.g. Pakistan) BOTH
-     * MoneyGram AND a live/available Transfast card show it (Transfast's second tag is
-     * "Anywhere"/"Anybank", MoneyGram's is "Anywallet"). Pass a compound marker joined with '+'
-     * (e.g. "Easy to track+Anywallet") to require ALL parts on the SAME card and avoid matching
-     * the wrong provider when tags overlap.
+     * <p>IMPORTANT: "Easy to track" alone is NOT unique — on some routes (e.g. Pakistan) an
+     * available Transfast card ALSO shows it, distinguished only by ITS OWN second tag
+     * ("Anywhere"/"Anybank"). Requiring MoneyGram's second tag ("Anywallet") backfired on OTHER
+     * routes where MoneyGram shows "Easy to track" alone with no second tag at all — so instead of
+     * requiring a positive second tag, EXCLUDE Transfast's known tags. Marker syntax: '+'-joined
+     * parts; a part prefixed with '!' is an EXCLUSION (card must NOT contain it), everything else
+     * is REQUIRED (card must contain it). e.g. "Easy to track+!Anybank+!Anywhere".
      */
     @Step("Select service provider: {providerName} (marker '{marker}', index {index})")
     public void selectServiceProvider(String providerName, String marker, int index) {
         if (marker != null && !marker.isEmpty()) {
-            String[] markerParts = marker.split("\\+");
-            StringBuilder markerPredicate = new StringBuilder();
-            for (String part : markerParts) {
-                markerPredicate.append("[.//*[@text='").append(part.trim()).append("']]");
+            java.util.List<String> requiredParts = new java.util.ArrayList<>();
+            java.util.List<String> excludedParts = new java.util.ArrayList<>();
+            for (String rawPart : marker.split("\\+")) {
+                String part = rawPart.trim();
+                if (part.startsWith("!")) {
+                    excludedParts.add(part.substring(1).trim());
+                } else {
+                    requiredParts.add(part);
+                }
             }
+            StringBuilder markerPredicate = new StringBuilder();
+            for (String part : requiredParts) {
+                markerPredicate.append("[.//*[@text='").append(part).append("']]");
+            }
+            for (String part : excludedParts) {
+                markerPredicate.append("[not(.//*[@text='").append(part).append("'])]");
+            }
+            String anchorText = requiredParts.get(0);
             // MoneyGram (red logo) is the AVAILABLE provider card — it has a "Details" button (not
-            // the "currently unavailable"/"Refresh" one) AND shows ALL of its brand marker tags
-            // (e.g. "Easy to track" + "Anywallet"); a look-alike provider that only shares ONE tag
-            // (e.g. Transfast's "Easy to track"+"Anywhere") won't match every part. Scope to the
-            // available card, then tap the FIRST marker part's nearest clickable ancestor.
+            // the "currently unavailable"/"Refresh" one), shows every REQUIRED marker tag, and none
+            // of the EXCLUDED ones (a look-alike provider sharing only the required tag, e.g.
+            // Transfast's "Easy to track", is rejected via its OWN distinguishing tag). Scope to the
+            // available card, then tap the anchor tag's nearest clickable ancestor.
             By availableCard = AppiumBy.xpath(
                     "//android.view.ViewGroup[@content-desc='testID-data-undefined']"
                     + "[.//*[@text='Details']]"
                     + "[not(.//*[contains(@text,'unavailable') or @text='Refresh'])]"
                     + markerPredicate
-                    + "//*[@text='" + markerParts[0].trim() + "']/ancestor::*[@clickable='true'][1]");
+                    + "//*[@text='" + anchorText + "']/ancestor::*[@clickable='true'][1]");
             if (isPresent(availableCard, 8)) {
                 tap(availableCard);
                 return;
             }
-            // Fallback (single-provider-with-marker routes, e.g. Egypt): same compound predicate
-            // WITHOUT the "Details"/"available" scoping (still requires ALL marker parts on one
-            // card, so a look-alike provider sharing only the first tag is still rejected).
+            // Fallback (single-provider-with-marker routes, e.g. Egypt): same require/exclude
+            // predicate WITHOUT the "Details"/"available" scoping.
             By anyMarkerCard = AppiumBy.xpath("//*" + markerPredicate
-                    + "//*[@text='" + markerParts[0].trim() + "']/ancestor::*[@clickable='true'][1]");
+                    + "//*[@text='" + anchorText + "']/ancestor::*[@clickable='true'][1]");
             if (isPresent(anyMarkerCard, 4)) {
                 tap(anyMarkerCard);
                 return;
             }
-            // A marker was specified but NO card matched ALL of its parts — this MTO is genuinely
-            // not offered on this route (e.g. MoneyGram absent from the provider list; a route-mate
-            // sharing only ONE tag, like Transfast's "Easy to track", must NOT be mistaken for it).
-            // Fail loudly instead of silently falling through to a name/index guess that could tap
-            // the WRONG provider and transfer real money to it.
+            // A marker was specified but NO card matched — this MTO is genuinely not offered on
+            // this route (or a route-mate sharing only the required tag was correctly rejected via
+            // its own excluded tag). Fail loudly instead of silently falling through to a
+            // name/index guess that could tap the WRONG provider and transfer real money to it.
             throw new IllegalStateException("Service provider '" + providerName
                     + "' (marker '" + marker + "') not found among the available provider cards "
                     + "on this route — it may not be offered for this corridor right now");

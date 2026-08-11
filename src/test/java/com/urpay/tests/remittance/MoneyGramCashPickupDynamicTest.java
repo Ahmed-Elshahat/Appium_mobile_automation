@@ -138,10 +138,10 @@ public class MoneyGramCashPickupDynamicTest extends BaseTest {
         InternationalTransferData data = InternationalTransferData.builder()
                 .serviceProvider("MoneyGram")
                 // MoneyGram provider cards show no name text, only a logo. "Easy to track" ALONE
-                // is not unique — on some routes (e.g. Pakistan) an available Transfast card ALSO
-                // shows it (Transfast's second tag is "Anywhere", MoneyGram's is "Anywallet"), which
-                // caused the wrong card (Transfast) to be selected. Require BOTH tags together.
-                .serviceProviderMarker("Easy to track+Anywallet")
+                // is not unique — an available Transfast card can also show it. MoneyGram's OWN
+                // second tag ("Anywallet") isn't always shown either, so instead of requiring it,
+                // EXCLUDE Transfast's known second tags ("Anybank"/"Anywhere") to disambiguate.
+                .serviceProviderMarker("Easy to track+!Anybank+!Anywhere")
                 .beneficiaryName(beneficiaryName.split(" ")[0])
                 .deliveryOption("Cash Pickup")
                 .amountSar("15.50")
