@@ -112,6 +112,15 @@ public abstract class AbstractCardTest extends BaseTest {
     /** Get the provisioned user (available after loginForCard when useRegistration=true). */
     protected RegistrationApiHelper.Provisioned getProvisionedUser() { return provisionedUser; }
 
+    /**
+     * Issue/detect this card type. Digital cards (Mada/Visitor/Platinum/Signature/...) use the
+     * standard PIN+OTP+IVR flow; override for a card type with a different issuance flow (e.g.
+     * Mada Bracelet, a physical wearable that uses the national-address form instead).
+     */
+    protected CardsPage issueCard(CardsFlow flow) {
+        return flow.issueNewDigitalCard(getCardPrefix());
+    }
+
     // ═══════════════════════════════════════════════════
     //  1. SETUP: Login + navigate to card products page
     // ═══════════════════════════════════════════════════
@@ -136,7 +145,7 @@ public abstract class AbstractCardTest extends BaseTest {
         // ── Step B: ISSUE / DETECT THE CARD ──
         CardsFlow flow = new CardsFlow();
         try {
-            boolean isNewCard = flow.issueNewDigitalCard(getCardPrefix()) != null
+            boolean isNewCard = issueCard(flow) != null
                     && !flow.isExistingCardDetected();
             if (!isNewCard) {
                 // Only check lock state for existing cards — new cards are always unlocked

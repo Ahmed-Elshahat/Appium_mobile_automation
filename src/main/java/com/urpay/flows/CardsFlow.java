@@ -111,6 +111,166 @@ public class CardsFlow {
     public CardsPage issueNewDigitalCard(String cardPrefix) {
         ConfigManager c = ConfigManager.getInstance();
         String cardType = c.get(cardPrefix + ".expectedCardName", "Mada Card");
+        CardsPage page = navigateToProductAndTapRequestCard(cardPrefix, cardType);
+        if (existingCardDetected) {
+            return page;
+        }
+
+        // ── Step 5: Next → Accept → Confirm (adaptive — skip if not present) ──
+        setImplicitWait(0);
+        quickTapIfFound("//*[@text='Next']");
+        quickTapIfFound("//*[@text='I accept' or @content-desc='testID-check-box-main']");
+        setImplicitWait(10);
+
+        waits.waitForClickable(AppiumBy.xpath("//*[@text='Confirm']"), 15).click();
+        log.info("Tapped Confirm");
+
+        // ── Step 6: Enter PIN × 2 + OTP ──
+        try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
+        String pin = c.get(cardPrefix + ".pin", "1234");
+        enterPasscode(pin);
+        enterPasscode(pin);
+        try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
+        enterVerificationCode();
+
+        // ── Step 6: Wait for IVR "Verification Call" screen, then skip via backend API ──
+        // The app shows a "Verification Call" screen after OTP. We must wait for it before
+        // calling the IVR skip API — otherwise the DB record doesn't exist yet.
+        By verificationCallScreen = AppiumBy.xpath(
+                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
+                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
+        log.info("Waiting for IVR 'Verification Call' screen...");
+        setImplicitWait(0);
+        for (int wait = 0; wait < 15; wait++) {
+            if (quickFind(verificationCallScreen)) {
+                log.info("IVR 'Verification Call' screen detected");
+                break;
+            }
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+        }
+        setImplicitWait(10);
+
+        // Small delay to ensure the DB record is committed before querying
+        try { Thread.sleep(3000); } catch (Exception ignored) {}
+
+        String userId = c.get(cardPrefix + ".userId");
+        log.info("Attempting IVR skip for userId: {}", userId);
+        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
+        log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
+
+        // ── Step 7: Wait for success screen after IVR, then tap to proceed ──
+        // Detect issuance completion by the success-screen's OWN markers only — the visible action
+        // labels (Back to cards / Done / View Card) or the issuance-specific testID. Do NOT match
+        // the generic 'testID-primary--main' primary button here: it is also present on the IVR
+        // 'Verification Call' screen, so matching it marks a NON-issued card as issued (false pass).
+        By successBtn = AppiumBy.xpath(
+                "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
+                + "@content-desc='testID-primary-backToCardsDB-main']");
+
+        // F5: explicit-wait polling only — no Thread.sleep and no implicit-wait toggling. Each
+        // findQuick call blocks up to 2s (≈30s total, matching the old 15×2s budget) and the
+        // implicit wait is restored in the finally block regardless of how we exit the loop.
+        By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
+        boolean issued = false;
+        try {
+            for (int i = 0; i < 15; i++) {
+                if (!waits.findQuick(successBtn, 2).isEmpty()) {
+                    // Prefer "Done" or "View Card" over "Back to cards"
+                    var doneBtns = waits.findQuick(doneBtn, 2);
+                    if (!doneBtns.isEmpty()) {
+                        doneBtns.get(0).click();
+                        log.info("Tapped Done/View Card on success screen");
+                    } else {
+                        waits.waitForClickable(successBtn, 5).click();
+                        log.info("Tapped success screen button");
+                    }
+                    issued = true;
+                    break;
+                }
+                // If the backend rejected issuance, its error banner ("Transaction Declined" /
+                // "Service is currently unavailable") is up instead of the success screen — stop
+                // polling and raise it as a categorized backend defect.
+                raiseIfBackendError("digital card issuance");
+            }
+        } finally {
+            setImplicitWait(10);
+        }
+
+        if (!issued) {
+            // Success screen never appeared after OTP + IVR skip. Sample the error banner one last
+            // time (it may have arrived on the final poll) — if it is there, raise it as a backend
+            // defect so dependent card tests skip cleanly.
+            raiseIfBackendError("digital card issuance");
+            // F3: no success screen AND no backend banner is NOT evidence of a backend outage — it
+            // is most likely an automation, app-state, locator, IVR or timing defect. Raise a
+            // framework/navigation exception (with diagnostics) so it is not misclassified into the
+            // "Backend service unavailable" bucket.
+            throw new com.urpay.utils.FlowNavigationException(
+                    "Card issuance did not complete for '" + cardPrefix + "' — no success screen and "
+                    + "no backend error banner after OTP + IVR skip. No backend evidence was found, "
+                    + "so this is treated as a framework/navigation defect (automation, app-state, "
+                    + "locator, IVR or timing) rather than a backend outage.");
+        }
+
+        log.info("Digital card issued for: {}", cardPrefix);
+        return page;
+    }
+
+    /**
+     * Issue a new Mada Bracelet card. Same product-selection navigation as digital cards (tab tap
+     * + sub-carousel + Request Card), but the Bracelet is a PHYSICAL wearable — Request Card leads
+     * straight into the same national-address form used by {@link #requestPhysicalCard(String)}
+     * (building/additional no., street, district, city, postal code), not the digital PIN+OTP+IVR
+     * flow.
+     */
+    @Step("Issue new Mada Bracelet card — type: {cardPrefix}")
+    public CardsPage issueBraceletCard(String cardPrefix) {
+        ConfigManager c = ConfigManager.getInstance();
+        String cardType = c.get(cardPrefix + ".expectedCardName", "Mada Bracelet");
+        CardsPage page = navigateToProductAndTapRequestCard(cardPrefix, cardType);
+        if (existingCardDetected) {
+            return page;
+        }
+
+        // Same address-form fields as requestPhysicalCard's national-address step.
+        RequestPhysicalCardPage physicalPage = new RequestPhysicalCardPage();
+        if (physicalPage.isAddressFormVisible()) {
+            physicalPage.fillAddressForm("1234", "1234", "Test", "Test", "12345");
+        } else {
+            log.warn("Bracelet address form not visible — retrying with longer wait");
+            waits.waitForVisible(AppiumBy.accessibilityId("testID-input-direct-buildingNo"), 10);
+            physicalPage.fillAddressForm("1234", "1234", "Test", "Test", "12345");
+        }
+        physicalPage.tapNext();
+
+        // Scroll down to find Accept checkbox, then Confirm (mirrors requestPhysicalCard)
+        swipe.swipeUp();
+        swipe.swipeUp();
+        page.tapAcceptCheckbox();
+        swipe.swipeUp();
+        swipe.swipeUp();
+        page.tapConfirm();
+
+        String otp = c.get(cardPrefix + ".verificationCode", "1234");
+        enterVerificationCode(otp);
+
+        waits.waitForClickable(AppiumBy.xpath(
+                "//*[@text='View Card' or @text='Done' or @text='Back to cards' "
+                + "or @content-desc='testID-primary-backToCardsDB-main']"), 15);
+        driver.findElement(AppiumBy.xpath("//*[@text='View Card' or @text='Done']")).click();
+
+        log.info("Bracelet card requested for: {}", cardPrefix);
+        return page;
+    }
+
+    /**
+     * Steps 1-4 shared by all card types: enter the Cards products page, detect an existing card
+     * (sets {@link #existingCardDetected} and returns early if so), tap "Add new card", select the
+     * tab + sub-carousel card, then tap its "Request Card" button. Caller continues with the
+     * type-specific post-Request-Card flow (digital PIN+OTP+IVR, or the physical address form).
+     */
+    private CardsPage navigateToProductAndTapRequestCard(String cardPrefix, String cardType) {
+        ConfigManager c = ConfigManager.getInstance();
         CardsPage page = navigateToCards();
 
         // ── Step 1: Enter cards section ──
@@ -314,104 +474,6 @@ public class CardsFlow {
 
         clickNearestRequestCard(cardType);
         log.info("Tapped Request Card for: {}", cardType);
-
-        // ── Step 5: Next → Accept → Confirm (adaptive — skip if not present) ──
-        setImplicitWait(0);
-        quickTapIfFound("//*[@text='Next']");
-        quickTapIfFound("//*[@text='I accept' or @content-desc='testID-check-box-main']");
-        setImplicitWait(10);
-
-        waits.waitForClickable(AppiumBy.xpath("//*[@text='Confirm']"), 15).click();
-        log.info("Tapped Confirm");
-
-        // ── Step 6: Enter PIN × 2 + OTP ──
-        try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
-        String pin = c.get(cardPrefix + ".pin", "1234");
-        enterPasscode(pin);
-        enterPasscode(pin);
-        try { ((io.appium.java_client.HidesKeyboard) driver).hideKeyboard(); } catch (Exception ignored) {}
-        enterVerificationCode();
-
-        // ── Step 6: Wait for IVR "Verification Call" screen, then skip via backend API ──
-        // The app shows a "Verification Call" screen after OTP. We must wait for it before
-        // calling the IVR skip API — otherwise the DB record doesn't exist yet.
-        By verificationCallScreen = AppiumBy.xpath(
-                "//*[@text='Verification Call'] | //*[contains(@text,'verification call')] | " +
-                "//*[contains(@text,'Calling')] | //*[contains(@text,'calling')]");
-        log.info("Waiting for IVR 'Verification Call' screen...");
-        setImplicitWait(0);
-        for (int wait = 0; wait < 15; wait++) {
-            if (quickFind(verificationCallScreen)) {
-                log.info("IVR 'Verification Call' screen detected");
-                break;
-            }
-            try { Thread.sleep(2000); } catch (Exception ignored) {}
-        }
-        setImplicitWait(10);
-
-        // Small delay to ensure the DB record is committed before querying
-        try { Thread.sleep(3000); } catch (Exception ignored) {}
-
-        String userId = c.get(cardPrefix + ".userId");
-        log.info("Attempting IVR skip for userId: {}", userId);
-        boolean ivrSkipped = com.urpay.helpers.IvrSkipHelper.skipCardIssuanceIvr(userId);
-        log.info("IVR skip result: {}", ivrSkipped ? "SUCCESS" : "FAILED");
-
-        // ── Step 7: Wait for success screen after IVR, then tap to proceed ──
-        // Detect issuance completion by the success-screen's OWN markers only — the visible action
-        // labels (Back to cards / Done / View Card) or the issuance-specific testID. Do NOT match
-        // the generic 'testID-primary--main' primary button here: it is also present on the IVR
-        // 'Verification Call' screen, so matching it marks a NON-issued card as issued (false pass).
-        By successBtn = AppiumBy.xpath(
-                "//*[@text='Back to cards' or @text='Done' or @text='View Card' or "
-                + "@content-desc='testID-primary-backToCardsDB-main']");
-
-        // F5: explicit-wait polling only — no Thread.sleep and no implicit-wait toggling. Each
-        // findQuick call blocks up to 2s (≈30s total, matching the old 15×2s budget) and the
-        // implicit wait is restored in the finally block regardless of how we exit the loop.
-        By doneBtn = AppiumBy.xpath("//*[@text='Done' or @text='View Card']");
-        boolean issued = false;
-        try {
-            for (int i = 0; i < 15; i++) {
-                if (!waits.findQuick(successBtn, 2).isEmpty()) {
-                    // Prefer "Done" or "View Card" over "Back to cards"
-                    var doneBtns = waits.findQuick(doneBtn, 2);
-                    if (!doneBtns.isEmpty()) {
-                        doneBtns.get(0).click();
-                        log.info("Tapped Done/View Card on success screen");
-                    } else {
-                        waits.waitForClickable(successBtn, 5).click();
-                        log.info("Tapped success screen button");
-                    }
-                    issued = true;
-                    break;
-                }
-                // If the backend rejected issuance, its error banner ("Transaction Declined" /
-                // "Service is currently unavailable") is up instead of the success screen — stop
-                // polling and raise it as a categorized backend defect.
-                raiseIfBackendError("digital card issuance");
-            }
-        } finally {
-            setImplicitWait(10);
-        }
-
-        if (!issued) {
-            // Success screen never appeared after OTP + IVR skip. Sample the error banner one last
-            // time (it may have arrived on the final poll) — if it is there, raise it as a backend
-            // defect so dependent card tests skip cleanly.
-            raiseIfBackendError("digital card issuance");
-            // F3: no success screen AND no backend banner is NOT evidence of a backend outage — it
-            // is most likely an automation, app-state, locator, IVR or timing defect. Raise a
-            // framework/navigation exception (with diagnostics) so it is not misclassified into the
-            // "Backend service unavailable" bucket.
-            throw new com.urpay.utils.FlowNavigationException(
-                    "Card issuance did not complete for '" + cardPrefix + "' — no success screen and "
-                    + "no backend error banner after OTP + IVR skip. No backend evidence was found, "
-                    + "so this is treated as a framework/navigation defect (automation, app-state, "
-                    + "locator, IVR or timing) rather than a backend outage.");
-        }
-
-        log.info("Digital card issued for: {}", cardPrefix);
         return page;
     }
 
@@ -1282,7 +1344,7 @@ public class CardsFlow {
      */
     private int getCarouselY() {
         By[] anchors = {
-                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card']"),
+                AppiumBy.xpath("//*[@text='Mada Card' or @text='Al-Ahli Club Card' or @text='Signature Card' or @text='Platinum Card' or @text='Visitor Card' or @text='Mada Bracelet']"),
                 AppiumBy.accessibilityId("testID-bankCard.data.0"),
                 AppiumBy.xpath("//*[@text='Add new card' or @text='Add New Card']"),
                 AppiumBy.xpath("//*[@text='Request Card']")
