@@ -286,7 +286,12 @@ public class AddInternationalBeneficiaryPage extends BasePage {
         // Real Bank-Deposit field testIDs (Pakistan corridor): BANKNAME / cityName dropdowns,
         // accountNumber input. Other corridors may expose branch/routing/purposeOfFunds; all
         // conditional so an absent field is skipped.
-        selectDropdownIfPresent("BANKNAME", bankName);
+        // "Bank Name" testID varies by corridor/build (BANKNAME/bankName/bank/bankCode seen) —
+        // try each key, then fall back to the visible "Bank Name" label if none match, so the
+        // Next button (disabled until a bank is picked) doesn't silently stay disabled.
+        if (!selectDropdownByKeys(new String[]{"BANKNAME", "bankName", "bank", "bankCode"}, bankName)) {
+            selectDropdownByLabel("Bank Name", bankName);
+        }
         selectDropdownIfPresent("branch", branch);
         selectDropdownIfPresent("cityName", city);
         selectDropdownIfPresent("city", city);
@@ -316,6 +321,58 @@ public class AddInternationalBeneficiaryPage extends BasePage {
             }
         }
         tap(FIRST_SEARCH_ITEM);
+    }
+
+    /** Try several possible testID-multi-select-&lt;key&gt; variants; returns true if one was found+used. */
+    private boolean selectDropdownByKeys(String[] keys, String value) {
+        for (String key : keys) {
+            By ddl = AppiumBy.accessibilityId("testID-multi-select-" + key);
+            if (isPresent(ddl, 2)) {
+                tap(ddl);
+                if (value != null && !value.isEmpty()) {
+                    By byName = AppiumBy.xpath("//*[contains(@text,'" + value + "')]");
+                    if (isPresent(byName, 3)) {
+                        tap(byName);
+                        return true;
+                    }
+                }
+                tap(FIRST_SEARCH_ITEM);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Fallback when no known testID matches a dropdown field: tap the clickable ancestor of the
+     * field's visible LABEL text (e.g. "Bank Name"), then pick by name or the first option.
+     */
+    private void selectDropdownByLabel(String labelText, String value) {
+        By labelAncestor = AppiumBy.xpath(
+                "//*[@text='" + labelText + "']/ancestor-or-self::*[@clickable='true'][1]");
+        if (!isPresent(labelAncestor, 2)) {
+            log.warn("Dropdown '{}' not found by testID or label — Next may stay disabled", labelText);
+            return;
+        }
+        tap(labelAncestor);
+        if (value != null && !value.isEmpty()) {
+            By byName = AppiumBy.xpath("//*[contains(@text,'" + value + "')]");
+            if (isPresent(byName, 3)) {
+                tap(byName);
+                return;
+            }
+        }
+        if (isPresent(FIRST_SEARCH_ITEM, 3)) {
+            tap(FIRST_SEARCH_ITEM);
+        } else {
+            // Some dropdowns render options as plain list items rather than search-item rows.
+            By firstOption = AppiumBy.xpath(
+                    "(//android.widget.TextView[not(@text='" + labelText + "')])[1]");
+            if (isPresent(firstOption, 2)) {
+                tap(firstOption);
+            }
+        }
+        log.info("Selected '{}' dropdown via label fallback", labelText);
     }
 
     /** Type into a testID-input-direct-&lt;key&gt; field only if it exists and a value is given. */
