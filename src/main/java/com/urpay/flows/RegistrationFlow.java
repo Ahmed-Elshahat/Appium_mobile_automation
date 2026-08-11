@@ -153,7 +153,10 @@ public class RegistrationFlow {
         wizardPage.acceptTermsAndPrivacyIfPresent();
         dumpPageSourceLocally("registration-credentials-screen");
         wizardPage.tapNext();
-        if (wizardPage.isRegistrationFormLoaded(5)) {
+        boolean advanced = otpPage.isVisible(5)
+                || wizardPage.isDobScreenDisplayed(3)
+                || wizardPage.isPasscodeScreenDisplayed(3);
+        if (!advanced && wizardPage.isRegistrationFormLoaded(5)) {
             log.warn("Registration form still visible after first Next tap — retrying submit once");
             wizardPage.tapNext();
         }

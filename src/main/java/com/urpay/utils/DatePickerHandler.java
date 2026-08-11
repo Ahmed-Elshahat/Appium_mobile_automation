@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.Rectangle;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +59,13 @@ public class DatePickerHandler {
      */
     public void selectDate(String month, String day, String year) {
         // Wait for the spinner to be present before driving it.
-        waits.isPresent(By.xpath(pickerXpath(MONTH_PICKER) + "/android.widget.EditText"), 10);
+        boolean spinnerPresent = waits.isPresent(By.xpath(pickerXpath(MONTH_PICKER) + "/android.widget.EditText"), 5);
+
+        if (!spinnerPresent) {
+            log.warn("Native date picker is not in spinner mode; trying calendar-grid fallback");
+            selectDateFromCalendarGrid(month, day, year);
+            return;
+        }
 
         // Mirror Katalon order: year, then month, then day.
         swipeUntilValue(YEAR_PICKER, year, PickerType.NUMBER);
@@ -68,6 +75,49 @@ public class DatePickerHandler {
         log.info("Date spinner set to {} {} {} (current: {} {} {})",
                 month, day, year,
                 getCurrentValue(MONTH_PICKER), getCurrentValue(DAY_PICKER), getCurrentValue(YEAR_PICKER));
+    }
+
+    /**
+     * Fallback path for Android calendar-style pickers where NumberPicker is absent.
+     * Selects day cell by visible text and leaves month/year navigation to the app's default view.
+     */
+    private void selectDateFromCalendarGrid(String month, String day, String year) {
+        String normalizedDay = String.valueOf(Integer.parseInt(day.trim()));
+        String monthYear = month.trim() + " " + year.trim();
+
+        By dayCell = By.xpath(
+            "//android.view.View[@text='" + normalizedDay + "']"
+            + " | //android.widget.TextView[@text='" + normalizedDay + "']"
+            + " | //android.view.View[@content-desc='" + normalizedDay + "']"
+            + " | //android.widget.TextView[@content-desc='" + normalizedDay + "']"
+            + " | //android.view.View[contains(@content-desc,'" + normalizedDay + "')"
+            + " and contains(@content-desc,'" + monthYear + "')]"
+            + " | //android.widget.TextView[contains(@content-desc,'" + normalizedDay + "')"
+            + " and contains(@content-desc,'" + monthYear + "')]");
+
+        if (!waits.isPresent(dayCell, 8)) {
+            throw new IllegalStateException("Calendar-grid fallback could not find day cell '" + normalizedDay
+                    + "' for target date " + month + " " + day + " " + year);
+        }
+
+        try {
+            List<WebElement> cells = driver.findElements(dayCell);
+            for (WebElement cell : cells) {
+                try {
+                    if (cell.isDisplayed() && cell.isEnabled()) {
+                        cell.click();
+                        log.info("Calendar-grid fallback selected day '{}'", normalizedDay);
+                        return;
+                    }
+                } catch (Exception ignored) {
+                    // try next candidate
+                }
+            }
+            throw new IllegalStateException("Calendar-grid fallback found day cell but could not click it: "
+                    + normalizedDay);
+        } catch (WebDriverException e) {
+            throw failFastSessionLoss("selecting day cell in calendar-grid fallback", e);
+        }
     }
 
     private enum PickerType { MONTH, NUMBER }
@@ -85,8 +135,17 @@ public class DatePickerHandler {
                 break;
             }
             boolean increase = cmp < 0;
-            swipePicker(pickerIndex, increase, travel);
-            String updated = readStableValue(pickerIndex);
+            try {
+                swipePicker(pickerIndex, increase, travel);
+            } catch (WebDriverException e) {
+                throw failFastSessionLoss("swiping picker " + pickerIndex, e);
+            }
+            String updated;
+            try {
+                updated = readStableValue(pickerIndex);
+            } catch (WebDriverException e) {
+                throw failFastSessionLoss("reading picker " + pickerIndex, e);
+            }
             if (updated.equals(current)) {
                 // No movement — the swipe was too short; lengthen it.
                 travel = Math.min(travel * 1.6, 0.6);
@@ -128,7 +187,7 @@ public class DatePickerHandler {
      */
     private String readStableValue(int pickerIndex) {
         String last = getCurrentValue(pickerIndex);
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 4; i++) {
             String v = getCurrentValue(pickerIndex);
             if (!v.isEmpty() && v.equals(last)) {
                 return v;
@@ -173,8 +232,12 @@ public class DatePickerHandler {
     }
 
     private String getCurrentValue(int pickerIndex) {
-        List<WebElement> els =
-                driver.findElements(By.xpath(pickerXpath(pickerIndex) + "/android.widget.EditText"));
+        List<WebElement> els;
+        try {
+            els = driver.findElements(By.xpath(pickerXpath(pickerIndex) + "/android.widget.EditText"));
+        } catch (WebDriverException e) {
+            throw failFastSessionLoss("locating picker value " + pickerIndex, e);
+        }
         if (els.isEmpty()) {
             return "";
         }
@@ -184,5 +247,13 @@ public class DatePickerHandler {
 
     private String pickerXpath(int pickerIndex) {
         return "//android.widget.NumberPicker[" + pickerIndex + "]";
+    }
+
+    private RuntimeException failFastSessionLoss(String action, WebDriverException cause) {
+        String message = cause.getMessage() == null ? "" : cause.getMessage().toLowerCase();
+        if (message.contains("connection refused") || message.contains("session") || message.contains("invalid session")) {
+            return new IllegalStateException("Session lost while " + action + " in DOB picker", cause);
+        }
+        return cause;
     }
 }

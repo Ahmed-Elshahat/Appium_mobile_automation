@@ -1,5 +1,7 @@
 package com.urpay.pages.auth;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.openqa.selenium.By;
 
 import com.urpay.core.BasePage;
@@ -49,13 +51,39 @@ public class RegistrationWizardPage extends BasePage {
     private static final By PASSCODE_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
 
-        // ── Date of birth screen (shown for ALL tiers in registration, Step 3/5) ────────────────
-        // The DatePicker has a UUID-based testID; match by prefix to stay build-independent.
-        // Fallbacks cover text-only renders of the same field label.
+    // ── Date of birth screen (shown for ALL tiers in registration, Step 3/5) ────────────────
+    // Prefer the stable accessibility id used by the app's DOB control; fall back to generic
+    // DatePicker/text matches when the cloud build obfuscates the wrapper id.
+    private static final By DOB_PICKER_STABLE =
+            AppiumBy.accessibilityId("testID-DatePicker.dateOfBirth");
+
+        private static final By DOB_PICKER_CLICKABLE_ROW = AppiumBy.xpath(
+            "//*[starts-with(@content-desc,'testID-DatePicker.') and @clickable='true']");
+
     private static final By DOB_PICKER = AppiumBy.xpath(
             "//*[starts-with(@content-desc,'testID-DatePicker.')"
             + " or @text='Date of birth' or @text='Date Of Birth' or @text='Date of Birth'"
             + " or (@clickable='true' and .//*[@text='Date of birth'])]");
+
+    private static final By DOB_SCREEN_TITLE = AppiumBy.xpath(
+            "//*[@text='Date Of Birth' or @text='Date of Birth']");
+
+    private static final By DOB_HIJRI_TOGGLE_TEXT = AppiumBy.xpath(
+            "//*[@text='Switch to Hijri']");
+
+    // Fallbacks for builds where the DatePicker wrapper isn't directly clickable.
+    private static final By DOB_PICKER_ROW_FALLBACK = AppiumBy.xpath(
+            "//*[(@text='Date of birth' or @text='Date Of Birth' or @text='Date of Birth')"
+            + "/ancestor::*[@clickable='true'][1]]");
+
+    private static final By DOB_PICKER_TEXT_FALLBACK = AppiumBy.xpath(
+            "//*[@text='Date of birth' or @text='Date Of Birth' or @text='Date of Birth']");
+
+        private static final By DOB_CALENDAR_ICON = AppiumBy.xpath(
+            "//*[contains(@content-desc,'.Calender') or contains(@content-desc,'.Calendar')]");
+
+            private static final By ANY_NATIVE_DATE_PICKER = AppiumBy.xpath(
+                "//android.widget.NumberPicker | //android.widget.DatePicker | //android.widget.Button[@resource-id='android:id/button1']");
 
     // Calendar OK button (native Android date spinner confirmation)
     private static final By CALENDAR_OK_BTN =
@@ -84,6 +112,63 @@ public class RegistrationWizardPage extends BasePage {
             "//*[@text='Nafath Verification' or @text='Open Nafath App'"
             + " or @content-desc='testID-Steps.42a2f0a1-933a-4201-8c6e-46536e98761c']");
 
+        // Absher consent screen shown after Nafath in some builds.
+        private static final By ABSHER_CONSENT_SCREEN_MARKER = AppiumBy.xpath(
+            "//*[@text='Absher Verification' or @text='Absher Consent']");
+
+        // Top-right close icon used to dismiss Absher consent.
+        private static final By ABSHER_CLOSE_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-right-icon-0' or @content-desc='testID-right-icon-item']");
+
+                // Optional post-registration card screens.
+                private static final By CARD_PIN_SETUP_MARKER = AppiumBy.xpath(
+                    "//*[@text='Card PIN Code' or @text='Setup PIN Code'"
+                    + " or contains(@content-desc,'testID-passCode.screen')]");
+
+                private static final By CARD_ISSUANCE_SCREEN_MARKER = AppiumBy.xpath(
+                    "//*[@text='Request Card' or @text='Card Issuance' or @text='Card issuance']");
+
+                // Clickable Skip CTA on Request Card screen (testID-secondary-*-main obfuscated per build).
+                private static final By CARD_ISSUANCE_SKIP_BTN = AppiumBy.xpath(
+                    "//*[@content-desc='testID-secondary-ETY-main'"
+                    + " or (starts-with(@content-desc,'testID-secondary-')"
+                    + " and substring(@content-desc,string-length(@content-desc)-4)='-main')"
+                    + " or (@clickable='true' and .//*[@text='Skip'])]");
+
+                // Top-right close icon used on Setup PIN screens.
+                private static final By CARD_PIN_CLOSE_BTN = AppiumBy.xpath(
+                    "//*[@content-desc='testID-right-icon-0' or @content-desc='testID-right-icon-item']");
+
+            // KYC personal information screen (post-Nafath on some runs)
+            private static final By KYC_PERSONAL_INFO_MARKER = AppiumBy.xpath(
+                "//*[@text='Personal Information'"
+                + " or @content-desc='testID-multi-select-employmentStatus'"
+                + " or @content-desc='testID-input-direct-employer']");
+
+            private static final By KYC_JOB_SECTOR_DROPDOWN =
+                AppiumBy.accessibilityId("testID-multi-select-employmentStatus");
+
+            private static final By KYC_EMPLOYER_INPUT =
+                AppiumBy.accessibilityId("testID-input-direct-employer");
+
+            private static final By KYC_INCOME_SOURCE_DROPDOWN =
+                AppiumBy.accessibilityId("testID-multi-select-basicIncomeSource");
+
+            private static final By KYC_JOB_CATEGORY_DROPDOWN =
+                AppiumBy.accessibilityId("testID-multi-select-jobCategory");
+
+            private static final By KYC_INCOME_RANGE_DROPDOWN =
+                AppiumBy.accessibilityId("testID-multi-select-incomeRange");
+
+            private static final By KYC_SAVE_BTN = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary--main' or @text='Save']");
+
+            private static final By KYC_FIRST_OPTION = AppiumBy.xpath(
+                "//*[@content-desc='testID-search-item-0'"
+                + " or @content-desc='testID-radio-item-0'"
+                + " or contains(@content-desc,'testID-search-item-')"
+                + " or contains(@content-desc,'testID-radio-item-')][1]");
+
     // ══════════════════════════════════════════════════
     //  SCREEN CHECKS
     // ══════════════════════════════════════════════════
@@ -101,7 +186,10 @@ public class RegistrationWizardPage extends BasePage {
     }
 
     public boolean isDobScreenDisplayed(long timeoutSec) {
-        return waitUtils.isPresent(DOB_PICKER, timeoutSec);
+        return waitUtils.isPresent(DOB_SCREEN_TITLE, timeoutSec)
+                || waitUtils.isPresent(DOB_HIJRI_TOGGLE_TEXT, 2)
+                || waitUtils.isPresent(DOB_PICKER_STABLE, 2)
+                || waitUtils.isPresent(DOB_PICKER, 2);
     }
 
     public boolean isTermsScreenDisplayed(long timeoutSec) {
@@ -118,6 +206,22 @@ public class RegistrationWizardPage extends BasePage {
 
     public boolean isNafathNumberScreenDisplayed(long timeoutSec) {
         return waitUtils.isPresent(NAFATH_NUMBER_SCREEN_MARKER, timeoutSec);
+    }
+
+    public boolean isAbsherConsentScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(ABSHER_CONSENT_SCREEN_MARKER, timeoutSec);
+    }
+
+    public boolean isKycPersonalInformationScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(KYC_PERSONAL_INFO_MARKER, timeoutSec);
+    }
+
+    public boolean isCardPinSetupScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(CARD_PIN_SETUP_MARKER, timeoutSec);
+    }
+
+    public boolean isCardIssuanceScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(CARD_ISSUANCE_SCREEN_MARKER, timeoutSec);
     }
 
     /**
@@ -137,6 +241,98 @@ public class RegistrationWizardPage extends BasePage {
         }
         log.warn("Nafath auto-verification did not complete within {}s", timeoutSec);
         return false;
+    }
+
+    /**
+     * Dismiss Absher consent screen by tapping the top-right X button.
+     * Returns true if the screen is gone, false if still visible.
+     */
+    @Step("Dismiss Absher consent screen by tapping X")
+    public boolean dismissAbsherConsentIfPresent(long timeoutSec) {
+        if (!isAbsherConsentScreenDisplayed(timeoutSec)) {
+            return true;
+        }
+        log.info("Absher consent detected — dismissing via top-right X");
+        for (int attempt = 1; attempt <= 3 && isAbsherConsentScreenDisplayed(3); attempt++) {
+            log.info("Absher dismiss attempt {}", attempt);
+            waitUtils.waitForClickable(ABSHER_CLOSE_BTN, 10).click();
+        }
+        boolean dismissed = !isAbsherConsentScreenDisplayed(5);
+        if (!dismissed) {
+            log.warn("Absher consent screen still visible after dismiss attempts");
+        }
+        return dismissed;
+    }
+
+    /**
+     * Fill the KYC Personal Information form with random-valid test values and submit.
+     * Returns true when the KYC screen is no longer visible after save attempts.
+     */
+    @Step("Complete KYC Personal Information with random values")
+    public boolean completeKycPersonalInformationRandomly(long timeoutSec) {
+        if (!isKycPersonalInformationScreenDisplayed(timeoutSec)) {
+            return true;
+        }
+
+        log.info("KYC Personal Information detected — filling required fields");
+        selectFirstOptionFromDropdown(KYC_JOB_SECTOR_DROPDOWN, "Job Sector");
+        type(KYC_EMPLOYER_INPUT, randomEmployerName());
+        hideKeyboard();
+        selectFirstOptionFromDropdown(KYC_INCOME_SOURCE_DROPDOWN, "Income Source");
+        selectFirstOptionFromDropdown(KYC_JOB_CATEGORY_DROPDOWN, "Job Category");
+        selectFirstOptionFromDropdown(KYC_INCOME_RANGE_DROPDOWN, "Income Range");
+
+        for (int attempt = 1; attempt <= 3 && isKycPersonalInformationScreenDisplayed(4); attempt++) {
+            log.info("KYC Save attempt {}", attempt);
+            try {
+                tap(KYC_SAVE_BTN, 10);
+            } catch (Exception saveFailure) {
+                log.warn("KYC Save tap failed on attempt {}: {}", attempt, saveFailure.getMessage());
+            }
+        }
+
+        boolean completed = !isKycPersonalInformationScreenDisplayed(8);
+        if (!completed) {
+            log.warn("KYC screen still visible after random-fill save attempts");
+        }
+        return completed;
+    }
+
+    /**
+     * Some accounts are routed to an optional card PIN setup screen.
+     * Skip/dismiss it via Skip or top-right close icon.
+     */
+    @Step("Skip optional Card PIN setup screen if present")
+    public boolean skipCardPinSetupIfPresent(long timeoutSec) {
+        if (!isCardPinSetupScreenDisplayed(timeoutSec) && !isCardIssuanceScreenDisplayed(timeoutSec)) {
+            return true;
+        }
+        log.info("Optional card screen detected — attempting to skip/dismiss");
+        for (int attempt = 1; attempt <= 4
+                && (isCardPinSetupScreenDisplayed(2) || isCardIssuanceScreenDisplayed(2)); attempt++) {
+            log.info("Card screen skip attempt {}", attempt);
+            try {
+                if (isCardIssuanceScreenDisplayed(1)) {
+                    tap(CARD_ISSUANCE_SKIP_BTN, 8);
+                    // Fallback: some builds miss the RN click event on first tap.
+                    if (isCardIssuanceScreenDisplayed(2)) {
+                        var skipText = waitUtils.waitForVisible(AppiumBy.xpath("//*[@text='Skip']"), 3);
+                        var r = skipText.getRect();
+                        tapAtCoordinates(r.getX() + (r.getWidth() / 2), r.getY() + (r.getHeight() / 2));
+                        log.info("Coordinate-tapped Skip text center as fallback");
+                    }
+                } else {
+                    tap(CARD_PIN_CLOSE_BTN, 8);
+                }
+            } catch (Exception e) {
+                log.warn("Card screen skip tap failed on attempt {}: {}", attempt, e.getMessage());
+            }
+        }
+        boolean skipped = !isCardPinSetupScreenDisplayed(6) && !isCardIssuanceScreenDisplayed(6);
+        if (!skipped) {
+            log.warn("Card screen still visible after skip attempts");
+        }
+        return skipped;
     }
 
     // ══════════════════════════════════════════════════
@@ -234,7 +430,49 @@ public class RegistrationWizardPage extends BasePage {
      */
     @Step("Enter date of birth: {month} {day} {year}")
     public void enterDateOfBirth(String month, String day, String year) {
-        waitUtils.waitForClickable(DOB_PICKER, 30).click();
+        boolean openedPickerUi = false;
+        for (int attempt = 1; attempt <= 3 && !openedPickerUi; attempt++) {
+            try {
+                waitUtils.waitForClickable(DOB_PICKER_STABLE, 4).click();
+                log.info("Tapped stable DOB picker on attempt {}", attempt);
+            } catch (Exception stableFailure) {
+                log.warn("Stable DOB picker tap failed on attempt {}: {}", attempt, stableFailure.getMessage());
+                try {
+                    waitUtils.waitForClickable(DOB_PICKER_CLICKABLE_ROW, 4).click();
+                    log.info("Tapped clickable DOB row on attempt {}", attempt);
+                } catch (Exception rowFailure) {
+                    log.warn("Clickable DOB row tap failed on attempt {}: {}", attempt, rowFailure.getMessage());
+                    try {
+                        waitUtils.waitForClickable(DOB_PICKER, 4).click();
+                        log.info("Tapped generic DOB picker on attempt {}", attempt);
+                    } catch (Exception genericFailure) {
+                        log.warn("Generic DOB picker tap failed on attempt {}: {}", attempt, genericFailure.getMessage());
+                        try {
+                            waitUtils.waitForClickable(DOB_PICKER_ROW_FALLBACK, 4).click();
+                        } catch (Exception ignored) {
+                            waitUtils.waitForClickable(DOB_PICKER_TEXT_FALLBACK, 4).click();
+                        }
+                    }
+                }
+            }
+
+            if (waitUtils.isPresent(ANY_NATIVE_DATE_PICKER, 2)) {
+                openedPickerUi = true;
+                break;
+            }
+
+            if (waitUtils.isPresent(DOB_CALENDAR_ICON, 2)) {
+                try {
+                    waitUtils.waitForClickable(DOB_CALENDAR_ICON, 3).click();
+                    log.info("Tapped DOB calendar icon fallback on attempt {}", attempt);
+                } catch (Exception iconFailure) {
+                    log.warn("DOB calendar icon tap failed on attempt {}: {}", attempt, iconFailure.getMessage());
+                }
+            }
+
+            openedPickerUi = waitUtils.isPresent(ANY_NATIVE_DATE_PICKER, 2);
+        }
+
         new DatePickerHandler(driver).selectDate(month, day, year);
         waitUtils.waitForClickable(CALENDAR_OK_BTN, 10).click();
         log.info("Date of birth set: {} {} {}", month, day, year);
@@ -242,8 +480,13 @@ public class RegistrationWizardPage extends BasePage {
 
     @Step("Tap Next on DOB screen")
     public void tapDobNext() {
-        // Next button on the DOB screen uses an obfuscated middle segment; structural match covers it.
+        // The first tap can be swallowed right after the native dialog closes; retry once if the
+        // DOB screen is still present and we did not advance.
         waitUtils.waitForClickable(NEXT_BTN, 15).click();
+        if (isDobScreenDisplayed(3) && !isPasscodeScreenDisplayed(3)) {
+            log.warn("DOB Next tap did not advance on the first attempt — re-tapping Next once");
+            waitUtils.waitForClickable(NEXT_BTN, 10).click();
+        }
     }
 
     // ── Done / Finish ────────────────────────────────────────────────
@@ -290,5 +533,20 @@ public class RegistrationWizardPage extends BasePage {
         } catch (Exception e) {
             log.warn("Coordinate focus tap failed: {}", e.getMessage());
         }
+    }
+
+    private void selectFirstOptionFromDropdown(By dropdown, String label) {
+        try {
+            tap(dropdown, 10);
+            tap(KYC_FIRST_OPTION, 10);
+            log.info("Selected first option for {}", label);
+        } catch (Exception e) {
+            log.warn("Failed to select {} dropdown option: {}", label, e.getMessage());
+        }
+    }
+
+    private String randomEmployerName() {
+        int suffix = ThreadLocalRandom.current().nextInt(100, 999);
+        return "URPAY AUTO " + suffix;
     }
 }
