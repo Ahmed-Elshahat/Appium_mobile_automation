@@ -218,10 +218,10 @@ public class CardsFlow {
 
     /**
      * Issue a new Mada Bracelet card. Same product-selection navigation as digital cards (tab tap
-     * + sub-carousel + Request Card), but the Bracelet is a PHYSICAL wearable — Request Card leads
-     * straight into the same national-address form used by {@link #requestPhysicalCard(String)}
-     * (building/additional no., street, district, city, postal code), not the digital PIN+OTP+IVR
-     * flow.
+     * + sub-carousel + Request Card), but the Bracelet is a PHYSICAL wearable — Request Bracelet
+     * leads to a "Select a color" step (Blue/Pink swatches) first, THEN the same national-address
+     * form used by {@link #requestPhysicalCard(String)} (building/additional no., street,
+     * district, city, postal code), not the digital PIN+OTP+IVR flow.
      */
     @Step("Issue new Mada Bracelet card — type: {cardPrefix}")
     public CardsPage issueBraceletCard(String cardPrefix) {
@@ -230,6 +230,20 @@ public class CardsFlow {
         CardsPage page = navigateToProductAndTapRequestCard(cardPrefix, cardType);
         if (existingCardDetected) {
             return page;
+        }
+
+        // "Select a color" bottom sheet (Blue/Pink swatches) shown right after Request Bracelet.
+        String color = c.get(cardPrefix + ".color", "Blue");
+        By colorScreenTitle = AppiumBy.xpath("//*[@text='Select a color']");
+        if (waits.isPresent(colorScreenTitle, 8)) {
+            By colorSwatch = AppiumBy.xpath("//*[@text='" + color + "']");
+            if (waits.isPresent(colorSwatch, 3)) {
+                driver.findElement(colorSwatch).click();
+            } else {
+                log.warn("Bracelet color '{}' not found — using default selection", color);
+            }
+            waits.waitForClickable(AppiumBy.xpath("//*[@text='Next']"), 10).click();
+            log.info("Selected bracelet color '{}' and tapped Next", color);
         }
 
         // Same address-form fields as requestPhysicalCard's national-address step.
