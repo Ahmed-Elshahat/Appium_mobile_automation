@@ -382,7 +382,7 @@ public final class RegistrationApiHelper {
                 "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         String cookie = config.get("registration.simCookie",
                 "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
-        String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2025-08-21T00:00:00");
+        String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2032-08-21T00:00:00");
         String birthDateGIso = identity.birthDateG + "T00:00:00";
         String nationalityCode = identity.nationalityCode;
         String nationalityDescAr = identity.nationalityAr;
