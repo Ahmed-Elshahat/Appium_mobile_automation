@@ -85,10 +85,10 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         var tahaqoq = RegistrationApiHelper.seedTahaqoqInfo(seededPoi, seededMobile);
         log.info("Tahaqoq seed:    status {}", tahaqoq.getStatusCode());
 
-        var nafathElm = RegistrationApiHelper.seedNafathElmInfo(seededPoi, type.code());
-        log.info("NafathElm seed:  status {}", nafathElm.getStatusCode());
-
         if (type != PoiType.BOR) {
+            var nafathElm = RegistrationApiHelper.seedNafathElmInfo(seededPoi, type.code());
+            log.info("NafathElm seed:  status {}", nafathElm.getStatusCode());
+
             var yakeen = RegistrationApiHelper.seedYakeenInfo(seededPoi, type.code());
             log.info("Yakeen seed:     status {}", yakeen.getStatusCode());
         }
@@ -156,9 +156,13 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testEnterDateOfBirthProceeds() {
         ConfigManager cfg = ConfigManager.getInstance();
-        String month = cfg.get("registration.dob.month", "May");
-        String day   = cfg.get("registration.dob.day",   "30");
-        String year  = cfg.get("registration.dob.year",  "1999");
+        String date = cfg.get(poiType() == PoiType.BOR ? "registration.visitor.dob" : "registration.dob.date",
+            poiType() == PoiType.BOR ? "1994-01-22" : "2001-08-11");
+        String[] dateParts = date.split("-");
+        String month = java.time.Month.of(Integer.parseInt(dateParts[1])).getDisplayName(
+            java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+        String day   = dateParts[2];
+        String year  = dateParts[0];
         flow.enterDateOfBirth(month, day, year);
         Assert.assertTrue(wizardPage.isPasscodeScreenDisplayed(25),
                 "Create Passcode screen should appear after DOB entry");
