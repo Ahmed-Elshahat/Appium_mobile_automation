@@ -85,11 +85,11 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         var tahaqoq = RegistrationApiHelper.seedTahaqoqInfo(seededPoi, seededMobile);
         log.info("Tahaqoq seed:    status {}", tahaqoq.getStatusCode());
 
-        var nafathElm = RegistrationApiHelper.seedNafathElmInfo(seededPoi);
+        var nafathElm = RegistrationApiHelper.seedNafathElmInfo(seededPoi, type.code());
         log.info("NafathElm seed:  status {}", nafathElm.getStatusCode());
 
         if (type != PoiType.BOR) {
-            var yakeen = RegistrationApiHelper.seedYakeenInfo(seededPoi);
+            var yakeen = RegistrationApiHelper.seedYakeenInfo(seededPoi, type.code());
             log.info("Yakeen seed:     status {}", yakeen.getStatusCode());
         }
     }

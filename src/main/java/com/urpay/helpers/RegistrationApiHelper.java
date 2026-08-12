@@ -218,7 +218,7 @@ public final class RegistrationApiHelper {
             // simulator too. Scoped to the default path (doKyc=false); the KYC'd path and BOR are
             // unaffected.
             if (!doKyc && poiType != PoiType.BOR) {
-                seedYakeenInfo(poiNumber);
+                seedYakeenInfo(poiNumber, poiType.code());
             }
 
             // Visitor (BOR) has an EXTRA step vs NAT/IQA (per BE report): POST /consumers/age/validate
@@ -368,6 +368,11 @@ public final class RegistrationApiHelper {
      */
     @Step("API seed Yakeen info (identity + DOB) for poi {poiNumber}")
     public static Response seedYakeenInfo(String poiNumber) {
+        return seedYakeenInfo(poiNumber, "NAT");
+    }
+
+    @Step("API seed {poiType} Yakeen info (identity + DOB) for poi {poiNumber}")
+    public static Response seedYakeenInfo(String poiNumber, String poiType) {
         ConfigManager config = ConfigManager.getInstance();
         SeedIdentity identity = buildSeedIdentity(config);
         String simBaseUrl = config.get("registration.simBaseUrl",
@@ -379,8 +384,8 @@ public final class RegistrationApiHelper {
                 "9c23351f45488b84e987180e68ec816b=93797cadf903f2a6a0332c2fdaeb6621");
         String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2025-08-21T00:00:00");
         String birthDateGIso = identity.birthDateG + "T00:00:00";
-        String nationalityCode = config.get("registration.identity.nationalityCode", "113");
-        String nationalityDescAr = config.get("registration.identity.nationalityDescAr", identity.nationalityAr);
+        String nationalityCode = identity.nationalityCode;
+        String nationalityDescAr = identity.nationalityAr;
         String idExpiryDate = config.get("registration.identity.idExpiryDate", "2027-01-01T00:00:00");
         String idExpirationDateH = config.get("registration.identity.idExpirationDateH", "1448-07-22");
         String body = "{"
@@ -506,6 +511,11 @@ public final class RegistrationApiHelper {
     /** Seed the Nafath ELM simulator for identity verification. */
     @Step("API seed NafathElm info (simulator) for poi {poiNumber}")
     public static Response seedNafathElmInfo(String poiNumber) {
+        return seedNafathElmInfo(poiNumber, "NAT");
+    }
+
+    @Step("API seed {poiType} NafathElm info (simulator) for poi {poiNumber}")
+    public static Response seedNafathElmInfo(String poiNumber, String poiType) {
         ConfigManager config = ConfigManager.getInstance();
         SeedIdentity identity = buildSeedIdentity(config);
         String simBaseUrl = config.get("registration.simBaseUrl",
@@ -536,9 +546,9 @@ public final class RegistrationApiHelper {
                 + "\"gender\":\"" + identity.gender + "\","
                 + "\"dob#g\":\"" + identity.birthDateG + "\","
                 + "\"dob#h\":" + identity.dobHAsInt + ","
-                + "\"nationality\":113,"
+                + "\"nationality\":" + identity.nationalityCode + ","
                 + "\"nationality#ar\":\"" + identity.nationalityAr + "\","
-                + "\"nationality#en\":\"Kingdom of Saudi Arabia\","
+                + "\"nationality#en\":\"" + identity.nationalityEn + "\","
                 + "\"language\":\"A\""
                 + "}";
         logApiRequest("POST", endpoint, body);
@@ -552,6 +562,10 @@ public final class RegistrationApiHelper {
         return spec.post(endpoint);
     }
 
+    static SeedIdentity buildSeedIdentity(ConfigManager config, String poiType) {
+        return buildSeedIdentity(config);
+    }
+
     static SeedIdentity buildSeedIdentity(ConfigManager config) {
         String firstNameAr = config.get("registration.identity.firstNameAr", "محمد");
         String fatherNameAr = config.get("registration.identity.fatherNameAr", "عبدالله");
@@ -563,7 +577,9 @@ public final class RegistrationApiHelper {
         String familyNameEn = config.get("registration.identity.familyNameEn", "Al-Ahmari");
         String birthDateG = config.get("registration.identity.birthDateG", "2001-08-11");
         String dateOfBirthH = config.get("registration.identity.dateOfBirthH", "1422-05-21");
+        String nationalityCode = config.get("registration.identity.nationalityCode", "113");
         String nationalityAr = config.get("registration.identity.nationalityAr", "المملكة العربية السعودية");
+        String nationalityEn = config.get("registration.identity.nationalityEn", "Kingdom of Saudi Arabia");
         String placeOfBirthAr = config.get("registration.identity.placeOfBirthAr", "الرياض");
         return new SeedIdentity(
                 firstNameAr,
@@ -576,8 +592,10 @@ public final class RegistrationApiHelper {
                 familyNameEn,
                 birthDateG,
                 dateOfBirthH,
+                nationalityCode,
                 nationalityAr,
                 placeOfBirthAr,
+                nationalityEn,
                 config.get("registration.identity.gender", "M")
         );
     }
@@ -598,14 +616,16 @@ public final class RegistrationApiHelper {
         final String birthDateG;
         final String dateOfBirthH;
         final int dobHAsInt;
+        final String nationalityCode;
         final String nationalityAr;
+        final String nationalityEn;
         final String placeOfBirthAr;
         final String gender;
 
         SeedIdentity(String firstNameAr, String fatherNameAr, String grandNameAr, String familyNameAr,
                      String firstNameEn, String fatherNameEn, String grandNameEn, String familyNameEn,
-                     String birthDateG, String dateOfBirthH, String nationalityAr,
-                     String placeOfBirthAr, String gender) {
+                     String birthDateG, String dateOfBirthH, String nationalityCode, String nationalityAr,
+                     String nationalityEn, String placeOfBirthAr, String gender) {
             this.firstNameAr = firstNameAr;
             this.fatherNameAr = fatherNameAr;
             this.grandNameAr = grandNameAr;
@@ -621,7 +641,9 @@ public final class RegistrationApiHelper {
             this.birthDateG = birthDateG;
             this.dateOfBirthH = dateOfBirthH;
             this.dobHAsInt = parseHijriAsInt(dateOfBirthH, 14220521);
+            this.nationalityCode = nationalityCode;
             this.nationalityAr = nationalityAr;
+            this.nationalityEn = nationalityEn;
             this.placeOfBirthAr = placeOfBirthAr;
             this.gender = gender;
         }

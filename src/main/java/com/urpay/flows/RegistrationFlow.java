@@ -119,7 +119,7 @@ public class RegistrationFlow {
 
         // Yakeen/Nafath (national-identity) simulator — NAT and IQA only
         if (poiType != PoiType.BOR) {
-            var yakeenResp = RegistrationApiHelper.seedYakeenInfo(generatedPoi);
+            var yakeenResp = RegistrationApiHelper.seedYakeenInfo(generatedPoi, poiType.code());
             log.info("Yakeen seed: status {}", yakeenResp.getStatusCode());
         }
 
