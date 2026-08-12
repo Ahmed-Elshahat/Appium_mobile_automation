@@ -30,6 +30,10 @@ public class DashboardPage extends BasePage {
             AppiumBy.xpath("//*[@text='Later']");
     private static final By CLOSE_BTN =
             AppiumBy.xpath("//*[@text='×' or @text='✕' or @text='X']");
+    // Cash Prizes and similar promo popups use a CrossV3/CrossV4 SVG icon — match the clickable parent.
+    private static final By CROSS_POPUP_BTN =
+            AppiumBy.xpath("//*[contains(@content-desc,'CrossV3') or contains(@content-desc,'CrossV4')]"
+                    + "/ancestor-or-self::*[@clickable='true'][1]");
     // The app requests POST_NOTIFICATIONS at runtime AFTER login, so the Android system
     // notification-permission dialog renders a few seconds LATE on top of the dashboard. It lives
     // in a separate permissioncontroller window that hides the dashboard elements from the a11y
@@ -120,6 +124,7 @@ public class DashboardPage extends BasePage {
             clickIfPresentNow(SYSTEM_DIALOG, "system permission dialog");
             clickIfPresentNow(LATER_BTN, "Later");
             clickIfPresentNow(CLOSE_BTN, "close button");
+            clickIfPresentNow(CROSS_POPUP_BTN, "promo popup X");
         } finally {
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(implicit));
         }

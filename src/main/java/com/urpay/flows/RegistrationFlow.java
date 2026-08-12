@@ -226,7 +226,12 @@ public class RegistrationFlow {
     public DashboardPage tapDoneAndWaitForDashboard() {
         wizardPage.tapDone();
         waits.isPresent(DASHBOARD_MARKER, 30);
-        return new DashboardPage();
+        DashboardPage dashboard = new DashboardPage();
+        // Fingerprint and other post-registration popups appear with a delay — dismiss them.
+        for (int i = 0; i < 4; i++) {
+            dashboard.dismissPopups();
+        }
+        return dashboard;
     }
 
     /**
