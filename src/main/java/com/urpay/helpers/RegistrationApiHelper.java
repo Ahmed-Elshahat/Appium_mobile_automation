@@ -594,8 +594,8 @@ public final class RegistrationApiHelper {
                 dateOfBirthH,
                 nationalityCode,
                 nationalityAr,
-                placeOfBirthAr,
                 nationalityEn,
+                placeOfBirthAr,
                 config.get("registration.identity.gender", "M")
         );
     }
