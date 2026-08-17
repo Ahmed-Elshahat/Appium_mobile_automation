@@ -282,10 +282,20 @@ public class RegistrationWizardPage extends BasePage {
         selectFirstOptionFromDropdown(KYC_JOB_CATEGORY_DROPDOWN, "Job Category");
         selectFirstOptionFromDropdown(KYC_INCOME_RANGE_DROPDOWN, "Income Range");
 
+        // Save button sits below the fold — scroll down to reveal it before tapping.
+        swipeUp();
         for (int attempt = 1; attempt <= 3 && isKycPersonalInformationScreenDisplayed(4); attempt++) {
             log.info("KYC Save attempt {}", attempt);
             try {
-                tap(KYC_SAVE_BTN, 10);
+                var saveEls = waitUtils.findQuick(KYC_SAVE_BTN, 5);
+                if (!saveEls.isEmpty()) {
+                    saveEls.get(0).click();
+                } else {
+                    // Coordinate fallback: tap ~92% down the screen where Save is always rendered.
+                    var sz = driver.manage().window().getSize();
+                    tapAtCoordinates(sz.getWidth() / 2, (int) (sz.getHeight() * 0.92));
+                    log.info("KYC Save: coordinate tap at 92% height");
+                }
             } catch (Exception saveFailure) {
                 log.warn("KYC Save tap failed on attempt {}: {}", attempt, saveFailure.getMessage());
             }
