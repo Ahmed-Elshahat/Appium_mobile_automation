@@ -95,7 +95,12 @@ public abstract class AbstractCardTest extends BaseTest {
             // Mirror the credentials into this card type's config keys at runtime, so flow-layer
             // code that reads "<cardPrefix>.mobileNumber"/".id" (e.g. for a post-issuance backend
             // API call) works transparently for BOTH static accounts and fresh-registration users.
+            // NOTE: backend APIs (pre-login/otp/generate) require the RAW "+966520XXXXXX" form —
+            // sending the UI-local "0520XXXXXX" form fails with "Invalid Schema, Validation
+            // failed." So keep BOTH: ".mobileNumber" for UI login, ".apiMobileNumber" for any
+            // direct backend API call (e.g. CardActivationApiHelper).
             ConfigManager.getInstance().set(getCardPrefix() + ".mobileNumber", mobile);
+            ConfigManager.getInstance().set(getCardPrefix() + ".apiMobileNumber", provisionedUser.mobile);
             ConfigManager.getInstance().set(getCardPrefix() + ".id", provisionedUser.poi);
             ConfigManager.getInstance().set(getCardPrefix() + ".poiType", provisionedUser.poiType);
 

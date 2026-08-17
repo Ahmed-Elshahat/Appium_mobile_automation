@@ -291,9 +291,10 @@ public class CardsFlow {
     /**
      * Activate a Mada Bracelet after issuance: tap "Activate" then call the backend Physical Card
      * Activation Initiate API (cloud device can't complete real NFC/phone activation — same role
-     * IvrSkipHelper plays for digital card issuance). Uses the "&lt;cardPrefix&gt;.mobileNumber" /
-     * ".id" / ".poiType" config keys, which {@code AbstractCardTest.loginForCard()} mirrors at
-     * runtime from the provisioned user for fresh-registration card types.
+     * IvrSkipHelper plays for digital card issuance). Uses the "&lt;cardPrefix&gt;.apiMobileNumber"
+     * (raw "+966520XXXXXX" form the backend API requires) / ".id" / ".poiType" config keys, which
+     * {@code AbstractCardTest.loginForCard()} mirrors at runtime from the provisioned user for
+     * fresh-registration card types.
      */
     @Step("Activate Mada Bracelet card — type: {cardPrefix}")
     public void activateBraceletCard(String cardPrefix) {
@@ -303,7 +304,14 @@ public class CardsFlow {
         log.info("Tapped 'Activate' for Mada Bracelet");
 
         ConfigManager c = ConfigManager.getInstance();
-        String mobile = c.get(cardPrefix + ".mobileNumber");
+        // Prefer the raw "+966520XXXXXX" API form; if only the UI-local "0520XXXXXX" form is set
+        // (e.g. a static account), convert it back — the backend rejects the local form with
+        // "Invalid Schema, Validation failed."
+        String mobile = c.get(cardPrefix + ".apiMobileNumber", "");
+        if (mobile.isEmpty()) {
+            String localMobile = c.get(cardPrefix + ".mobileNumber", "");
+            mobile = localMobile.startsWith("0") ? "+966" + localMobile.substring(1) : localMobile;
+        }
         String poi = c.get(cardPrefix + ".id");
         String poiType = c.get(cardPrefix + ".poiType", "NAT");
         boolean activated = com.urpay.helpers.CardActivationApiHelper.activatePhysicalCard(mobile, poi, poiType);
