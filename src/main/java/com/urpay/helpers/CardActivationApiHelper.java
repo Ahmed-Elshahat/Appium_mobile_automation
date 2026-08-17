@@ -116,12 +116,13 @@ public final class CardActivationApiHelper {
      * issuance request. Same table/time-window pattern as {@link
      * IvrSkipHelper#getCardIssuanceRequestId}.
      *
-     * Bracelet issuance did NOT produce a 'CardIssuanceInitiateRq_Rule' record (confirmed via a
-     * real run — 0 rows), so the flow ID must differ for the physical/wearable path. Since the
-     * exact ID isn't known yet, this: (1) dumps every distinct flow ID seen in the window so a
-     * failed run's log tells us the real one, (2) tries several likely candidate flow IDs, and
-     * (3) falls back to a flow-ID-agnostic search for any recent message containing a "vpan"
-     * field at all.
+     * Confirmed via real runs: bracelet issuance does NOT use 'CardIssuanceInitiateRq_Rule' (the
+     * digital-card flow ID); the real candidates are 'IssueCardRq_Rule'/'IssueCardRs_Rule' and
+     * 'POST .../cards/issuance/initiate' (seen in the diagnostic dump). Also: the swagger's
+     * request schema uses PascalCase ("Vpan"/"ExpiryDate") — Oracle JSON_VALUE member-name
+     * matching is case-sensitive, so a lowercase path silently returns null even when a message
+     * containing "vpan" text is found (confirmed: LIKE match succeeded, JSON_VALUE extraction
+     * didn't). Both casings are tried.
      */
     private static CardIssuanceInfo getRecentIssuedCardInfo() {
         ConfigManager config = ConfigManager.getInstance();
@@ -130,11 +131,11 @@ public final class CardActivationApiHelper {
         String dbPassword = config.get("ivr.db.password", "YFnK#9qy2");
 
         String[] candidateFlowIds = {
-                "CardIssuanceInitiateRq_Rule",
-                "PhysicalCardIssuanceInitiateRq_Rule",
-                "BraceletIssuanceInitiateRq_Rule",
-                "CardActivationInitiateRq_Rule",
-                "PhysicalCardActiviationInitiateRq_Rule"
+                "IssueCardRs_Rule",
+                "IssueCardRq_Rule",
+                "CardIssuanceRq",
+                "POST /wallet-financials-apis/v1/cards/issuance/initiate",
+                "CardIssuanceInitiateRq_Rule"
         };
 
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
@@ -169,7 +170,7 @@ public final class CardActivationApiHelper {
             }
 
             log.warn("None of the candidate flow IDs matched — falling back to a flow-ID-agnostic "
-                    + "search for any recent message containing a 'vpan' field");
+                    + "search for any recent message containing a 'vpan'/'Vpan' field");
             return queryVpanAnyFlow(conn);
         } catch (SQLException e) {
             log.error("DB query for issued card info failed: {}", e.getMessage());
@@ -177,10 +178,17 @@ public final class CardActivationApiHelper {
         }
     }
 
+    /** Both casings tried: swagger uses PascalCase ("Vpan"), but be defensive either way. */
     private static CardIssuanceInfo queryVpanForFlowId(Connection conn, String flowId) throws SQLException {
         String query = "SELECT "
-                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan') AS vpan, "
-                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate') AS expiry_date "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.Vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.vpan')) AS vpan, "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date "
                 + "FROM (SELECT md_msg_data FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND MD_FLOW_ID = ? "
@@ -196,6 +204,7 @@ public final class CardActivationApiHelper {
                                 flowId, vpan.substring(Math.max(0, vpan.length() - 4)), expiryDate);
                         return new CardIssuanceInfo(vpan, expiryDate);
                     }
+                    log.info("flowId='{}' matched but no Vpan extracted from either casing/path tried", flowId);
                 }
             }
         }
@@ -204,8 +213,15 @@ public final class CardActivationApiHelper {
 
     private static CardIssuanceInfo queryVpanAnyFlow(Connection conn) throws SQLException {
         String query = "SELECT "
-                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan') AS vpan, "
-                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate') AS expiry_date, MD_FLOW_ID "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.Vpan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.vpan')) AS vpan, "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date, "
+                + "MD_FLOW_ID, SUBSTR(md_msg_data, 1, 1000) AS msg_preview "
                 + "FROM (SELECT md_msg_data, MD_FLOW_ID FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND UPPER(md_msg_data) LIKE '%VPAN%' "
@@ -219,8 +235,10 @@ public final class CardActivationApiHelper {
                             rs.getString("MD_FLOW_ID"), vpan.substring(Math.max(0, vpan.length() - 4)), expiryDate);
                     return new CardIssuanceInfo(vpan, expiryDate);
                 }
-                log.warn("Found a message containing 'vpan' but JSON_VALUE path '$.body.cardInfo.vpan' "
-                        + "didn't extract it — the field is nested differently; needs a real payload to fix");
+                // Still couldn't extract — dump the flow ID + a raw preview so the exact JSON
+                // shape is visible in the log instead of guessing a 3rd time.
+                log.warn("Found a message containing 'vpan' under flowId='{}' but no JSON path "
+                        + "extracted it. Raw preview: {}", rs.getString("MD_FLOW_ID"), rs.getString("msg_preview"));
             } else {
                 log.warn("No message containing 'vpan' found in the last 10 minutes at all");
             }
