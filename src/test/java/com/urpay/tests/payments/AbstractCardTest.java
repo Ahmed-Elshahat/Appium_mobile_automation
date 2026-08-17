@@ -92,6 +92,13 @@ public abstract class AbstractCardTest extends BaseTest {
                 mobile = "0" + mobile.substring(4); // +966520... → 0520...
             }
 
+            // Mirror the credentials into this card type's config keys at runtime, so flow-layer
+            // code that reads "<cardPrefix>.mobileNumber"/".id" (e.g. for a post-issuance backend
+            // API call) works transparently for BOTH static accounts and fresh-registration users.
+            ConfigManager.getInstance().set(getCardPrefix() + ".mobileNumber", mobile);
+            ConfigManager.getInstance().set(getCardPrefix() + ".id", provisionedUser.poi);
+            ConfigManager.getInstance().set(getCardPrefix() + ".poiType", provisionedUser.poiType);
+
             // Login with the freshly provisioned credentials
             return new LoginFlow().loginWith(
                     mobile,
@@ -119,6 +126,15 @@ public abstract class AbstractCardTest extends BaseTest {
      */
     protected CardsPage issueCard(CardsFlow flow) {
         return flow.issueNewDigitalCard(getCardPrefix());
+    }
+
+    /**
+     * Hook for a post-issuance activation step (e.g. Mada Bracelet: tap "Activate" + call the
+     * backend Activation Initiate API). No-op by default — only runs after a genuinely NEW card
+     * issuance (not when an existing card was detected).
+     */
+    protected void postIssuanceActivate(CardsFlow flow) {
+        // no-op by default
     }
 
     // ═══════════════════════════════════════════════════
@@ -150,6 +166,8 @@ public abstract class AbstractCardTest extends BaseTest {
             if (!isNewCard) {
                 // Only check lock state for existing cards — new cards are always unlocked
                 flow.ensureCardUnlocked();
+            } else {
+                postIssuanceActivate(flow);
             }
         } catch (com.urpay.utils.BackendErrorException e) {
             // Backend/SIT outage during issuance — a genuine product defect (not a test problem).

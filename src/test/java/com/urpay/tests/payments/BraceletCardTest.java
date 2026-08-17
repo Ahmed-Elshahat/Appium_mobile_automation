@@ -29,4 +29,9 @@ public class BraceletCardTest extends AbstractCardTest {
     protected CardsPage issueCard(CardsFlow flow) {
         return flow.issueBraceletCard(getCardPrefix());
     }
+
+    @Override
+    protected void postIssuanceActivate(CardsFlow flow) {
+        flow.activateBraceletCard(getCardPrefix());
+    }
 }

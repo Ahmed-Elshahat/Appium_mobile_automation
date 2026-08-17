@@ -289,6 +289,28 @@ public class CardsFlow {
     }
 
     /**
+     * Activate a Mada Bracelet after issuance: tap "Activate" then call the backend Physical Card
+     * Activation Initiate API (cloud device can't complete real NFC/phone activation — same role
+     * IvrSkipHelper plays for digital card issuance). Uses the "&lt;cardPrefix&gt;.mobileNumber" /
+     * ".id" / ".poiType" config keys, which {@code AbstractCardTest.loginForCard()} mirrors at
+     * runtime from the provisioned user for fresh-registration card types.
+     */
+    @Step("Activate Mada Bracelet card — type: {cardPrefix}")
+    public void activateBraceletCard(String cardPrefix) {
+        By activateBtn = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-activate-main'] | //*[@text='Activate']");
+        waits.waitForClickable(activateBtn, 15).click();
+        log.info("Tapped 'Activate' for Mada Bracelet");
+
+        ConfigManager c = ConfigManager.getInstance();
+        String mobile = c.get(cardPrefix + ".mobileNumber");
+        String poi = c.get(cardPrefix + ".id");
+        String poiType = c.get(cardPrefix + ".poiType", "NAT");
+        boolean activated = com.urpay.helpers.CardActivationApiHelper.activatePhysicalCard(mobile, poi, poiType);
+        log.info("Physical Card Activation Initiate API result: {}", activated ? "SUCCESS" : "FAILED");
+    }
+
+    /**
      * Steps 1-4 shared by all card types: enter the Cards products page, detect an existing card
      * (sets {@link #existingCardDetected} and returns early if so), tap "Add new card", select the
      * tab + sub-carousel card, then tap its "Request Card" button. Caller continues with the
