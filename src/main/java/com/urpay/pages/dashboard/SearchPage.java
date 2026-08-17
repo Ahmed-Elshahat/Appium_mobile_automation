@@ -1,5 +1,6 @@
 package com.urpay.pages.dashboard;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
@@ -32,8 +33,35 @@ public class SearchPage extends BasePage {
 
     @Step("Tap search icon")
     public void openSearch() {
-        waitUtils.waitForClickable(
-                io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-0"), 10).click();
+        // A CHAT icon was added to the dashboard header, which can shift/share the generic
+        // "testID-right-icon-N" indices with the search icon (screen has multiple right-side
+        // icons now, not just search). Tap index 0 first; if it does NOT open the search input
+        // (i.e. we tapped the wrong icon, e.g. chat), go back and try index 1, then a plain
+        // text/description fallback — verifying the actual outcome instead of assuming position.
+        By searchInput = io.appium.java_client.AppiumBy.accessibilityId("testID-Search-Input");
+        By icon0 = io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-0");
+        if (waitUtils.isPresent(icon0, 3)) {
+            waitUtils.waitForClickable(icon0, 10).click();
+            if (waitUtils.isPresent(searchInput, 3)) {
+                return;
+            }
+            log.warn("testID-right-icon-0 did not open search (likely the new chat icon) — trying testID-right-icon-1");
+            pressBack();
+        }
+        By icon1 = io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-1");
+        if (waitUtils.isPresent(icon1, 3)) {
+            waitUtils.waitForClickable(icon1, 10).click();
+            if (waitUtils.isPresent(searchInput, 3)) {
+                return;
+            }
+            log.warn("testID-right-icon-1 did not open search either — trying description/name fallback");
+            pressBack();
+        }
+        // Last resort: some builds label the icon itself (content-desc/name containing "search").
+        By byDescription = io.appium.java_client.AppiumBy.xpath(
+                "//*[contains(translate(@content-desc,'SEARCH','search'),'search') "
+                + "or contains(translate(@name,'SEARCH','search'),'search')]");
+        waitUtils.waitForClickable(byDescription, 10).click();
     }
 
     @Step("Type search query: {query}")
