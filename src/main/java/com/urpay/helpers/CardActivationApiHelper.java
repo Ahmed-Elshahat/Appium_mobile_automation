@@ -113,13 +113,15 @@ public final class CardActivationApiHelper {
 
     /**
      * Query Oracle DB (EAIR.EAI_MESSAGE_DUMP) for the Vpan/ExpiryDate of the most recent card
-     * issuance request. Same table/flow-id + time-window pattern as {@link
+     * issuance request. Same table/time-window pattern as {@link
      * IvrSkipHelper#getCardIssuanceRequestId}.
      *
-     * TODO: confirm the exact JSON paths for Vpan/ExpiryDate against a real captured
-     * CardIssuanceInitiateRq_Rule message once this is run against a device — the paths below
-     * ("$.body.cardInfo.vpan" / "$.body.cardInfo.expiryDate") are a best-effort guess mirroring
-     * the request shape, not yet verified.
+     * Bracelet issuance did NOT produce a 'CardIssuanceInitiateRq_Rule' record (confirmed via a
+     * real run — 0 rows), so the flow ID must differ for the physical/wearable path. Since the
+     * exact ID isn't known yet, this: (1) dumps every distinct flow ID seen in the window so a
+     * failed run's log tells us the real one, (2) tries several likely candidate flow IDs, and
+     * (3) falls back to a flow-ID-agnostic search for any recent message containing a "vpan"
+     * field at all.
      */
     private static CardIssuanceInfo getRecentIssuedCardInfo() {
         ConfigManager config = ConfigManager.getInstance();
@@ -127,33 +129,101 @@ public final class CardActivationApiHelper {
         String dbUser = config.get("ivr.db.user", "ESBQA");
         String dbPassword = config.get("ivr.db.password", "YFnK#9qy2");
 
+        String[] candidateFlowIds = {
+                "CardIssuanceInitiateRq_Rule",
+                "PhysicalCardIssuanceInitiateRq_Rule",
+                "BraceletIssuanceInitiateRq_Rule",
+                "CardActivationInitiateRq_Rule",
+                "PhysicalCardActiviationInitiateRq_Rule"
+        };
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
+            // Diagnostic: list every distinct flow ID seen in the window, so a failed run's log
+            // reveals the ACTUAL flow ID bracelet issuance uses instead of guessing again.
+            String diagQuery = "SELECT DISTINCT MD_FLOW_ID, "
+                    + "(SELECT MAX(md_creation_tmstmp) FROM EAIR.EAI_MESSAGE_DUMP d2 "
+                    + "WHERE d2.MD_FLOW_ID = d1.MD_FLOW_ID "
+                    + "AND d2.md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE) AS last_seen "
+                    + "FROM EAIR.EAI_MESSAGE_DUMP d1 "
+                    + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE";
+            log.info("Diagnostic — flow IDs seen in the last 10 minutes:");
+            try (Statement diagStmt = conn.createStatement();
+                 ResultSet diagRs = diagStmt.executeQuery(diagQuery)) {
+                int count = 0;
+                while (diagRs.next()) {
+                    count++;
+                    log.info("  flowId='{}' lastSeen={}", diagRs.getString("MD_FLOW_ID"), diagRs.getString("last_seen"));
+                }
+                if (count == 0) {
+                    log.warn("  (no EAI_MESSAGE_DUMP records at all in the last 10 minutes)");
+                }
+            } catch (SQLException diagEx) {
+                log.warn("Diagnostic flow-ID dump failed: {}", diagEx.getMessage());
+            }
+
+            for (String flowId : candidateFlowIds) {
+                CardIssuanceInfo info = queryVpanForFlowId(conn, flowId);
+                if (info != null) {
+                    return info;
+                }
+            }
+
+            log.warn("None of the candidate flow IDs matched — falling back to a flow-ID-agnostic "
+                    + "search for any recent message containing a 'vpan' field");
+            return queryVpanAnyFlow(conn);
+        } catch (SQLException e) {
+            log.error("DB query for issued card info failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private static CardIssuanceInfo queryVpanForFlowId(Connection conn, String flowId) throws SQLException {
         String query = "SELECT "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan') AS vpan, "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate') AS expiry_date "
                 + "FROM (SELECT md_msg_data FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
-                + "AND MD_FLOW_ID = 'CardIssuanceInitiateRq_Rule' "
+                + "AND MD_FLOW_ID = ? "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
+        try (var pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, flowId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String vpan = rs.getString("vpan");
+                    String expiryDate = rs.getString("expiry_date");
+                    if (vpan != null && !vpan.isEmpty()) {
+                        log.info("Resolved issued card via flowId='{}': vpan=***{}, expiryDate={}",
+                                flowId, vpan.substring(Math.max(0, vpan.length() - 4)), expiryDate);
+                        return new CardIssuanceInfo(vpan, expiryDate);
+                    }
+                }
+            }
+        }
+        return null;
+    }
 
-        log.info("Querying DB for issued card Vpan/ExpiryDate: {}", query);
-        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+    private static CardIssuanceInfo queryVpanAnyFlow(Connection conn) throws SQLException {
+        String query = "SELECT "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan') AS vpan, "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate') AS expiry_date, MD_FLOW_ID "
+                + "FROM (SELECT md_msg_data, MD_FLOW_ID FROM EAIR.EAI_MESSAGE_DUMP "
+                + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
+                + "AND UPPER(md_msg_data) LIKE '%VPAN%' "
+                + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
             if (rs.next()) {
                 String vpan = rs.getString("vpan");
                 String expiryDate = rs.getString("expiry_date");
-                if (vpan == null || vpan.isEmpty()) {
-                    log.warn("No Vpan found in the most recent card issuance message — JSON path may need adjusting");
-                    return null;
+                if (vpan != null && !vpan.isEmpty()) {
+                    log.info("Resolved issued card via flow-ID-agnostic search (flowId='{}'): vpan=***{}, expiryDate={}",
+                            rs.getString("MD_FLOW_ID"), vpan.substring(Math.max(0, vpan.length() - 4)), expiryDate);
+                    return new CardIssuanceInfo(vpan, expiryDate);
                 }
-                log.info("Resolved issued card: vpan=***{}, expiryDate={}",
-                        vpan.length() > 4 ? vpan.substring(vpan.length() - 4) : vpan, expiryDate);
-                return new CardIssuanceInfo(vpan, expiryDate);
+                log.warn("Found a message containing 'vpan' but JSON_VALUE path '$.body.cardInfo.vpan' "
+                        + "didn't extract it — the field is nested differently; needs a real payload to fix");
+            } else {
+                log.warn("No message containing 'vpan' found in the last 10 minutes at all");
             }
-            log.warn("No CardIssuanceInitiateRq_Rule record found in the last 10 minutes");
-            return null;
-        } catch (SQLException e) {
-            log.error("DB query for issued card info failed: {}", e.getMessage());
             return null;
         }
     }
@@ -168,3 +238,4 @@ public final class CardActivationApiHelper {
         }
     }
 }
+
