@@ -19,7 +19,8 @@ import io.restassured.response.Response;
  * Physical Card / Bracelet Activation Initiate API.
  *
  * Swagger: POST {basePath}/activation/initiate
- *   host: walletsit.neoleap.com.sa, basePath: /walletapppci/v1/cards
+ *   swagger host: walletsit.neoleap.com.sa (not resolvable from the test network — "No such
+ *   host is known"); reachable internal host: 192.168.100.71:14302. basePath: /walletapppci/v1/cards
  *   Auth: X-Client-Id (ApiKey) + X-Security-Token (JWT) — partyId is derived server-side from
  *   the JWT and is NOT sent in the request body.
  *
@@ -75,7 +76,7 @@ public final class CardActivationApiHelper {
         }
 
         ConfigManager config = ConfigManager.getInstance();
-        String baseUrl = config.get("cardActivation.baseUrl", "https://walletsit.neoleap.com.sa/walletapppci/v1/cards");
+        String baseUrl = config.get("cardActivation.baseUrl", "https://192.168.100.71:14302/walletapppci/v1/cards");
         String endpoint = baseUrl + "/activation/initiate";
 
         String body = "{"
