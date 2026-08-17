@@ -92,7 +92,13 @@ public final class CardActivationApiHelper {
 
         try {
             RestAssured.useRelaxedHTTPSValidation();
+            // The Cards API gateway needs X-Api-Key in addition to authedRequest's standard
+            // headers (X-Client-Id/X-Security-Token) — omitting it returns 400 "E200978:
+            // Authorization Error." (confirmed via a real run). Same key used by
+            // RegistrationApiHelper.baseHeaders() for the pre-login/registration gateway.
             Response response = RegistrationApiHelper.authedRequest(session)
+                    .header("X-Api-Key", config.get("registration.apiKey",
+                            "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G"))
                     .body(body)
                     .post(endpoint);
 
