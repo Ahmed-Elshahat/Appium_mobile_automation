@@ -179,19 +179,19 @@ public final class CardActivationApiHelper {
     }
 
     /**
-     * Both casings tried: swagger uses PascalCase ("Vpan"), but be defensive either way. ALWAYS
-     * logs a raw preview when the flow ID matches, whether or not Vpan was extracted — this is
-     * the most reliable way to learn the real schema (a broad "LIKE %VPAN%" search across ALL
-     * flows is too noisy: it can match unrelated header keys like "x-list-vpan-token", confirmed
-     * via a real run).
+     * Ground-truth path confirmed from a real captured 'CardIssuanceRq' message; older guesses
+     * kept as COALESCE fallbacks. ALWAYS logs a raw preview when the flow ID matches, whether or
+     * not a value was extracted — the most reliable way to learn the schema if it varies.
      */
     private static CardIssuanceInfo queryVpanForFlowId(Connection conn, String flowId) throws SQLException {
         String query = "SELECT "
-                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.CardDetails.ResponseCardIdentifier.VPan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.Vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.vpan')) AS vpan, "
-                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.CardDetails.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date, "
@@ -226,18 +226,20 @@ public final class CardActivationApiHelper {
      */
     private static CardIssuanceInfo queryVpanAnyFlow(Connection conn) throws SQLException {
         String query = "SELECT "
-                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.CardDetails.ResponseCardIdentifier.VPan'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.Vpan'), "
                 + "JSON_VALUE(md_msg_data, '$.body.vpan')) AS vpan, "
-                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
+                + "COALESCE(JSON_VALUE(md_msg_data, '$.body.CardDetails.ExpiryDate'), "
+                + "JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date, "
                 + "MD_FLOW_ID, SUBSTR(md_msg_data, 1, 1500) AS msg_preview "
                 + "FROM (SELECT md_msg_data, MD_FLOW_ID FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
-                + "AND (md_msg_data LIKE '%\"Vpan\"%' OR md_msg_data LIKE '%\"vpan\"%') "
+                + "AND (md_msg_data LIKE '%\"VPan\"%' OR md_msg_data LIKE '%\"Vpan\"%' OR md_msg_data LIKE '%\"vpan\"%') "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
             if (rs.next()) {
