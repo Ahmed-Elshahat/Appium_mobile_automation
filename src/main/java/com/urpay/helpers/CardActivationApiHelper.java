@@ -178,7 +178,13 @@ public final class CardActivationApiHelper {
         }
     }
 
-    /** Both casings tried: swagger uses PascalCase ("Vpan"), but be defensive either way. */
+    /**
+     * Both casings tried: swagger uses PascalCase ("Vpan"), but be defensive either way. ALWAYS
+     * logs a raw preview when the flow ID matches, whether or not Vpan was extracted — this is
+     * the most reliable way to learn the real schema (a broad "LIKE %VPAN%" search across ALL
+     * flows is too noisy: it can match unrelated header keys like "x-list-vpan-token", confirmed
+     * via a real run).
+     */
     private static CardIssuanceInfo queryVpanForFlowId(Connection conn, String flowId) throws SQLException {
         String query = "SELECT "
                 + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
@@ -188,7 +194,8 @@ public final class CardActivationApiHelper {
                 + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
-                + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date "
+                + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date, "
+                + "SUBSTR(md_msg_data, 1, 1500) AS msg_preview "
                 + "FROM (SELECT md_msg_data FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
                 + "AND MD_FLOW_ID = ? "
@@ -204,13 +211,19 @@ public final class CardActivationApiHelper {
                                 flowId, vpan.substring(Math.max(0, vpan.length() - 4)), expiryDate);
                         return new CardIssuanceInfo(vpan, expiryDate);
                     }
-                    log.info("flowId='{}' matched but no Vpan extracted from either casing/path tried", flowId);
+                    log.info("flowId='{}' matched but no Vpan extracted. Raw preview: {}",
+                            flowId, rs.getString("msg_preview"));
                 }
             }
         }
         return null;
     }
 
+    /**
+     * Last resort: search for an actual JSON key/value named vpan (quoted, e.g. "Vpan":"...")
+     * rather than a bare substring — the unquoted substring search previously matched an
+     * unrelated header key ("x-list-vpan-token") from a wallet-limits inquiry.
+     */
     private static CardIssuanceInfo queryVpanAnyFlow(Connection conn) throws SQLException {
         String query = "SELECT "
                 + "COALESCE(JSON_VALUE(md_msg_data, '$.body.cardInfo.Vpan'), "
@@ -221,10 +234,10 @@ public final class CardActivationApiHelper {
                 + "JSON_VALUE(md_msg_data, '$.body.cardInfo.expiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.ExpiryDate'), "
                 + "JSON_VALUE(md_msg_data, '$.body.expiryDate')) AS expiry_date, "
-                + "MD_FLOW_ID, SUBSTR(md_msg_data, 1, 1000) AS msg_preview "
+                + "MD_FLOW_ID, SUBSTR(md_msg_data, 1, 1500) AS msg_preview "
                 + "FROM (SELECT md_msg_data, MD_FLOW_ID FROM EAIR.EAI_MESSAGE_DUMP "
                 + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE "
-                + "AND UPPER(md_msg_data) LIKE '%VPAN%' "
+                + "AND (md_msg_data LIKE '%\"Vpan\"%' OR md_msg_data LIKE '%\"vpan\"%') "
                 + "ORDER BY md_creation_tmstmp DESC) WHERE ROWNUM = 1";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
             if (rs.next()) {
@@ -237,10 +250,10 @@ public final class CardActivationApiHelper {
                 }
                 // Still couldn't extract — dump the flow ID + a raw preview so the exact JSON
                 // shape is visible in the log instead of guessing a 3rd time.
-                log.warn("Found a message containing 'vpan' under flowId='{}' but no JSON path "
+                log.warn("Found a quoted \"vpan\"/\"Vpan\" key under flowId='{}' but no JSON path "
                         + "extracted it. Raw preview: {}", rs.getString("MD_FLOW_ID"), rs.getString("msg_preview"));
             } else {
-                log.warn("No message containing 'vpan' found in the last 10 minutes at all");
+                log.warn("No message with a quoted \"vpan\"/\"Vpan\" JSON key found in the last 10 minutes");
             }
             return null;
         }
