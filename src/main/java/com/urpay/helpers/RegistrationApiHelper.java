@@ -1,13 +1,5 @@
 package com.urpay.helpers;
 
-import com.urpay.core.ConfigManager;
-import io.qameta.allure.Step;
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -21,6 +13,16 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.urpay.core.ConfigManager;
+
+import io.qameta.allure.Step;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 
 /**
  * Registration API Helper — provisions a brand-new, fully KYC-verified and active URPay
@@ -1070,7 +1072,8 @@ public final class RegistrationApiHelper {
                 .header("X-Security-Token", session.securityToken)
                 .header("X-Request-Id", UUID.randomUUID().toString())
                 .header("X-Forwarded-For", "51.235.115.210")
-                .header("Content-Type", "application/json");
+                .header("Content-Type", "application/json")
+                .header("X-Api-Key", "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
         if (session.sessionId != null) {
             spec = spec.header("X-Session-Id", session.sessionId);
         }
