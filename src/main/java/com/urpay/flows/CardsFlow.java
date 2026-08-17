@@ -102,6 +102,7 @@ public class CardsFlow {
         return issueNewDigitalCard("madaCard");
     }
 
+
     /**
      * Issue a digital card for any card type.
      * If the user already has this card type, navigates to the card and returns.
@@ -268,10 +269,20 @@ public class CardsFlow {
         String otp = c.get(cardPrefix + ".verificationCode", "1234");
         enterVerificationCode(otp);
 
+        // "Thank You!" screen has "View Bracelet" (primary) + "Done" (secondary). Tap
+        // "View Bracelet" — NOT "Done" — since that's what starts the activation process.
         waits.waitForClickable(AppiumBy.xpath(
-                "//*[@text='View Card' or @text='Done' or @text='Back to cards' "
+                "//*[@text='View Bracelet' or @text='View Card' or @text='Done' or @text='Back to cards' "
                 + "or @content-desc='testID-primary-backToCardsDB-main']"), 15);
-        driver.findElement(AppiumBy.xpath("//*[@text='View Card' or @text='Done']")).click();
+        By viewBracelet = AppiumBy.xpath("//*[@text='View Bracelet']");
+        setImplicitWait(0);
+        if (quickFind(viewBracelet)) {
+            driver.findElement(viewBracelet).click();
+            log.info("Tapped 'View Bracelet' to start activation");
+        } else {
+            driver.findElement(AppiumBy.xpath("//*[@text='View Card' or @text='Done']")).click();
+        }
+        setImplicitWait(10);
 
         log.info("Bracelet card requested for: {}", cardPrefix);
         return page;
