@@ -303,6 +303,10 @@ public class CardsFlow {
         waits.waitForClickable(activateBtn, 15).click();
         log.info("Tapped 'Activate' for Mada Bracelet");
 
+         String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
+        enterVerificationCode(otp);
+
+        
         ConfigManager c = ConfigManager.getInstance();
         // Prefer the raw "+966520XXXXXX" API form; if only the UI-local "0520XXXXXX" form is set
         // (e.g. a static account), convert it back — the backend rejects the local form with
