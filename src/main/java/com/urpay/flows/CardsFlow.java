@@ -3,8 +3,12 @@ package com.urpay.flows;
 import org.openqa.selenium.By;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.urpay.core.ConfigManager;
+import io.qameta.allure.Step;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import java.util.UUID;
 import com.urpay.core.DriverFactory;
 import com.urpay.pages.auth.OtpPage;
 import com.urpay.pages.auth.PasscodePage;
@@ -25,7 +29,6 @@ import com.urpay.utils.WaitUtils;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
-import io.qameta.allure.Step;
 
 /**
  * Cards flow — orchestrates multi-page card management workflows.
@@ -296,6 +299,60 @@ public class CardsFlow {
      * {@code AbstractCardTest.loginForCard()} mirrors at runtime from the provisioned user for
      * fresh-registration card types.
      */
+
+    private static RequestSpecification commonHeaders(String deviceId, String otpToken) {
+        RequestSpecification spec = RestAssured.given()
+                .header("Accept", "application/json, text/plain, */*")
+                .header("Strapi_token", "")
+                .header("User-Agent", "okhttp/4.12.0")
+                .header("X-App-Version", "5.10.0.1596")
+                .header("X-Client-Id", "1278490422")
+                .header("X-Client-Secret", "64")
+                .header("X-Device-Id", deviceId)
+                .header("X-Device-Name", "android v28")
+                .header("X-Device-Platform", "Android")
+                .header("X-Fp-Latitude", "24.7111")
+                .header("X-Fp-Longitude", "46.6753")
+                .header("X-Latitude", "24.7111")
+                .header("X-Longitude", "46.6753")
+                .header("X-Request-Id", UUID.randomUUID().toString())
+                .header("X-Session-Language", "EN");
+        if (otpToken != null) {
+           // spec = spec.header(OTP_TOKEN_HEADER, otpToken);
+        }
+        return spec;
+    }
+
+    @Step("API pre-login")
+    private static Response preLogin(String baseUrl, String mobile, String poi, String poiType, String deviceId) {
+        String body = "{\"mobileNumber\":\"" + mobile + "\",\"poi\":{\"poiNumber\":\"" + poi
+                + "\",\"poiType\":\"" + poiType + "\"}}";
+        return commonHeaders(deviceId, null)
+                .header("Content-Type", "application/json")
+                .body(body)
+                .post(baseUrl + "/authentication/consumers/pre-login");
+    }
+
+    @Step("API generate OTP")
+    private static Response generateOtp(String baseUrl, String mobile, String poi, String poiType, String deviceId) {
+        String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"002\",\"poi\":{\"poiNumber\":\"" + poi
+                + "\",\"poiType\":\"" + poiType + "\"}}";
+        return commonHeaders(deviceId, null)
+                .header("Content-Type", "application/json;charset=UTF-8")
+                .body(body)
+                .post(baseUrl + "/otp/generate");
+    }
+
+    @Step("API verify OTP")
+    private static Response verifyOtp(String baseUrl, String mobile, String otpReference, String otp,
+                                      String otpToken, String deviceId) {
+        String body = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp + "\",\"otpReference\":\""
+                + otpReference + "\",\"parameters\":{},\"purpose\":\"002\"}";
+        return commonHeaders(deviceId, otpToken)
+                .header("Content-Type", "application/json")
+                .body(body)
+                .post(baseUrl + "/otp/verify");
+    }        
     @Step("Activate Mada Bracelet card — type: {cardPrefix}")
     public void activateBraceletCard(String cardPrefix) {
         By activateBtn = AppiumBy.xpath(
@@ -303,10 +360,9 @@ public class CardsFlow {
         waits.waitForClickable(activateBtn, 15).click();
         log.info("Tapped 'Activate' for Mada Bracelet");
 
-         String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
+        String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
         enterVerificationCode(otp);
 
-        
         ConfigManager c = ConfigManager.getInstance();
         // Prefer the raw "+966520XXXXXX" API form; if only the UI-local "0520XXXXXX" form is set
         // (e.g. a static account), convert it back — the backend rejects the local form with
