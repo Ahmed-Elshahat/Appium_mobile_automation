@@ -80,12 +80,17 @@ public final class CardActivationApiHelper {
         String endpoint = baseUrl + "/activation/initiate";
 
         String body = "{"
-                + "\"walletNumber\":\"" + session.walletNumber + "\","
-                + "\"cardInfo\":{"
-                + "\"Vpan\":\"" + cardInfo.vpan + "\","
-                + "\"ExpiryDate\":\"" + cardInfo.expiryDate + "\""
-                + "}"
-                + "}";
+        + "\"cardInfo\":{"
+        + "\"Vpan\":\"" + cardInfo.vpan + "\","
+        + "\"ExpiryDate\":\"" + cardInfo.expiryDate + "\""
+        + "},"
+        + "\"walletNumber\":\"" + session.walletNumber + "\","
+        + "\"amount\":{"
+        + "\"currency\":\"" + "SAR" + "\","
+        + "\"value\":" + "80.5"
+        + "},"
+        + "\"NewPin\":\"" + "2233" + "\""
+        + "}";
 
         log.info("Calling Physical Card Activation Initiate API: {}", endpoint);
         log.info("Request body: {}", body);
