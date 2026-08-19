@@ -335,7 +335,7 @@ public class CardsFlow {
 
     @Step("API generate OTP")
     private static Response generateOtp(String baseUrl, String mobile, String poi, String poiType, String deviceId) {
-        String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"002\",\"poi\":{\"poiNumber\":\"" + poi
+        String body = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"023\",\"poi\":{\"poiNumber\":\"" + poi
                 + "\",\"poiType\":\"" + poiType + "\"}}";
         return commonHeaders(deviceId, null)
                 .header("Content-Type", "application/json;charset=UTF-8")
@@ -347,12 +347,13 @@ public class CardsFlow {
     private static Response verifyOtp(String baseUrl, String mobile, String otpReference, String otp,
                                       String otpToken, String deviceId) {
         String body = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp + "\",\"otpReference\":\""
-                + otpReference + "\",\"parameters\":{},\"purpose\":\"002\"}";
+                + otpReference + "\",\"parameters\":{},\"purpose\":\"023\"}";
         return commonHeaders(deviceId, otpToken)
                 .header("Content-Type", "application/json")
                 .body(body)
                 .post(baseUrl + "/otp/verify");
-    }        
+    }
+
     @Step("Activate Mada Bracelet card — type: {cardPrefix}")
     public void activateBraceletCard(String cardPrefix) {
         By activateBtn = AppiumBy.xpath(
