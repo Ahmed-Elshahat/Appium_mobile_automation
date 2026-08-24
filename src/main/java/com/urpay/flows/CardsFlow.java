@@ -323,15 +323,6 @@ public class CardsFlow {
         return spec;
     }
 
-    @Step("API pre-login")
-    private static Response preLogin(String baseUrl, String mobile, String poi, String poiType, String deviceId) {
-        String body = "{\"mobileNumber\":\"" + mobile + "\",\"poi\":{\"poiNumber\":\"" + poi
-                + "\",\"poiType\":\"" + poiType + "\"}}";
-        return commonHeaders(deviceId, null)
-                .header("Content-Type", "application/json")
-                .body(body)
-                .post(baseUrl + "/authentication/consumers/pre-login");
-    }
 
     @Step("API generate OTP")
     private static Response generateOtp(String baseUrl, String mobile, String poi, String poiType, String deviceId) {
@@ -361,8 +352,6 @@ public class CardsFlow {
         waits.waitForClickable(activateBtn, 15).click();
         log.info("Tapped 'Activate' for Mada Bracelet");
 
-        String otp = ConfigManager.getInstance().get(cardPrefix + ".verificationCode", "1234");
-        enterVerificationCode(otp);
 
         ConfigManager c = ConfigManager.getInstance();
         // Prefer the raw "+966520XXXXXX" API form; if only the UI-local "0520XXXXXX" form is set

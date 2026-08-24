@@ -24,28 +24,34 @@ import io.restassured.response.Response;
  *   Auth: X-Client-Id (ApiKey) + X-Security-Token (JWT) — partyId is derived server-side from
  *   the JWT and is NOT sent in the request body.
  *
- * Mirrors the same authenticated-session pattern as {@link RegistrationApiHelper} (used by every
- * other implemented backend API in this project): log the user back in via the API to obtain a
- * fresh JWT + walletNumber, then call the endpoint with {@link RegistrationApiHelper#authedRequest}.
+ * Mirrors the same authenticated-session pattern as
+ * {@link RegistrationApiHelper} (used by every other implemented backend API in
+ * this project): log the user back in via the API to obtain a fresh JWT +
+ * walletNumber, then call the endpoint with
+ * {@link RegistrationApiHelper#authedRequest}.
  *
- * The card's Vpan/ExpiryDate aren't shown anywhere in the app UI (only a masked PAN), so — same
- * as {@link IvrSkipHelper} does for the IVR x-request-id — they are looked up from the Oracle DB
- * message dump of the most recent card-issuance request.
+ * The card's Vpan/ExpiryDate aren't shown anywhere in the app UI (only a masked
+ * PAN), so — same as {@link IvrSkipHelper} does for the IVR x-request-id — they
+ * are looked up from the Oracle DB message dump of the most recent
+ * card-issuance request.
  */
 public final class CardActivationApiHelper {
 
     private static final Logger log = LoggerFactory.getLogger(CardActivationApiHelper.class);
 
-    private CardActivationApiHelper() {}
+    private CardActivationApiHelper() {
+    }
 
     /**
-     * Activate the most recently issued physical card/bracelet for this consumer: logs the user
-     * back in via API to get a fresh JWT, looks up the issued card's Vpan/ExpiryDate from the DB,
-     * then calls the Activation Initiate API.
+     * Activate the most recently issued physical card/bracelet for this
+     * consumer: logs the user back in via API to get a fresh JWT, looks up the
+     * issued card's Vpan/ExpiryDate from the DB, then calls the Activation
+     * Initiate API.
      *
-     * @param mobile  local-format mobile number (e.g. 0520XXXXXX)
-     * @param poi     national ID / POI number
-     * @param poiType POI type code (e.g. "NAT") — see {@link RegistrationApiHelper.PoiType#code()}
+     * @param mobile local-format mobile number (e.g. 0520XXXXXX)
+     * @param poi national ID / POI number
+     * @param poiType POI type code (e.g. "NAT") — see
+     * {@link RegistrationApiHelper.PoiType#code()}
      * @return true if the API call returned a success status
      */
     @Step("Activate physical card via API — mobile: {mobile}")
@@ -57,18 +63,35 @@ public final class CardActivationApiHelper {
         ConfigManager config = ConfigManager.getInstance();
         String regBaseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
 
-        RegistrationApiHelper.Session session =
-                RegistrationApiHelper.loginAndGetSession(regBaseUrl, mobile, poi, poiType == null ? "NAT" : poiType);
+        RegistrationApiHelper.Session session
+                = RegistrationApiHelper.loginAndGetSession(
+                        regBaseUrl,
+                        mobile,
+                        poi,
+                        poiType == null ? "NAT" : poiType);
+
         if (session == null) {
             log.error("Card activation skipped: could not obtain an authenticated session for mobile {}", mobile);
             return false;
         }
-        return activatePhysicalCard(session);
+
+// Get ConsumerId
+        String consumerId = session.consumerId; // Replace with actual ConsumerId if different
+
+// Call helper class
+        String listVpanToken
+                = VpanListApiHelper.getListVpanToken(session, consumerId);
+        log.info("Retrieved X-List-VPAN-Token: {}", listVpanToken);
+
+        return activatePhysicalCard(session, listVpanToken);
     }
 
-    /** Same as {@link #activatePhysicalCard(String, String, String)} but with an already-logged-in session. */
+    /**
+     * Same as {@link #activatePhysicalCard(String, String, String)} but with an
+     * already-logged-in session.
+     */
     @Step("Call Physical Card Activation Initiate API")
-    static boolean activatePhysicalCard(RegistrationApiHelper.Session session) {
+    static boolean activatePhysicalCard(RegistrationApiHelper.Session session, String listVpanToken) {
         CardIssuanceInfo cardInfo = getRecentIssuedCardInfo();
         if (cardInfo == null) {
             log.error("Card activation skipped: could not resolve the issued card's Vpan/ExpiryDate from DB");
@@ -80,17 +103,17 @@ public final class CardActivationApiHelper {
         String endpoint = baseUrl + "/activation/initiate";
 
         String body = "{"
-        + "\"cardInfo\":{"
-        + "\"Vpan\":\"" + cardInfo.vpan + "\","
-        + "\"ExpiryDate\":\"" + cardInfo.expiryDate + "\""
-        + "},"
-        + "\"walletNumber\":\"" + session.walletNumber + "\","
-        + "\"amount\":{"
-        + "\"currency\":\"" + "SAR" + "\","
-        + "\"value\":" + "80.5"
-        + "},"
-        + "\"NewPin\":\"" + "2233" + "\""
-        + "}";
+                + "\"cardInfo\":{"
+                + "\"Vpan\":\"" + cardInfo.vpan + "\","
+                + "\"ExpiryDate\":\"" + cardInfo.expiryDate + "\""
+                + "},"
+                + "\"walletNumber\":\"" + session.walletNumber + "\","
+                + "\"amount\":{"
+                + "\"currency\":\"" + "SAR" + "\","
+                + "\"value\":" + "80.5"
+                + "},"
+                + "\"NewPin\":\"" + "2233" + "\""
+                + "}";
 
         log.info("Calling Physical Card Activation Initiate API: {}", endpoint);
         log.info("Request body: {}", body);
@@ -102,6 +125,7 @@ public final class CardActivationApiHelper {
             // Authorization Error." (confirmed via a real run). Same key used by
             // RegistrationApiHelper.baseHeaders() for the pre-login/registration gateway.
             Response response = RegistrationApiHelper.authedRequest(session)
+            .header("X-List-VPAN-Token", listVpanToken)
                     .body(body)
                     .post(endpoint);
 
@@ -122,17 +146,19 @@ public final class CardActivationApiHelper {
     }
 
     /**
-     * Query Oracle DB (EAIR.EAI_MESSAGE_DUMP) for the Vpan/ExpiryDate of the most recent card
-     * issuance request. Same table/time-window pattern as {@link
+     * Query Oracle DB (EAIR.EAI_MESSAGE_DUMP) for the Vpan/ExpiryDate of the
+     * most recent card issuance request. Same table/time-window pattern as {@link
      * IvrSkipHelper#getCardIssuanceRequestId}.
      *
-     * Confirmed via real runs: bracelet issuance does NOT use 'CardIssuanceInitiateRq_Rule' (the
-     * digital-card flow ID); the real candidates are 'IssueCardRq_Rule'/'IssueCardRs_Rule' and
-     * 'POST .../cards/issuance/initiate' (seen in the diagnostic dump). Also: the swagger's
-     * request schema uses PascalCase ("Vpan"/"ExpiryDate") — Oracle JSON_VALUE member-name
-     * matching is case-sensitive, so a lowercase path silently returns null even when a message
-     * containing "vpan" text is found (confirmed: LIKE match succeeded, JSON_VALUE extraction
-     * didn't). Both casings are tried.
+     * Confirmed via real runs: bracelet issuance does NOT use
+     * 'CardIssuanceInitiateRq_Rule' (the digital-card flow ID); the real
+     * candidates are 'IssueCardRq_Rule'/'IssueCardRs_Rule' and 'POST
+     * .../cards/issuance/initiate' (seen in the diagnostic dump). Also: the
+     * swagger's request schema uses PascalCase ("Vpan"/"ExpiryDate") — Oracle
+     * JSON_VALUE member-name matching is case-sensitive, so a lowercase path
+     * silently returns null even when a message containing "vpan" text is found
+     * (confirmed: LIKE match succeeded, JSON_VALUE extraction didn't). Both
+     * casings are tried.
      */
     private static CardIssuanceInfo getRecentIssuedCardInfo() {
         ConfigManager config = ConfigManager.getInstance();
@@ -141,11 +167,11 @@ public final class CardActivationApiHelper {
         String dbPassword = config.get("ivr.db.password", "YFnK#9qy2");
 
         String[] candidateFlowIds = {
-                "IssueCardRs_Rule",
-                "IssueCardRq_Rule",
-                "CardIssuanceRq",
-                "POST /wallet-financials-apis/v1/cards/issuance/initiate",
-                "CardIssuanceInitiateRq_Rule"
+            "IssueCardRs_Rule",
+            "IssueCardRq_Rule",
+            "CardIssuanceRq",
+            "POST /wallet-financials-apis/v1/cards/issuance/initiate",
+            "CardIssuanceInitiateRq_Rule"
         };
 
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword)) {
@@ -158,8 +184,7 @@ public final class CardActivationApiHelper {
                     + "FROM EAIR.EAI_MESSAGE_DUMP d1 "
                     + "WHERE md_creation_tmstmp >= SYSDATE - INTERVAL '10' MINUTE";
             log.info("Diagnostic — flow IDs seen in the last 10 minutes:");
-            try (Statement diagStmt = conn.createStatement();
-                 ResultSet diagRs = diagStmt.executeQuery(diagQuery)) {
+            try (Statement diagStmt = conn.createStatement(); ResultSet diagRs = diagStmt.executeQuery(diagQuery)) {
                 int count = 0;
                 while (diagRs.next()) {
                     count++;
@@ -189,9 +214,10 @@ public final class CardActivationApiHelper {
     }
 
     /**
-     * Ground-truth path confirmed from a real captured 'CardIssuanceRq' message; older guesses
-     * kept as COALESCE fallbacks. ALWAYS logs a raw preview when the flow ID matches, whether or
-     * not a value was extracted — the most reliable way to learn the schema if it varies.
+     * Ground-truth path confirmed from a real captured 'CardIssuanceRq'
+     * message; older guesses kept as COALESCE fallbacks. ALWAYS logs a raw
+     * preview when the flow ID matches, whether or not a value was extracted —
+     * the most reliable way to learn the schema if it varies.
      */
     private static CardIssuanceInfo queryVpanForFlowId(Connection conn, String flowId) throws SQLException {
         String query = "SELECT "
@@ -230,9 +256,10 @@ public final class CardActivationApiHelper {
     }
 
     /**
-     * Last resort: search for an actual JSON key/value named vpan (quoted, e.g. "Vpan":"...")
-     * rather than a bare substring — the unquoted substring search previously matched an
-     * unrelated header key ("x-list-vpan-token") from a wallet-limits inquiry.
+     * Last resort: search for an actual JSON key/value named vpan (quoted, e.g.
+     * "Vpan":"...") rather than a bare substring — the unquoted substring
+     * search previously matched an unrelated header key ("x-list-vpan-token")
+     * from a wallet-limits inquiry.
      */
     private static CardIssuanceInfo queryVpanAnyFlow(Connection conn) throws SQLException {
         String query = "SELECT "
@@ -272,6 +299,7 @@ public final class CardActivationApiHelper {
     }
 
     private static final class CardIssuanceInfo {
+
         final String vpan;
         final String expiryDate;
 
@@ -281,4 +309,3 @@ public final class CardActivationApiHelper {
         }
     }
 }
-
