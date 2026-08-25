@@ -154,8 +154,7 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testEnterDateOfBirthProceeds() {
         ConfigManager cfg = ConfigManager.getInstance();
-        String date = cfg.get(poiType() == PoiType.BOR ? "registration.visitor.dob" : "registration.dob.date",
-            poiType() == PoiType.BOR ? "1994-01-22" : "2001-08-11");
+        String date = cfg.get("registration.identity.birthDateG", "2001-08-11");
         String[] dateParts = date.split("-");
         String month = java.time.Month.of(Integer.parseInt(dateParts[1])).getDisplayName(
             java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
