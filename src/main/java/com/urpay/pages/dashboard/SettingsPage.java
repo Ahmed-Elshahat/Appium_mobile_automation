@@ -1,8 +1,6 @@
 package com.urpay.pages.dashboard;
 
 import org.openqa.selenium.By;
-import org.openqa.selenium.Rectangle;
-import org.openqa.selenium.WebElement;
 
 import com.urpay.core.BasePage;
 
@@ -15,6 +13,14 @@ import io.qameta.allure.Step;
  * Migrated from Katalon keyword com.uspace.login.keyword.Login.logOut():
  *   More (nav bar) → Settings (testID-avatar-Setting1-) → Logout
  *   (testID-secondary-logOut-main) → confirm Yes → Landing.
+ *
+ * SELF-HEAL (UI change): the app no longer returns straight to the landing screen after the
+ * "Are you sure you want to logout?" YES. It now lands back on the remembered-login PASSCODE
+ * screen with the header back-arrow replaced by an "Unlink device" icon (testID-left-icon-back,
+ * nested content-desc "...Unlink"). Tapping it opens an "Unlink this Device?" bottom sheet
+ * (Cancel / Unlink Device); confirming "Unlink Device" is what actually completes the logout and
+ * returns to the onboarding/landing flow. confirmLogout() now drives this whole sequence so every
+ * existing caller (tapLogout() + confirmLogout()) keeps working unchanged.
  *
  * Object Repository:
  *   android/Dev/WMV/MoreOptionPage/settingsButton
@@ -32,10 +38,19 @@ public class SettingsPage extends BasePage {
             + " | //*[starts-with(@content-desc,'testID-secondary') and substring(@content-desc,string-length(@content-desc)-4)='-main']"
             + " | //android.view.ViewGroup[@clickable='true' and .//android.widget.TextView[@text='Log out' or @text='Logout']]");
 
-    // Logout confirmation dialog ("Are you sure you want to remove this device" → YES).
+    // Logout confirmation dialog ("Are you sure you want to logout?" → YES). Native Android
+    // AlertDialog — target the stable system button id, NOT free text (the dialog TITLE text is
+    // also "Logout" and would otherwise match a loose '@text=Logout' condition first).
     private static final By CONFIRM_LOGOUT = AppiumBy.xpath(
-            "//*[@text='Yes' or @text='YES' or @text='Logout' or @text='Log out'"
-            + " or @text='Confirm' or @resource-id='android:id/button1']");
+            "//*[@resource-id='android:id/button1' or @text='Yes' or @text='YES']");
+
+    // Top-left icon on the post-logout passcode screen that now triggers device unlink.
+    private static final By UNLINK_DEVICE_ICON = AppiumBy.accessibilityId("testID-left-icon-back");
+
+    // "Unlink this Device?" bottom-sheet confirm button — obfuscation-tolerant (testID-secondary-
+    // <hash>-main), keyed on its visible text since the middle segment is hashed on cloud builds.
+    private static final By UNLINK_DEVICE_CONFIRM_BTN = AppiumBy.xpath(
+            "//*[@text='Unlink Device']/ancestor::*[@clickable='true'][1]");
 
     @Step("Open Settings from More options")
     public void openSettings() {
@@ -55,9 +70,23 @@ public class SettingsPage extends BasePage {
     @Step("Confirm logout")
     public void confirmLogout() {
         if (isPresent(CONFIRM_LOGOUT, 8)) {
-            WebElement yes = driver.findElement(CONFIRM_LOGOUT);
-            Rectangle r = yes.getRect();
-            tapAtCoordinates(r.getX() + r.getWidth() / 2, r.getY() + r.getHeight() / 2);
+            tap(CONFIRM_LOGOUT);
+        }
+        unlinkDeviceIfPrompted();
+    }
+
+    /**
+     * Self-heal: after the logout alert the app may land on the remembered-login passcode
+     * screen instead of the landing page, requiring an explicit device-unlink to finish
+     * logging out. No-op when that screen doesn't appear (older builds / already on landing).
+     */
+    @Step("Unlink device if prompted (post-logout passcode screen)")
+    private void unlinkDeviceIfPrompted() {
+        if (isPresent(UNLINK_DEVICE_ICON, 10)) {
+            tap(UNLINK_DEVICE_ICON);
+            if (isPresent(UNLINK_DEVICE_CONFIRM_BTN, 10)) {
+                tap(UNLINK_DEVICE_CONFIRM_BTN);
+            }
         }
     }
 }

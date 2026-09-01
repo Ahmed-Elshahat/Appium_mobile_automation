@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="LogoutSuite" parallel="none">
+    <test name="Logout">
+        <classes>
+            <class name="com.urpay.tests.auth.LogoutTest"/>
+        </classes>
+    </test>
+</suite>
