@@ -200,7 +200,9 @@ public abstract class AbstractRegistrationTierTest extends BaseTest {
         }
         // Screen 2: "Nafath Verification" number-match screen — SIT auto-verifies in ~30s
         if (wizardPage.isNafathNumberScreenDisplayed(10)) {
-            wizardPage.waitUntilNafathAutoVerifies(120);
+            Assert.assertTrue(wizardPage.waitUntilNafathAutoVerifies(120),
+                    "Nafath auto-verification did not succeed for " + poiType().code()
+                            + " (screen either timed out or showed a rejection/error)");
         }
         // Some builds open Absher consent after Nafath; dismiss it with the top-right X.
         wizardPage.dismissAbsherConsentIfPresent(10);

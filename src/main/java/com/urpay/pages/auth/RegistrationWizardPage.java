@@ -5,6 +5,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.openqa.selenium.By;
 
 import com.urpay.core.BasePage;
+import com.urpay.utils.BackendErrorGuard;
 import com.urpay.utils.DatePickerHandler;
 
 import io.appium.java_client.AppiumBy;
@@ -111,6 +112,15 @@ public class RegistrationWizardPage extends BasePage {
     private static final By NAFATH_NUMBER_SCREEN_MARKER = AppiumBy.xpath(
             "//*[@text='Nafath Verification' or @text='Open Nafath App'"
             + " or @content-desc='testID-Steps.42a2f0a1-933a-4201-8c6e-46536e98761c']");
+
+    // Explicit Nafath rejection/retry screen — distinguishes a real failure from the number-match
+    // marker simply not matching (screen disappearing is NOT proof of success on its own).
+    private static final By NAFATH_FAILURE_MARKER = AppiumBy.xpath(
+            "//*[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'verification failed')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'could not verify')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'unable to verify')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'not verified')]");
 
         // Absher consent screen shown after Nafath in some builds.
         private static final By ABSHER_CONSENT_SCREEN_MARKER = AppiumBy.xpath(
@@ -226,7 +236,11 @@ public class RegistrationWizardPage extends BasePage {
 
     /**
      * Wait on the Nafath number-match screen until it disappears (SIT auto-verifies in ~30s).
-     * Returns true if the screen cleared within the timeout, false if still showing.
+     * The marker disappearing only proves the screen navigated away — NOT that verification
+     * succeeded, so this also checks for an explicit rejection screen / backend error banner
+     * before declaring success.
+     *
+     * @return true only if the screen cleared AND no rejection/error evidence was found
      */
     @Step("Wait for Nafath auto-verification to complete")
     public boolean waitUntilNafathAutoVerifies(long timeoutSec) {
@@ -234,12 +248,19 @@ public class RegistrationWizardPage extends BasePage {
         long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
         while (System.currentTimeMillis() < deadline) {
             if (!waitUtils.isPresent(NAFATH_NUMBER_SCREEN_MARKER, 3)) {
+                if (waitUtils.isPresent(NAFATH_FAILURE_MARKER, 2) || BackendErrorGuard.isPresent(waitUtils)) {
+                    log.warn("Nafath number-match screen cleared but a rejection/error screen is showing — "
+                            + "verification did NOT succeed");
+                    dumpPageSource("nafath-verification-rejected");
+                    return false;
+                }
                 log.info("Nafath number-match screen cleared — verification complete");
                 return true;
             }
             log.info("Nafath number-match screen still showing — waiting...");
         }
         log.warn("Nafath auto-verification did not complete within {}s", timeoutSec);
+        dumpPageSource("nafath-verification-timeout");
         return false;
     }
 

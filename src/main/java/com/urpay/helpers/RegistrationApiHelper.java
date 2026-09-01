@@ -375,6 +375,14 @@ public final class RegistrationApiHelper {
 
     @Step("API seed {poiType} Yakeen info (identity + DOB) for poi {poiNumber}")
     public static Response seedYakeenInfo(String poiNumber, String poiType) {
+        // Each POI type has its OWN Yakeen simulator contract (endpoint + params) — NAT's
+        // yakeen-info does not apply to IQA/BOR (see New User.postman_collection.json).
+        if ("IQA".equalsIgnoreCase(poiType)) {
+            return seedYakeenAlienInfo(poiNumber);
+        }
+        if ("BOR".equalsIgnoreCase(poiType)) {
+            return seedYakeenVisitorInfo(poiNumber);
+        }
         ConfigManager config = ConfigManager.getInstance();
         SeedIdentity identity = buildSeedIdentity(config);
         String simBaseUrl = config.get("registration.simBaseUrl",
@@ -451,6 +459,120 @@ public final class RegistrationApiHelper {
             spec = spec.header("Cookie", cookie);
         }
         return spec.post(endpoint);
+    }
+
+    /**
+     * Seed the Yakeen ALIEN (Iqama/Resident) simulator for IQA registrations. IQA has its OWN
+     * contract — {@code /__admin/yakeen-alien-info} with iqamaNumber/sponsorName/occupationCode —
+     * NOT the NAT {@code /__admin/yakeen-info} (nin) endpoint. Query-params only, no JSON body
+     * (verified against New User.postman_collection.json "post-yakeen-alien-info IQAMA").
+     */
+    @Step("API seed IQA Yakeen-alien info for poi {poiNumber}")
+    public static Response seedYakeenAlienInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/yakeen-alien-info";
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String iqamaExpiryDateH = config.get("registration.identity.iqa.iqamaExpiryDateH", "1448-07-23");
+        String iqamaExpiryDateG = config.get("registration.identity.iqa.iqamaExpiryDateG", "2027-01-01T00:00:00");
+        String sponsorName = config.get("registration.identity.iqa.sponsorName", "Ahmed Ali Ahmed Mohamed");
+        String iqaNationalityCode = config.get("registration.identity.iqa.nationalityCode", "207");
+        String occupationCode = config.get("registration.identity.iqa.occupationCode", "0");
+        // Sample payload uses a short yyyy-MM "dateOfBirth" alongside the full "birthDateG".
+        String dobShort = identity.birthDateG.length() >= 7 ? identity.birthDateG.substring(0, 7) : identity.birthDateG;
+        String url = endpoint + "?" + toQueryString(
+                "iqamaNumber", poiNumber,
+                "dateOfBirth", dobShort,
+                "firstName", identity.firstNameAr,
+                "secondName", identity.fatherNameAr,
+                "thirdName", identity.grandNameAr,
+                "lastName", identity.familyNameAr,
+                "englishFirstName", identity.firstNameEn,
+                "englishSecondName", identity.fatherNameEn,
+                "englishThirdName", identity.grandNameEn,
+                "englishLastName", identity.familyNameEn,
+                "iqamaExpiryDateH", iqamaExpiryDateH,
+                "dateOfBirthH", identity.dateOfBirthH,
+                "gender", identity.gender,
+                "sponsorName", sponsorName,
+                "nationalityCode", iqaNationalityCode,
+                "occupationCode", occupationCode,
+                "iqamaExpiryDateG", iqamaExpiryDateG,
+                "birthDateG", identity.birthDateG);
+        logApiRequest("POST", url, "");
+        return RestAssured.given()
+                .urlEncodingEnabled(true)
+                .header("x-api-key", apiKey)
+                .queryParam("iqamaNumber", poiNumber)
+                .queryParam("dateOfBirth", dobShort)
+                .queryParam("firstName", identity.firstNameAr)
+                .queryParam("secondName", identity.fatherNameAr)
+                .queryParam("thirdName", identity.grandNameAr)
+                .queryParam("lastName", identity.familyNameAr)
+                .queryParam("englishFirstName", identity.firstNameEn)
+                .queryParam("englishSecondName", identity.fatherNameEn)
+                .queryParam("englishThirdName", identity.grandNameEn)
+                .queryParam("englishLastName", identity.familyNameEn)
+                .queryParam("iqamaExpiryDateH", iqamaExpiryDateH)
+                .queryParam("dateOfBirthH", identity.dateOfBirthH)
+                .queryParam("gender", identity.gender)
+                .queryParam("sponsorName", sponsorName)
+                .queryParam("nationalityCode", iqaNationalityCode)
+                .queryParam("occupationCode", occupationCode)
+                .queryParam("iqamaExpiryDateG", iqamaExpiryDateG)
+                .queryParam("birthDateG", identity.birthDateG)
+                .post(endpoint);
+    }
+
+    /**
+     * Seed the Yakeen VISITOR (Border Number) simulator for BOR registrations. BOR has yet another
+     * contract — {@code POST /__admin/yakeen/data?borderNo=...&birthDateG=...} with a visa/visitor
+     * JSON body — NOT the NAT/IQA endpoints (verified against
+     * New User.postman_collection.json "post-yakeen-visitor-info Admin").
+     */
+    @Step("API seed BOR Yakeen-visitor info for poi {poiNumber}")
+    public static Response seedYakeenVisitorInfo(String poiNumber) {
+        ConfigManager config = ConfigManager.getInstance();
+        SeedIdentity identity = buildSeedIdentity(config);
+        String simBaseUrl = config.get("registration.simBaseUrl",
+                "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
+        String endpoint = simBaseUrl + "/__admin/yakeen/data";
+        String apiKey = config.get("registration.simApiKey",
+                "d2ZWn5RUnS1VPq/FQHY8Og==2dcqHTmi51RZyXHPac9H3r6+eCqig7QMwtJDD49G");
+        String visaExpiryDate = config.get("registration.identity.visaExpiryDate", "2032-08-21T00:00:00");
+        String birthDateGIso = identity.birthDateG + "T00:00:00";
+        String body = "{"
+                + "\"visaVisitorInfo\":{\"visaExpiryDate\":\"" + visaExpiryDate + "\"},"
+                + "\"personBasicInfo\":{"
+                + "\"birthDateG\":\"" + birthDateGIso + "\","
+                + "\"fatherName\":null,"
+                + "\"fatherNameT\":\"" + identity.fatherNameEn + "\","
+                + "\"grandFatherName\":null,"
+                + "\"grandFatherNameT\":\"" + identity.grandNameEn + "\","
+                + "\"firstNameT\":\"" + identity.firstNameEn + "\","
+                + "\"firstName\":\"" + identity.firstNameAr + "\","
+                + "\"familyName\":\"" + identity.familyNameAr + "\","
+                + "\"familyNameT\":\"" + identity.familyNameEn + "\","
+                + "\"nationalityCode\":\"" + identity.nationalityCode + "\","
+                + "\"nationalityDescAr\":\"" + identity.nationalityAr + "\","
+                + "\"sexCode\":\"1\","
+                + "\"sexDescAr\":\"ذكر\","
+                + "\"convertDate\":{\"dateString\":\"" + identity.dateOfBirthH + "\"}"
+                + "}"
+                + "}";
+        String url = endpoint + "?" + toQueryString("borderNo", poiNumber, "birthDateG", identity.birthDateG);
+        logApiRequest("POST", url, body);
+        return RestAssured.given()
+                .urlEncodingEnabled(true)
+                .header("x-api-key", apiKey)
+                .header("Content-Type", "application/json")
+                .queryParam("borderNo", poiNumber)
+                .queryParam("birthDateG", identity.birthDateG)
+                .body(body)
+                .post(endpoint);
     }
 
     /**
