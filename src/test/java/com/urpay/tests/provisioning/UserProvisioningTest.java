@@ -79,6 +79,39 @@ public class UserProvisioningTest {
     }
 
     @Test
+    @Story("Seed simulators only for a NAT user (no registration)")
+    @Severity(SeverityLevel.NORMAL)
+    @Description("Seeds Tahaqoq/NafathElm/Yakeen for a brand-new NAT mobile+POI without registering "
+            + "the consumer via the UI or backend. Mobile/POI are logged and appended to "
+            + "logcat/seeded-users.csv.")
+    public void seedNationalUserOnly() {
+        log.info("########## SEEDING ONLY: NAT (not registered) ##########");
+        assertNotNull(RegistrationApiHelper.seedNationalOnly(), "Failed to seed a NAT user");
+    }
+
+    @Test
+    @Story("Seed simulators only for an IQA user (no registration)")
+    @Severity(SeverityLevel.NORMAL)
+    @Description("Seeds Tahaqoq/NafathElm/Yakeen-alien for a brand-new IQA mobile+POI without "
+            + "registering the consumer via the UI or backend. Mobile/POI are logged and appended to "
+            + "logcat/seeded-users.csv.")
+    public void seedResidentUserOnly() {
+        log.info("########## SEEDING ONLY: IQA (not registered) ##########");
+        assertNotNull(RegistrationApiHelper.seedResidentOnly(), "Failed to seed an IQA user");
+    }
+
+    @Test
+    @Story("Seed simulators only for a BOR user (no registration)")
+    @Severity(SeverityLevel.NORMAL)
+    @Description("Seeds Tahaqoq/NafathElm/Yakeen-visitor for a brand-new BOR mobile+POI without "
+            + "registering the consumer via the UI or backend. Mobile/POI are logged and appended to "
+            + "logcat/seeded-users.csv.")
+    public void seedVisitorUserOnly() {
+        log.info("########## SEEDING ONLY: BOR (not registered) ##########");
+        assertNotNull(RegistrationApiHelper.seedVisitorOnly(), "Failed to seed a BOR user");
+    }
+
+    @Test
     @Story("Provision a linked parent + kid (<18) family")
     @Severity(SeverityLevel.CRITICAL)
     @Description("Registers a parent and a kid (under 18) and links them into a family entirely "

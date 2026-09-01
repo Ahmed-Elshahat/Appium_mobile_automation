@@ -22,6 +22,9 @@
                     <include name="provisionResidentUser"/>
                     <include name="provisionVisitorUser"/>
                     <include name="provisionDefaultTierUser"/>
+                    <include name="seedNationalUserOnly"/>
+                    <include name="seedResidentUserOnly"/>
+                    <include name="seedVisitorUserOnly"/>
                     -->
                 </methods>
             </class>
