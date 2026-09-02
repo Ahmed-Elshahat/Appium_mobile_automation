@@ -577,6 +577,11 @@ public final class RegistrationApiHelper {
     public static Response seedTahaqoqInfo(String poiNumber, String mobile) {
         ConfigManager config = ConfigManager.getInstance();
         String mobileNumber = normalizeMobile(mobile);
+        // The simulator appears to prepend its own '+'; set registration.simMobileFormat=plain to
+        // send the number without one (yielding a single '+' in the stored record).
+        if ("plain".equalsIgnoreCase(config.get("registration.simMobileFormat", "plus"))) {
+            mobileNumber = mobileNumber.replaceFirst("^\\+", "");
+        }
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
         String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
