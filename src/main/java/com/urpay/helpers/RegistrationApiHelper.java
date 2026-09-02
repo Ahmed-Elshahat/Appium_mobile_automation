@@ -9,7 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.chrono.HijrahDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -144,9 +146,104 @@ public final class RegistrationApiHelper {
      */
     @Step("Seed simulators only (no registration) for {poiType}")
     public static SeededUser seedSimulatorsOnly(PoiType poiType) {
-        RestAssured.useRelaxedHTTPSValidation();
         String poiNumber = generatePoiNumber(prefixFor(poiType));
         String mobile = generateMobileNumber();
+        return seedSimulatorsFor(mobile, poiNumber, poiType);
+    }
+
+    /**
+     * Seed the simulators for an EXISTING mobile + POI pair (e.g. a batch of IDs handed over by
+     * the test team) instead of generating new ones. The POI type is derived from the POI's leading
+     * digit via {@link #poiTypeFor(String)}.
+     *
+     * @param mobile local ({@code 05xxxxxxxx}) or international ({@code +9665xxxxxxxx}) mobile number
+     * @param poi    the 10-digit national ID / Iqama / border number
+     */
+    @Step("Seed simulators for existing user mobile {mobile} / poi {poi}")
+    public static SeededUser seedExistingUser(String mobile, String poi) {
+        return seedSimulatorsFor(normalizeMobile(mobile), poi, poiTypeFor(poi));
+    }
+
+    /**
+     * Seed the simulators for every {@code mobile,poi} row of a CSV file. Lines that are blank,
+     * start with {@code #}, or repeat the {@code mobile} header are skipped. One failed row never
+     * aborts the batch — it is logged and the run continues.
+     *
+     * @param csvPath path to a CSV whose first two columns are mobile and POI
+     * @return every successfully seeded user
+     */
+    @Step("Seed simulators for all users listed in {csvPath}")
+    public static List<SeededUser> seedUsersFromFile(String csvPath) {
+        List<SeededUser> seeded = new ArrayList<>();
+        java.io.File file = new java.io.File(csvPath);
+        if (!file.exists()) {
+            log.warn("Seed-users input file not found: {}", file.getAbsolutePath());
+            return seeded;
+        }
+        List<String> lines;
+        try {
+            lines = java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("Failed to read seed-users input file {}: {}", csvPath, e.getMessage());
+            return seeded;
+        }
+        for (String line : lines) {
+            String row = line.trim();
+            if (row.isEmpty() || row.startsWith("#") || row.toLowerCase().startsWith("mobile")) {
+                continue;
+            }
+            String[] cols = row.split(",");
+            if (cols.length < 2) {
+                log.warn("Skipping malformed seed-users row: {}", row);
+                continue;
+            }
+            try {
+                seeded.add(seedExistingUser(cols[0].trim(), cols[1].trim()));
+            } catch (Exception e) {
+                log.warn("Failed to seed user {} / {}: {}", cols[0].trim(), cols[1].trim(), e.getMessage());
+            }
+        }
+        log.info("=== Seeded {} of {} users from {} ===", seeded.size(), lines.size(), csvPath);
+        return seeded;
+    }
+
+    /** Map a POI's leading digit to its type: 1 = NAT, 2 = IQA, 3/4/5 = BOR (visitor). */
+    public static PoiType poiTypeFor(String poi) {
+        if (poi == null || poi.isEmpty()) {
+            throw new IllegalArgumentException("POI number is required to derive its type");
+        }
+        switch (poi.charAt(0)) {
+            case '1':
+                return PoiType.NAT;
+            case '2':
+                return PoiType.IQA;
+            case '3':
+            case '4':
+            case '5':
+                return PoiType.BOR;
+            default:
+                throw new IllegalArgumentException("Unsupported POI leading digit in '" + poi + "'");
+        }
+    }
+
+    /** Convert a local {@code 05xxxxxxxx} mobile to the {@code +9665xxxxxxxx} form the APIs expect. */
+    private static String normalizeMobile(String mobile) {
+        String trimmed = mobile == null ? "" : mobile.trim();
+        if (trimmed.startsWith("+")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("00")) {
+            return "+" + trimmed.substring(2);
+        }
+        if (trimmed.startsWith("0")) {
+            return "+966" + trimmed.substring(1);
+        }
+        return "+966" + trimmed;
+    }
+
+    /** Seed Tahaqoq + NafathElm + Yakeen for one mobile/POI pair and record it. */
+    private static SeededUser seedSimulatorsFor(String mobile, String poiNumber, PoiType poiType) {
+        RestAssured.useRelaxedHTTPSValidation();
 
         log.info("=== Seeding simulators ONLY (not registering) for {} ===", poiType.code());
         log.info("  mobile : {}", mobile);

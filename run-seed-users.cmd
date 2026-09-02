@@ -1,0 +1,3 @@
+@echo off
+echo Seeding supplied users into the simulators (no registration)...
+mvn test -Dsuite=suites/seed-users.xml -Dprofile=sit-wmv -Dmaven.test.failure.ignore=true

@@ -1,12 +1,16 @@
 package com.urpay.tests.provisioning;
 
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
+
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
+import com.urpay.core.ConfigManager;
 import com.urpay.helpers.FamilyRegistrationApiHelper;
 import com.urpay.helpers.RegistrationApiHelper;
 
@@ -109,6 +113,20 @@ public class UserProvisioningTest {
     public void seedVisitorUserOnly() {
         log.info("########## SEEDING ONLY: BOR (not registered) ##########");
         assertNotNull(RegistrationApiHelper.seedVisitorOnly(), "Failed to seed a BOR user");
+    }
+
+    @Test
+    @Story("Seed simulators for a supplied list of mobile + ID pairs")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Seeds Tahaqoq/NafathElm/Yakeen for every mobile+ID row of the input CSV without "
+            + "registering any consumer. The POI type is derived per row from the ID's leading digit "
+            + "(1=NAT, 2=IQA, 3/4/5=BOR). Seeded users are appended to logcat/seeded-users.csv.")
+    public void seedSuppliedUsers() {
+        String inputFile = ConfigManager.getInstance()
+                .get("registration.seedUsersInputFile", "src/test/resources/testdata/seed-users.csv");
+        log.info("########## SEEDING ONLY: supplied users from {} ##########", inputFile);
+        List<RegistrationApiHelper.SeededUser> seeded = RegistrationApiHelper.seedUsersFromFile(inputFile);
+        assertFalse(seeded.isEmpty(), "No users were seeded from " + inputFile);
     }
 
     @Test

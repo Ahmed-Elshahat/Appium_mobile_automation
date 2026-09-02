@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Driverless simulator-seeding suite (no Appium / no device / no registration).
+  Requires the neoleap VPN (the backend simulator is internal).
+
+  Seeds every mobile+ID row of src/test/resources/testdata/seed-users.csv.
+  Override the input file with -Dregistration.seedUsersInputFile=<path>.
+
+  Run:
+    mvn test -Dprofile=sit-wmv -Dsuite=suites/seed-users.xml
+-->
+<suite name="URPay Seed Users" verbose="1">
+    <test name="Seed Supplied Users">
+        <classes>
+            <class name="com.urpay.tests.provisioning.UserProvisioningTest">
+                <methods>
+                    <include name="seedSuppliedUsers"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>
