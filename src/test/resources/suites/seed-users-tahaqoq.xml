@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Driverless TAHAQOQ-ONLY seeding suite (no Appium / no device / no registration).
+  NafathElm and Yakeen are NOT touched — use suites/seed-users.xml to seed all three.
+  Requires the neoleap VPN (the backend simulator is internal).
+
+  Seeds every mobile+ID row of src/test/resources/testdata/seed-users.csv.
+  Override the input file with -Dregistration.seedUsersInputFile=<path>.
+
+  Run:
+    mvn test "-Dsuite=suites/seed-users-tahaqoq.xml" "-Dprofile=sit-wmv"
+-->
+<suite name="URPay Seed Users (Tahaqoq only)" verbose="1">
+    <test name="Seed Supplied Users Tahaqoq Only">
+        <classes>
+            <class name="com.urpay.tests.provisioning.UserProvisioningTest">
+                <methods>
+                    <include name="seedSuppliedUsersTahaqoqOnly"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

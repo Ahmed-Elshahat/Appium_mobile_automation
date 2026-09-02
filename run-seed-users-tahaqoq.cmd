@@ -1,0 +1,3 @@
+@echo off
+echo Seeding supplied users into the TAHAQOQ simulator only...
+mvn test -Dsuite=suites/seed-users-tahaqoq.xml -Dprofile=sit-wmv -Dmaven.test.failure.ignore=true

@@ -130,6 +130,20 @@ public class UserProvisioningTest {
     }
 
     @Test
+    @Story("Seed Tahaqoq ONLY for a supplied list of mobile + ID pairs")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Seeds ONLY the Tahaqoq simulator for every mobile+ID row of the input CSV. "
+            + "NafathElm and Yakeen are NOT touched, and no consumer is registered.")
+    public void seedSuppliedUsersTahaqoqOnly() {
+        String inputFile = ConfigManager.getInstance()
+                .get("registration.seedUsersInputFile", "src/test/resources/testdata/seed-users.csv");
+        log.info("########## SEEDING TAHAQOQ ONLY: supplied users from {} ##########", inputFile);
+        List<RegistrationApiHelper.SeededUser> seeded =
+                RegistrationApiHelper.seedTahaqoqOnlyFromFile(inputFile);
+        assertFalse(seeded.isEmpty(), "No users were Tahaqoq-seeded from " + inputFile);
+    }
+
+    @Test
     @Story("Provision a linked parent + kid (<18) family")
     @Severity(SeverityLevel.CRITICAL)
     @Description("Registers a parent and a kid (under 18) and links them into a family entirely "

@@ -175,17 +175,72 @@ public final class RegistrationApiHelper {
     @Step("Seed simulators for all users listed in {csvPath}")
     public static List<SeededUser> seedUsersFromFile(String csvPath) {
         List<SeededUser> seeded = new ArrayList<>();
+        List<String[]> rows = readUserRows(csvPath);
+        for (String[] cols : rows) {
+            try {
+                seeded.add(seedExistingUser(cols[0], cols[1]));
+            } catch (Exception e) {
+                log.warn("Failed to seed user {} / {}: {}", cols[0], cols[1], e.getMessage());
+            }
+        }
+        log.info("=== Seeded {} of {} users from {} ===", seeded.size(), rows.size(), csvPath);
+        return seeded;
+    }
+
+    /**
+     * Seed ONLY the Tahaqoq simulator for every {@code mobile,poi} row of a CSV file — NafathElm and
+     * Yakeen are left untouched. Use this to re-seed / refresh Tahaqoq without re-writing identity
+     * data that is already in place.
+     *
+     * @param csvPath path to a CSV whose first two columns are mobile and POI
+     * @return every successfully seeded user
+     */
+    @Step("Seed Tahaqoq ONLY for all users listed in {csvPath}")
+    public static List<SeededUser> seedTahaqoqOnlyFromFile(String csvPath) {
+        List<SeededUser> seeded = new ArrayList<>();
+        List<String[]> rows = readUserRows(csvPath);
+        for (String[] cols : rows) {
+            try {
+                seeded.add(seedTahaqoqOnly(cols[0], cols[1]));
+            } catch (Exception e) {
+                log.warn("Failed to seed Tahaqoq for {} / {}: {}", cols[0], cols[1], e.getMessage());
+            }
+        }
+        log.info("=== Tahaqoq-seeded {} of {} users from {} ===", seeded.size(), rows.size(), csvPath);
+        return seeded;
+    }
+
+    /** Seed ONLY the Tahaqoq simulator for one mobile/POI pair and record it. */
+    @Step("Seed Tahaqoq ONLY for mobile {mobile} / poi {poi}")
+    public static SeededUser seedTahaqoqOnly(String mobile, String poi) {
+        RestAssured.useRelaxedHTTPSValidation();
+        String mobileNumber = normalizeMobile(mobile);
+        PoiType poiType = poiTypeFor(poi);
+
+        log.info("=== Seeding TAHAQOQ ONLY for {} | mobile {} | poi {} ===",
+                poiType.code(), mobileNumber, poi);
+        Response tahaqoq = seedTahaqoqInfo(poi, mobileNumber);
+        log.info("Tahaqoq seed:    status {}", tahaqoq.getStatusCode());
+
+        SeededUser user = new SeededUser(mobileNumber, poi, poiType.code());
+        appendSeededUser(user);
+        return user;
+    }
+
+    /** Read the {@code mobile,poi} rows of a seed-users CSV, skipping blanks/comments/header. */
+    private static List<String[]> readUserRows(String csvPath) {
+        List<String[]> rows = new ArrayList<>();
         java.io.File file = new java.io.File(csvPath);
         if (!file.exists()) {
             log.warn("Seed-users input file not found: {}", file.getAbsolutePath());
-            return seeded;
+            return rows;
         }
         List<String> lines;
         try {
             lines = java.nio.file.Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.warn("Failed to read seed-users input file {}: {}", csvPath, e.getMessage());
-            return seeded;
+            return rows;
         }
         for (String line : lines) {
             String row = line.trim();
@@ -197,14 +252,9 @@ public final class RegistrationApiHelper {
                 log.warn("Skipping malformed seed-users row: {}", row);
                 continue;
             }
-            try {
-                seeded.add(seedExistingUser(cols[0].trim(), cols[1].trim()));
-            } catch (Exception e) {
-                log.warn("Failed to seed user {} / {}: {}", cols[0].trim(), cols[1].trim(), e.getMessage());
-            }
+            rows.add(new String[] { cols[0].trim(), cols[1].trim() });
         }
-        log.info("=== Seeded {} of {} users from {} ===", seeded.size(), lines.size(), csvPath);
-        return seeded;
+        return rows;
     }
 
     /** Map a POI's leading digit to its type: 1 = NAT, 2 = IQA, 3/4/5 = BOR (visitor). */
@@ -230,7 +280,8 @@ public final class RegistrationApiHelper {
     private static String normalizeMobile(String mobile) {
         String trimmed = mobile == null ? "" : mobile.trim();
         if (trimmed.startsWith("+")) {
-            return trimmed;
+            // Collapse any accidental repeated '+' (e.g. "++966...") to a single leading '+'.
+            return "+" + trimmed.replaceFirst("^\\++", "");
         }
         if (trimmed.startsWith("00")) {
             return "+" + trimmed.substring(2);
@@ -525,6 +576,7 @@ public final class RegistrationApiHelper {
     @Step("API seed Tahaqoq info (simulator)")
     public static Response seedTahaqoqInfo(String poiNumber, String mobile) {
         ConfigManager config = ConfigManager.getInstance();
+        String mobileNumber = normalizeMobile(mobile);
         String simBaseUrl = config.get("registration.simBaseUrl",
                 "https://neoleap-backend-simulator-sit.apps.ocpuat.neoleap.com.sa");
         String endpoint = simBaseUrl + "/__admin/tahaqoq-info";
@@ -535,14 +587,14 @@ public final class RegistrationApiHelper {
         String tahaqoqUrl = endpoint + "?"
             + encodeQueryParam("IDNumber", poiNumber)
             + "&"
-            + encodeQueryParam("MobileNumber", mobile);
+            + encodeQueryParam("MobileNumber", mobileNumber);
         logApiRequest("POST", tahaqoqUrl, "");
         RequestSpecification spec = RestAssured.given()
             .urlEncodingEnabled(true)
             .header("X-Do-Not-Track", apiKey)
             .header("x-api-key", apiKey)
             .queryParam("IDNumber", poiNumber)
-            .queryParam("MobileNumber", mobile);
+            .queryParam("MobileNumber", mobileNumber);
         if (!cookie.isEmpty()) {
             spec = spec.header("Cookie", cookie);
         }
