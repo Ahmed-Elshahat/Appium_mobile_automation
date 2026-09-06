@@ -29,6 +29,8 @@ import io.restassured.response.Response;
         // The PCI Cards gateway (unlike the plain walletapp auth gateway that authedRequest()
         // targets) needs the same fuller header set Katalon sends for this call — without them
         // it silently returns 200 with an EMPTY body/no X-List-VPAN-Token instead of an error.
+        log.info("API Request > GET {} (ConsumerId={})", endpoint, consumerId);
+
         Response response = RegistrationApiHelper.authedRequest(session)
                 .header("X-Client-Secret", "64")
                 .header("Accept", "application/json, text/plain, */*")
@@ -39,10 +41,13 @@ import io.restassured.response.Response;
                 .header("X-Longitude", "46.6753")
                 .header("X-Principle-Id", "78988180-c573-413d-9ec4-c78a0e7b1c92")
                 .header("X-Principle-Type", "consumer")
+                .log().all() // dump the FULL outgoing request (all headers) to the run log
                 .get(endpoint);
 
         log.info("VPAN List Status Code: {}",
                 response.getStatusCode());
+        log.info("VPAN List Response Headers: {}", response.getHeaders());
+        log.info("VPAN List Response Body: {}", response.getBody().asString());
 
         // Get response header
         String listVpanToken =
@@ -61,4 +66,6 @@ import io.restassured.response.Response;
         return listVpanToken;
     }
 }
+
+
 
