@@ -76,23 +76,40 @@ public class CardsFlow {
     public CardsPage navigateToCards() {
         dashboardPage.dismissPopups();
 
-        // Scroll to "Cards" text using platform-specific scrolling
+        // UiScrollable/mobile:scroll (platformActions.scrollToText) flings on RN's single
+        // scrollable container and, when the exact text match misses, overshoots past the
+        // Cards section to the bottom of the dashboard. Use bounded manual swipes and stop
+        // the instant the Cards section is actually in the visible viewport instead.
+        By cardsSection = AppiumBy.xpath("//*[@text='Cards' or @text='View All']");
+        SwipeUtils smallSwipe = new SwipeUtils(driver, 0.35);
+        setImplicitWait(0);
         try {
-            platformActions.scrollToText("Cards");
-            log.info("Scrolled to 'Cards' section");
-        } catch (Exception e) {
-            log.info("Platform scroll failed — trying manual swipes");
-            SwipeUtils smallSwipe = new SwipeUtils(driver, 0.35);
-            setImplicitWait(0);
-            for (int i = 0; i < 8; i++) {
-                if (quickFind(AppiumBy.xpath("//*[@text='Cards']"))
-                        || quickFind(AppiumBy.xpath("//*[@text='View All']"))) break;
+            for (int i = 0; i < 8 && !isInViewport(cardsSection); i++) {
                 smallSwipe.swipeUp();
             }
+        } finally {
             setImplicitWait(10);
         }
+        log.info("Scrolled to 'Cards' section");
 
         return new CardsPage();
+    }
+
+    /**
+     * True only when the element exists AND its centre is within the visible screen.
+     * Stops scrolling as soon as the target is on-screen, preventing overscroll past it.
+     */
+    private boolean isInViewport(By locator) {
+        try {
+            var els = driver.findElements(locator);
+            if (els.isEmpty()) return false;
+            var r = els.get(0).getRect();
+            int centerY = r.getY() + r.getHeight() / 2;
+            int screenH = driver.manage().window().getSize().getHeight();
+            return centerY > 0 && centerY < screenH;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ══════════════════════════════════════════════════
@@ -1264,13 +1281,15 @@ public class CardsFlow {
         AppGuard.safeBack(driver); // Products → Dashboard (no-op if already there)
         dashboardPage.dismissPopups();
 
-        // Scroll to Cards section and check if the card is still visible
-        try {
-            platformActions.scrollToText("Cards");
-        } catch (Exception e) {
-            SwipeUtils smallSwipe = new SwipeUtils(driver, 0.35);
-            for (int i = 0; i < 5; i++) { smallSwipe.swipeUp(); }
+        // Scroll to Cards section and check if the card is still visible. Bounded manual
+        // swipes + viewport check (see navigateToCards) avoid overscrolling past the section.
+        By cardsSection = AppiumBy.xpath("//*[@text='Cards' or @text='View All']");
+        SwipeUtils smallSwipe = new SwipeUtils(driver, 0.35);
+        setImplicitWait(0);
+        for (int i = 0; i < 8 && !isInViewport(cardsSection); i++) {
+            smallSwipe.swipeUp();
         }
+        setImplicitWait(10);
 
         String cardName = c.get(cardPrefix + ".expectedCardName", "Mada Card");
         String physicalCardName = c.get(cardPrefix + ".expectedPhysicalCardName", cardName);
