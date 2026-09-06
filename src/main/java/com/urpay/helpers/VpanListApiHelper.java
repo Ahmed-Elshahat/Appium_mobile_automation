@@ -39,6 +39,13 @@ import io.restassured.response.Response;
         log.info("X-List-VPAN-Token: {}",
                 listVpanToken);
 
+        if (listVpanToken == null) {
+            // No header on the response — dump the body so the actual cause (wrong ConsumerId,
+            // missing auth header, gateway error, etc.) is visible instead of guessing again.
+            log.warn("Cards List response had no X-List-VPAN-Token header. Status={} Body={}",
+                    response.getStatusCode(), response.getBody().asString());
+        }
+
         return listVpanToken;
     }
 }

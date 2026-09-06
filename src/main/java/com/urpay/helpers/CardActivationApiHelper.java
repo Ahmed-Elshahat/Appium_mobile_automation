@@ -83,7 +83,7 @@ public final class CardActivationApiHelper {
                 = VpanListApiHelper.getListVpanToken(session, consumerId);
         log.info("Retrieved X-List-VPAN-Token: {}", listVpanToken);
 
-        return activatePhysicalCard(session, listVpanToken);
+        return activatePhysicalCard(session, listVpanToken, mobile);
     }
 
     /**
@@ -91,7 +91,24 @@ public final class CardActivationApiHelper {
      * already-logged-in session.
      */
     @Step("Call Physical Card Activation Initiate API")
-    static boolean activatePhysicalCard(RegistrationApiHelper.Session session, String listVpanToken) {
+    static boolean activatePhysicalCard(RegistrationApiHelper.Session session, String listVpanToken, String mobile) {
+        if (listVpanToken == null || listVpanToken.isEmpty()) {
+            // Fail fast with a clear reason instead of RestAssured's generic "Header value cannot
+            // be null" — see VpanListApiHelper's warning log for the Cards List response detail.
+            log.error("Card activation skipped: Cards List API returned no X-List-VPAN-Token");
+            return false;
+        }
+
+        // The front-end activation screen shows no OTP step, but the backend still requires an
+        // X-OTP-Token — same as card ISSUANCE (Katalon Login.groovy: otp/generate + otp/verify
+        // with purpose "008", static otp "1234", token from the verify response attached to the
+        // initiate call). Reuse that purpose code silently here.
+        String otpToken = getActivationOtpToken(session, mobile);
+        if (otpToken == null || otpToken.isEmpty()) {
+            log.error("Card activation skipped: purpose-008 OTP verify returned no X-OTP-Token");
+            return false;
+        }
+
         CardIssuanceInfo cardInfo = getRecentIssuedCardInfo();
         if (cardInfo == null) {
             log.error("Card activation skipped: could not resolve the issued card's Vpan/ExpiryDate from DB");
@@ -124,8 +141,11 @@ public final class CardActivationApiHelper {
             // headers (X-Client-Id/X-Security-Token) — omitting it returns 400 "E200978:
             // Authorization Error." (confirmed via a real run). Same key used by
             // RegistrationApiHelper.baseHeaders() for the pre-login/registration gateway.
+            // X-OTP-Token overrides authedRequest's login (purpose 001) token with the
+            // purpose-008 activation token obtained above.
             Response response = RegistrationApiHelper.authedRequest(session)
-            .header("X-List-VPAN-Token", listVpanToken)
+                    .header("X-List-VPAN-Token", listVpanToken)
+                    .header("X-OTP-Token", otpToken)
                     .body(body)
                     .post(endpoint);
 
@@ -144,6 +164,57 @@ public final class CardActivationApiHelper {
             return false;
         }
     }
+
+    /**
+     * Silently obtain an X-OTP-Token for card activation: {@code otp/generate} + {@code
+     * otp/verify} with purpose "008" and the static SIT OTP "1234" — mirrors Katalon
+     * Login.groovy's card-issuance OTP step exactly (issuance and activation share the same
+     * Cards PCI initiate gateway/purpose code). Returns null on any failure.
+     */
+    private static String getActivationOtpToken(RegistrationApiHelper.Session session, String mobile) {
+        if (mobile == null || mobile.isEmpty()) {
+            log.error("Activation OTP skipped: no mobile number available");
+            return null;
+        }
+        ConfigManager config = ConfigManager.getInstance();
+        String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
+        String otp = config.get("registration.otp", "1234");
+
+        try {
+            RestAssured.useRelaxedHTTPSValidation();
+
+            String generateBody = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"008\"}";
+            Response generate = RegistrationApiHelper.authedRequest(session)
+                    .body(generateBody)
+                    .post(baseUrl + "/otp/generate");
+            String generateOtpToken = generate.getHeader("X-OTP-Token");
+            String otpReference = generate.jsonPath().getString("body.otpReference");
+            if (generateOtpToken == null || otpReference == null) {
+                log.error("Activation otp/generate failed: status={} body={}",
+                        generate.getStatusCode(), generate.getBody().asString());
+                return null;
+            }
+
+            String verifyBody = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp
+                    + "\",\"otpReference\":\"" + otpReference + "\",\"purpose\":\"008\"}";
+            Response verify = RegistrationApiHelper.authedRequest(session)
+                    .header("X-OTP-Token", generateOtpToken)
+                    .body(verifyBody)
+                    .post(baseUrl + "/otp/verify");
+            String verifyOtpToken = verify.getHeader("X-OTP-Token");
+            if (verifyOtpToken == null) {
+                log.error("Activation otp/verify failed: status={} body={}",
+                        verify.getStatusCode(), verify.getBody().asString());
+                return null;
+            }
+            log.info("Activation X-OTP-Token (purpose 008) obtained");
+            return verifyOtpToken;
+        } catch (Exception e) {
+            log.error("Activation OTP generate/verify failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
 
     /**
      * Query Oracle DB (EAIR.EAI_MESSAGE_DUMP) for the Vpan/ExpiryDate of the
