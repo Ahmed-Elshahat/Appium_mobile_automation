@@ -100,12 +100,11 @@ public final class CardActivationApiHelper {
         }
 
         // The front-end activation screen shows no OTP step, but the backend still requires an
-        // X-OTP-Token — same as card ISSUANCE (Katalon Login.groovy: otp/generate + otp/verify
-        // with purpose "008", static otp "1234", token from the verify response attached to the
-        // initiate call). Reuse that purpose code silently here.
+        // X-OTP-Token generated with purpose "023" (NFC Card Activation), static otp "1234",
+        // token from the verify response attached to the initiate call.
         String otpToken = getActivationOtpToken(session, mobile);
         if (otpToken == null || otpToken.isEmpty()) {
-            log.error("Card activation skipped: purpose-008 OTP verify returned no X-OTP-Token");
+            log.error("Card activation skipped: purpose-023 OTP verify returned no X-OTP-Token");
             return false;
         }
 
@@ -142,7 +141,7 @@ public final class CardActivationApiHelper {
             // Authorization Error." (confirmed via a real run). Same key used by
             // RegistrationApiHelper.baseHeaders() for the pre-login/registration gateway.
             // X-OTP-Token overrides authedRequest's login (purpose 001) token with the
-            // purpose-008 activation token obtained above.
+            // purpose-023 activation token obtained above.
             Response response = RegistrationApiHelper.authedRequest(session)
                     .header("X-List-VPAN-Token", listVpanToken)
                     .header("X-OTP-Token", otpToken)
@@ -167,9 +166,8 @@ public final class CardActivationApiHelper {
 
     /**
      * Silently obtain an X-OTP-Token for card activation: {@code otp/generate} + {@code
-     * otp/verify} with purpose "008" and the static SIT OTP "1234" — mirrors Katalon
-     * Login.groovy's card-issuance OTP step exactly (issuance and activation share the same
-     * Cards PCI initiate gateway/purpose code). Returns null on any failure.
+     * otp/verify} with purpose "023" (NFC Card Activation) and the static SIT OTP "1234".
+     * Returns null on any failure.
      */
     private static String getActivationOtpToken(RegistrationApiHelper.Session session, String mobile) {
         if (mobile == null || mobile.isEmpty()) {
@@ -183,7 +181,7 @@ public final class CardActivationApiHelper {
         try {
             RestAssured.useRelaxedHTTPSValidation();
 
-            String generateBody = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"008\"}";
+            String generateBody = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"023\"}";
             Response generate = RegistrationApiHelper.authedRequest(session)
                     .body(generateBody)
                     .post(baseUrl + "/otp/generate");
@@ -196,7 +194,7 @@ public final class CardActivationApiHelper {
             }
 
             String verifyBody = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp
-                    + "\",\"otpReference\":\"" + otpReference + "\",\"purpose\":\"008\"}";
+                    + "\",\"otpReference\":\"" + otpReference + "\",\"purpose\":\"023\"}";
             Response verify = RegistrationApiHelper.authedRequest(session)
                     .header("X-OTP-Token", generateOtpToken)
                     .body(verifyBody)
@@ -207,7 +205,7 @@ public final class CardActivationApiHelper {
                         verify.getStatusCode(), verify.getBody().asString());
                 return null;
             }
-            log.info("Activation X-OTP-Token (purpose 008) obtained");
+            log.info("Activation X-OTP-Token (purpose 023) obtained");
             return verifyOtpToken;
         } catch (Exception e) {
             log.error("Activation OTP generate/verify failed: {}", e.getMessage());
