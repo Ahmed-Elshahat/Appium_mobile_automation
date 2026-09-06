@@ -18,29 +18,26 @@ import io.restassured.response.Response;
             RegistrationApiHelper.Session session,
             String consumerId) {
 
-        // Ground truth from Katalon (Login.groovy "Cards List" step): the X-List-VPAN-Token
-        // comes from the Cards LIST endpoint on port 14301 — NOT the "vpan/list" endpoint on
-        // 14302 previously called here, which returned an unrelated/invalid token and made the
-        // Activation Initiate API fail with 400 "E200978: Authorization Error."
+        // Ground truth from a REAL successful capture (SoapUI/Katalon log against this same SIT
+        // env): the Cards List endpoint is on port 14302 (same gateway/port as Activation
+        // Initiate) — NOT 14301. 14301 returned "X-Backside-Transport: FAIL FAIL" (an IBM
+        // DataPower gateway-to-backend routing failure) with an empty body/no token.
         String baseUrl = ConfigManager.getInstance()
-                .get("cardsList.baseUrl", "https://192.168.100.71:14301/walletapppci/v1/cards");
+                .get("cardsList.baseUrl", "https://192.168.100.71:14302/walletapppci/v1/cards");
         String endpoint = baseUrl + "/list?ConsumerId=" + consumerId;
 
-        // The PCI Cards gateway (unlike the plain walletapp auth gateway that authedRequest()
-        // targets) needs the same fuller header set Katalon sends for this call — without them
-        // it silently returns 200 with an EMPTY body/no X-List-VPAN-Token instead of an error.
+        // Header set matches the real successful capture exactly — NOT the earlier guessed set
+        // (X-Client-Secret/Accept/Authorization/Fp-Lat-Long/Lat-Long are absent from the real
+        // trace and were removed). X-Encryption-Key is a fixed constant echoed back unchanged.
         log.info("API Request > GET {} (ConsumerId={})", endpoint, consumerId);
 
         Response response = RegistrationApiHelper.authedRequest(session)
-                .header("X-Client-Secret", "64")
-                .header("Accept", "application/json, text/plain, */*")
-                .header("Authorization", "Bearer undefined")
-                .header("X-Fp-Latitude", "24.7111")
-                .header("X-Fp-Longitude", "46.6753")
-                .header("X-Latitude", "24.7111")
-                .header("X-Longitude", "46.6753")
                 .header("X-Principle-Id", "78988180-c573-413d-9ec4-c78a0e7b1c92")
                 .header("X-Principle-Type", "consumer")
+                .header("X-Encryption-Key", ConfigManager.getInstance().get("cardsList.encryptionKey",
+                        "KAjy+9lWISrsakpA1Dwx45xMk/IPlGW9qb6/e8OS+U5PTkwkfdoIdhFCezImU/3jkgrorlN3PH+"
+                        + "XqofrL0AFqi0L5by2+2mKtpvz/rUEUwGAb+Mhc8EF4KPh9uQHyUjSUWo5LUWCzQRGPQtZI72Y9Q3bC"
+                        + "lJd2TDi8Bi22Ac45HQ="))
                 .log().all() // dump the FULL outgoing request (all headers) to the run log
                 .get(endpoint);
 
