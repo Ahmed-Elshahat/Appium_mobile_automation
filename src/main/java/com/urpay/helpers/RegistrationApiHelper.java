@@ -1429,6 +1429,18 @@ public final class RegistrationApiHelper {
 
     /** Build an authenticated request spec for a logged-in consumer session. */
     static RequestSpecification authedRequest(Session session) {
+        return authedRequest(session, session.otpToken);
+    }
+
+    /**
+     * Same as {@link #authedRequest(Session)} but lets the caller override (or omit, with
+     * {@code null}) the X-OTP-Token instead of the session's stored login (purpose 001) token —
+     * needed when a fresh OTP token for a different purpose (e.g. card activation, purpose 023)
+     * must be sent instead. Callers must NOT also add their own X-OTP-Token header on top of the
+     * returned spec: RestAssured's .header() appends rather than replaces, so doing so would send
+     * two X-OTP-Token headers and the gateway would silently use the wrong one.
+     */
+    static RequestSpecification authedRequest(Session session, String otpToken) {
         ConfigManager config = ConfigManager.getInstance();
         RequestSpecification spec = RestAssured.given()
                 .header("X-Session-Language", "EN")
@@ -1448,8 +1460,8 @@ public final class RegistrationApiHelper {
         if (session.deviceToken != null) {
             spec = spec.header(DEVICE_TOKEN_HEADER, session.deviceToken);
         }
-        if (session.otpToken != null) {
-            spec = spec.header(OTP_TOKEN_HEADER, session.otpToken);
+        if (otpToken != null) {
+            spec = spec.header(OTP_TOKEN_HEADER, otpToken);
         }
         return spec;
     }

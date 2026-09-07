@@ -182,7 +182,9 @@ public final class CardActivationApiHelper {
             RestAssured.useRelaxedHTTPSValidation();
 
             String generateBody = "{\"mobileNumber\":\"" + mobile + "\",\"purpose\":\"023\"}";
-            Response generate = RegistrationApiHelper.authedRequest(session)
+            // No X-OTP-Token needed yet for generate — pass null to avoid sending the stale
+            // purpose-001 login token that authedRequest(session) would otherwise bake in.
+            Response generate = RegistrationApiHelper.authedRequest(session, null)
                     .body(generateBody)
                     .post(baseUrl + "/otp/generate");
             String generateOtpToken = generate.getHeader("X-OTP-Token");
@@ -195,8 +197,7 @@ public final class CardActivationApiHelper {
 
             String verifyBody = "{\"mobileNumber\":\"" + mobile + "\",\"otp\":\"" + otp
                     + "\",\"otpReference\":\"" + otpReference + "\",\"purpose\":\"023\"}";
-            Response verify = RegistrationApiHelper.authedRequest(session)
-                    .header("X-OTP-Token", generateOtpToken)
+            Response verify = RegistrationApiHelper.authedRequest(session, generateOtpToken)
                     .body(verifyBody)
                     .post(baseUrl + "/otp/verify");
             String verifyOtpToken = verify.getHeader("X-OTP-Token");
