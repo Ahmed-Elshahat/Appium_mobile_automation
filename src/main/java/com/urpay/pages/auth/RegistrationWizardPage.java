@@ -49,6 +49,20 @@ public class RegistrationWizardPage extends BasePage {
             + " or @text='Create your passcode' or @text='Set your passcode'"
             + " or @text='Confirm your passcode' or @text='Confirm passcode']");
 
+    // Step title (case-insensitive 'create'/'confirm' + 'passcode') — used to detect that digit
+    // entry silently didn't register (the screen never advances past its own title).
+    private static final By CREATE_PASSCODE_TITLE = AppiumBy.xpath(
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'create')"
+            + " and contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'passcode')]");
+
+    private static final By CONFIRM_PASSCODE_TITLE = AppiumBy.xpath(
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'confirm')"
+            + " and contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'passcode')]");
+
     private static final By PASSCODE_INPUT = AppiumBy.xpath(
             "//*[@content-desc='testID-passCode.screen' and @clickable='true']");
 
@@ -103,10 +117,53 @@ public class RegistrationWizardPage extends BasePage {
             "//*[@content-desc='testID-primary-buttonAction-main'"
             + " or @text='Done' or @text='Get Started' or @text='Welcome']");
 
-    // Nafath "Verification Requirements" screen shown after passcode confirmation
+    // Some builds return to the remembered-login "Enter your passcode" screen right after
+    // registration completes (instead of showing the Done/Finish screen) — distinct from the
+    // Create/Confirm passcode screens by its text (those say 'Create'/'Confirm your passcode').
+    private static final By LOGIN_PASSCODE_REENTRY_MARKER = AppiumBy.xpath(
+            "//*[@text='Enter your passcode' or @text='Forgot your passcode?']");
+
+    // Nafath "Verification Requirements" screen shown after passcode confirmation. Uses
+    // contains(...,'all set') instead of an exact-match apostrophe — the app renders a curly
+    // apostrophe (\u2019 "You\u2019re") which never matched a straight-quote exact @text comparison.
     private static final By NAFATH_SCREEN_MARKER = AppiumBy.xpath(
-            "//*[@text='Verification Requirements' or @text=\"You're all set!\""
+            "//*[@text='Verification Requirements' or contains(@text,'all set')"
             + " or @text='Nafath']");
+
+    // Explicit 'Verify' CTA on the "You're all set!" screen (content-desc testID-primary--main).
+    private static final By VERIFY_BTN = AppiumBy.xpath(
+            "//*[@text='Verify']/ancestor-or-self::*[@clickable='true'][1]"
+            + " | //*[@content-desc='testID-primary--main']");
+
+    // Kid guardian-verification screen ("Parent's mobile number" / Step 1/2) shown after tapping
+    // Verify on a MINOR's "You're all set!" screen — asks for the parent's mobile before continuing.
+    private static final By PARENT_MOBILE_SCREEN_MARKER = AppiumBy.xpath(
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'parent')"
+            + " and contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'mobile number')]");
+
+    private static final By PARENT_MOBILE_INPUT =
+            AppiumBy.accessibilityId("testID-input-direct-undefined");
+
+    // Step 2/2 of the guardian-verification wizard — kid's first name, shown after the parent's
+    // mobile number is accepted.
+    private static final By KID_FIRST_NAME_SCREEN_MARKER = AppiumBy.xpath(
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'first name')]");
+
+    private static final By KID_FIRST_NAME_INPUT =
+            AppiumBy.accessibilityId("testID-input-direct-undefined");
+
+    // Kid's registration END STATE — the family link request is auto-created by registration
+    // itself; the kid lands here (no ordinary dashboard) until the parent approves it.
+    private static final By WAITING_FOR_PARENT_APPROVAL_MARKER = AppiumBy.xpath(
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'waiting for parent approval')]");
+
+    // Top-left LogOut icon on the Waiting-For-Parent-Approval screen (no Settings nav there).
+    private static final By WAITING_APPROVAL_LOGOUT_ICON = AppiumBy.xpath(
+            "//*[contains(@content-desc,'.LogOut')]/ancestor-or-self::*[@clickable='true'][1]");
 
     // Nafath number-match screen shown after tapping Next on the requirements screen
     private static final By NAFATH_NUMBER_SCREEN_MARKER = AppiumBy.xpath(
@@ -208,6 +265,19 @@ public class RegistrationWizardPage extends BasePage {
 
     public boolean isFinishScreenDisplayed(long timeoutSec) {
         return waitUtils.isPresent(FINISH_SCREEN_MARKER, timeoutSec);
+    }
+
+    /**
+     * True when registration completed and the app returned to the remembered-login "Enter your
+     * passcode" screen instead of the Done/Finish screen (seen on some builds).
+     */
+    public boolean isLoginPasscodeReentryScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(LOGIN_PASSCODE_REENTRY_MARKER, timeoutSec);
+    }
+
+    /** Save the current screen for investigation (public wrapper over the protected BasePage helper). */
+    public void dumpCurrentScreen(String tag) {
+        dumpPageSource(tag);
     }
 
     public boolean isNafathVerificationScreenDisplayed(long timeoutSec) {
@@ -387,6 +457,59 @@ public class RegistrationWizardPage extends BasePage {
         waitUtils.waitForClickable(NEXT_BTN, 15).click();
     }
 
+    /** Tap the 'Verify' CTA on the "You're all set!" post-registration screen. */
+    @Step("Tap Verify on 'You're all set' screen")
+    public void tapVerify() {
+        waitUtils.waitForClickable(VERIFY_BTN, 15).click();
+        log.info("Tapped Verify on 'You're all set' screen");
+    }
+
+    /** True when the kid's guardian-verification screen ("Parent's mobile number") is showing. */
+    public boolean isParentMobileVerificationScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(PARENT_MOBILE_SCREEN_MARKER, timeoutSec);
+    }
+
+    /** Enter the parent's mobile number on the guardian-verification screen and tap Next. */
+    @Step("Enter parent mobile {parentMobile} on guardian-verification screen and tap Next")
+    public void enterParentMobileNumberAndNext(String parentMobile) {
+        waitUtils.waitForClickable(PARENT_MOBILE_INPUT, 15).click();
+        type(PARENT_MOBILE_INPUT, parentMobile);
+        hideKeyboard();
+        waitUtils.waitForClickable(NEXT_BTN, 15).click();
+        log.info("Entered parent mobile {} on guardian-verification screen and tapped Next", parentMobile);
+    }
+
+    /** True when the guardian-verification wizard's Step 2/2 (kid's first name) is showing. */
+    public boolean isKidFirstNameScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(KID_FIRST_NAME_SCREEN_MARKER, timeoutSec);
+    }
+
+    /** Enter the kid's first name on Step 2/2 of the guardian-verification wizard and tap Next. */
+    @Step("Enter kid first name {firstName} on guardian-verification screen and tap Next")
+    public void enterKidFirstNameAndNext(String firstName) {
+        waitUtils.waitForClickable(KID_FIRST_NAME_INPUT, 15).click();
+        type(KID_FIRST_NAME_INPUT, firstName);
+        hideKeyboard();
+        waitUtils.waitForClickable(NEXT_BTN, 15).click();
+        log.info("Entered kid first name {} on guardian-verification screen and tapped Next", firstName);
+    }
+
+    /**
+     * True when the kid's registration terminated on "Waiting For Parent Approval" — the family
+     * link request auto-created by registration itself. This is the kid's END STATE (no ordinary
+     * dashboard/wallet home yet); the parent must approve it before the kid's wallet activates.
+     */
+    public boolean isWaitingForParentApprovalScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(WAITING_FOR_PARENT_APPROVAL_MARKER, timeoutSec);
+    }
+
+    /** Tap the top-left LogOut icon on the kid's Waiting-For-Parent-Approval screen. */
+    @Step("Tap LogOut icon on Waiting For Parent Approval screen")
+    public void tapLogoutFromWaitingApprovalScreen() {
+        waitUtils.waitForClickable(WAITING_APPROVAL_LOGOUT_ICON, 15).click();
+        log.info("Tapped top-left LogOut icon on Waiting For Parent Approval screen");
+    }
+
     @Step("Accept Terms of Service checkbox")
     public void acceptTerms() {
         waitUtils.waitForClickable(TERMS_CHECKBOX, 15).click();
@@ -430,27 +553,43 @@ public class RegistrationWizardPage extends BasePage {
     /**
      * Set a new passcode on the Create/Confirm Passcode screen.
      * Focuses the hidden RN TextInput first (same mechanism as login passcode entry).
+     *
+     * <p>Digit entry occasionally lands with zero effect (focus tap missed the hidden input) —
+     * the screen then sits on its own title forever. Verify the title cleared and retry entry
+     * (re-focus + re-type) up to 3 times before giving up.
      */
     @Step("Enter new passcode on Create Passcode screen")
     public void enterNewPasscode(String passcode) {
         waitForPasscodeScreen(30);
-        focusPasscodeInput();
-        platformActions.clearDigits(passcode.length() + 2);
-        platformActions.enterDigits(passcode);
-        log.info("New passcode entered on Create Passcode screen");
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            focusPasscodeInput();
+            platformActions.clearDigits(passcode.length() + 2);
+            platformActions.enterDigits(passcode);
+            log.info("New passcode entered on Create Passcode screen (attempt {})", attempt);
+            if (!waitUtils.isPresent(CREATE_PASSCODE_TITLE, 4)) {
+                return;
+            }
+            log.warn("Create Passcode screen still showing after entry (attempt {}/3) — retrying", attempt);
+        }
     }
 
     /**
      * Confirm passcode on the Confirm Passcode screen.
-     * Re-focuses the hidden input before entry.
+     * Re-focuses the hidden input before entry, retrying if digit entry silently didn't register.
      */
     @Step("Enter passcode on Confirm Passcode screen")
     public void confirmPasscode(String passcode) {
         waitForPasscodeScreen(20);
-        focusPasscodeInput();
-        platformActions.clearDigits(passcode.length() + 2);
-        platformActions.enterDigits(passcode);
-        log.info("Passcode confirmed on Confirm Passcode screen");
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            focusPasscodeInput();
+            platformActions.clearDigits(passcode.length() + 2);
+            platformActions.enterDigits(passcode);
+            log.info("Passcode confirmed on Confirm Passcode screen (attempt {})", attempt);
+            if (!waitUtils.isPresent(CONFIRM_PASSCODE_TITLE, 4)) {
+                return;
+            }
+            log.warn("Confirm Passcode screen still showing after entry (attempt {}/3) — retrying", attempt);
+        }
     }
 
     // ── Visitor (BOR) DOB ────────────────────────────────────────────

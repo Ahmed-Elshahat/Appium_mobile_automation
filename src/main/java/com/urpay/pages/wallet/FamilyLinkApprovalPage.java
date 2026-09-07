@@ -10,30 +10,35 @@ import io.qameta.allure.Step;
 /**
  * Parent-side approval of an in-app "link to family" request sent by a kid.
  *
- * <p><b>EXPLORATORY:</b> the exact screen (dashboard banner vs. Notifications vs. a dedicated
- * "Family requests" list) has not been captured on-device yet. Locators below are best-effort
- * keyword matches; {@link #dumpForInvestigation()} saves the current screen so the real testIDs
- * can be added once we see the flow render.
+ * <p>The pending request renders as a "Wallet Linking Request" card (confirmed on-device from the
+ * kid's own "Waiting For Parent Approval" screen, which shows the same card) with a
+ * "View Details" CTA. The details screen's Approve/Reject controls are still EXPLORATORY —
+ * {@link #dumpForInvestigation()} saves the current screen so real testIDs can be added once seen.
  */
 public class FamilyLinkApprovalPage extends BasePage {
 
     private static final By PENDING_LINK_REQUEST_CARD = AppiumBy.xpath(
-            "//*[contains(translate(@text,"
+            "//android.widget.TextView[contains(translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'wallet linking request')"
+            + " or (contains(translate(@text,"
             + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'link')"
             + " and contains(translate(@text,"
-            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'family')]");
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'family'))]");
+
+    private static final By VIEW_DETAILS_BTN = AppiumBy.xpath(
+            "//*[@text='View Details']/ancestor-or-self::*[@clickable='true'][1]");
 
     private static final By APPROVE_BTN = AppiumBy.xpath(
             "//*[@text='Approve' or @text='Accept' or @content-desc='testID-primary--main']");
 
-    @Step("Check for a pending family-link request on screen")
+    @Step("Check for a pending family-link (\"Wallet Linking Request\") card on screen")
     public boolean isPendingLinkRequestVisible(long timeoutSec) {
         return isPresent(PENDING_LINK_REQUEST_CARD, timeoutSec);
     }
 
-    @Step("Open the pending family-link request")
+    @Step("Open the pending family-link request (View Details)")
     public void openPendingLinkRequest() {
-        tap(PENDING_LINK_REQUEST_CARD);
+        tap(VIEW_DETAILS_BTN);
     }
 
     @Step("Tap Approve on the family-link request")

@@ -76,6 +76,20 @@
     <test name="Family - Permission Control"> <!-- ~162s -->
         <classes><class name="com.urpay.tests.wallet.PermissionControlTest"/></classes>
     </test>
+    <test name="Family - Kid Registration + Link"> <!-- NEW, unmeasured: app-driven register-parent -> logout -> register-kid -> logout -> login-parent -> approve link -->
+        <classes><class name="com.urpay.tests.wallet.FamilyKidLinkRegistrationTest"/></classes>
+    </test>
+
+    <!-- ── Auth: Registration (all POI types) — NEW, unmeasured ─────────── -->
+    <test name="Registration - National (NAT)">
+        <classes><class name="com.urpay.tests.auth.NationalRegistrationTest"/></classes>
+    </test>
+    <test name="Registration - Resident (IQA)">
+        <classes><class name="com.urpay.tests.auth.IqaRegistrationTest"/></classes>
+    </test>
+    <test name="Registration - Visitor (BOR)">
+        <classes><class name="com.urpay.tests.auth.VisitorRegistrationTest"/></classes>
+    </test>
 
     <!--
       CARD STAGGERING: All 4 card tests (Mada/AlAhli/Signature/Platinum) share

@@ -38,7 +38,9 @@ public class DatePickerHandler {
     private static final int MONTH_PICKER = 1;
     private static final int DAY_PICKER = 2;
     private static final int YEAR_PICKER = 3;
-    private static final int MAX_SWIPES = 40;
+    // The year picker can need to travel ~45+ years (e.g. default ~2026 down to a 1980 DOB); a cap
+    // of 40 left it 7 years short on a real run (logged "current '1987'" for target '1980').
+    private static final int MAX_SWIPES = 70;
 
     private final AppiumDriver driver;
     private final WaitUtils waits;

@@ -62,6 +62,9 @@
         <suite-file path="forgot-passcode-visitor-tier-negative-02.xml"/>
 
         <!-- ── Auth: Registration / Phone ────────────────────────── -->
+        <suite-file path="registration-national.xml"/>
+        <suite-file path="registration-iqa.xml"/>
+        <suite-file path="registration-visitor.xml"/>
         <suite-file path="registration-invitation-code.xml"/>
         <suite-file path="change-phone-number-full-tier.xml"/>
 
@@ -82,6 +85,7 @@
         <suite-file path="delink-from-parent.xml"/>
         <suite-file path="family-wallet.xml"/>
         <suite-file path="family-mission-suite.xml"/>
+        <suite-file path="family-kid-link.xml"/>
 
         <!-- ── Qatta ─────────────────────────────────────────────── -->
         <suite-file path="edit-group-qatta-details.xml"/>
