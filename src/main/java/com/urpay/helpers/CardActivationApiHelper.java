@@ -140,11 +140,18 @@ public final class CardActivationApiHelper {
             // headers (X-Client-Id/X-Security-Token) — omitting it returns 400 "E200978:
             // Authorization Error." (confirmed via a real run). Same key used by
             // RegistrationApiHelper.baseHeaders() for the pre-login/registration gateway.
-            // X-OTP-Token overrides authedRequest's login (purpose 001) token with the
-            // purpose-023 activation token obtained above.
-            Response response = RegistrationApiHelper.authedRequest(session)
+            // Same PCI gateway (port 14302) as VpanListApiHelper's Cards List call — needs the
+            // same X-Principle-Id/X-Principle-Type/X-Encryption-Key headers.
+            // authedRequest(session, otpToken) supplies the purpose-023 token directly instead of
+            // appending a second X-OTP-Token header on top of the session's stale login token.
+            Response response = RegistrationApiHelper.authedRequest(session, otpToken)
                     .header("X-List-VPAN-Token", listVpanToken)
-                    .header("X-OTP-Token", otpToken)
+                    .header("X-Principle-Id", "78988180-c573-413d-9ec4-c78a0e7b1c92")
+                    .header("X-Principle-Type", "consumer")
+                    .header("X-Encryption-Key", ConfigManager.getInstance().get("cardsList.encryptionKey",
+                            "KAjy+9lWISrsakpA1Dwx45xMk/IPlGW9qb6/e8OS+U5PTkwkfdoIdhFCezImU/3jkgrorlN3PH+"
+                            + "XqofrL0AFqi0L5by2+2mKtpvz/rUEUwGAb+Mhc8EF4KPh9uQHyUjSUWo5LUWCzQRGPQtZI72Y9Q3bC"
+                            + "lJd2TDi8Bi22Ac45HQ="))
                     .body(body)
                     .post(endpoint);
 
