@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Family Kid Link (app-driven): register parent -> logout -> register kid (<18) -> logout ->
+  login parent -> approve kid's link request. Parent/kid mobile+POI are freshly generated and
+  seeded into the simulators automatically at @BeforeClass (FamilyRegistrationApiHelper
+  .seedFamilyPairOnly()) — a brand-new pair every run, no config editing needed.
+
+  Run: mvn test -Dsuite=suites/family-kid-link.xml -Dprofile=sit-wmv
+  (add -Dremote=true for LambdaTest)
+-->
+<suite name="Family Kid Link" verbose="1" parallel="none">
+    <test name="family-kid-link">
+        <classes><class name="com.urpay.tests.wallet.FamilyKidLinkRegistrationTest"/></classes>
+    </test>
+</suite>

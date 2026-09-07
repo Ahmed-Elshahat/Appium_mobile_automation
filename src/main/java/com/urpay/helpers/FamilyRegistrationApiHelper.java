@@ -449,16 +449,20 @@ public final class FamilyRegistrationApiHelper {
     }
 
     /**
-     * Seed BOTH members into the simulators (tahaqoq + Yakeen identity + guardianship relation) and
-     * verify every seed actually took effect. Returns {@code false} if any seed was rejected — the
-     * callers must abort, because a member whose Yakeen record never landed logs in normally yet can
-     * NOT be linked: the parent's APPROVE resolves the kid via a Yakeen dependent lookup on the kid's
-     * poi + Hijri DOB. This is exactly the "kid looks fine but the link fails" failure mode.
+     * Seed BOTH members into the simulators (tahaqoq + NafathElm + Yakeen identity + guardianship
+     * relation) and verify every seed actually took effect. Returns {@code false} if any seed was
+     * rejected — the callers must abort, because a member whose Yakeen record never landed logs in
+     * normally yet can NOT be linked: the parent's APPROVE resolves the kid via a Yakeen dependent
+     * lookup on the kid's poi + Hijri DOB. This is exactly the "kid looks fine but the link fails"
+     * failure mode. NafathElm is required for the APP registration journey specifically — without
+     * it the in-app Nafath number-match screen never auto-verifies (SIT has no record to match).
      */
     private static boolean seedFamilyPair(Member kid, Member parent) {
         // Non-short-circuit (&) so every seed runs and is logged even if an earlier one failed.
         return verifySeed("tahaqoq kid",              RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile))
              & verifySeed("tahaqoq parent",           RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile))
+             & verifySeed("nafathElm kid",            RegistrationApiHelper.seedNafathElmInfo(kid.poi, kid.poiType))
+             & verifySeed("nafathElm parent",         RegistrationApiHelper.seedNafathElmInfo(parent.poi, parent.poiType))
              & verifySeed("yakeen-info kid",          seedYakeenInfo(kid))
              & verifySeed("yakeen-info parent",       seedYakeenInfo(parent))
              & verifySeed("yakeen-relation kid->parent", seedYakeenRelation(kid))
