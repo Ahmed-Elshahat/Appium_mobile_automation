@@ -155,6 +155,18 @@ public class UserProvisioningTest {
     }
 
     @Test
+    @Story("Seed simulators only for a fresh parent + kid pair (no registration)")
+    @Severity(SeverityLevel.CRITICAL)
+    @Description("Seeds Tahaqoq + Yakeen identity + guardianship relation for a brand-new parent + "
+            + "kid (<18) pair WITHOUT registering either consumer. Mobile/POI are logged and appended "
+            + "to logcat/seeded-family-pairs.csv, ready for the register+link flow to pick up.")
+    public void seedFamilyPairOnly() {
+        log.info("########## SEEDING ONLY: parent + kid pair (not registered) ##########");
+        assertNotNull(FamilyRegistrationApiHelper.seedFamilyPairOnly(),
+                "Failed to seed a parent + kid pair");
+    }
+
+    @Test
     @Story("Provision a linkable parent + kid pair (no backend link — manual app flow)")
     @Severity(SeverityLevel.CRITICAL)
     @Description("Seeds the simulators and registers + activates a parent and a kid (<18), then STOPS "

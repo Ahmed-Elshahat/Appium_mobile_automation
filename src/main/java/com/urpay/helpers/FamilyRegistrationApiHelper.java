@@ -293,6 +293,81 @@ public final class FamilyRegistrationApiHelper {
         }
     }
 
+    /** A fresh parent + kid mobile/POI pair seeded into the simulators but NOT registered. */
+    public static final class SeededFamilyPair {
+        public final String parentMobile;
+        public final String parentPoi;
+        public final String kidMobile;
+        public final String kidPoi;
+
+        SeededFamilyPair(String parentMobile, String parentPoi, String kidMobile, String kidPoi) {
+            this.parentMobile = parentMobile;
+            this.parentPoi = parentPoi;
+            this.kidMobile = kidMobile;
+            this.kidPoi = kidPoi;
+        }
+    }
+
+    /**
+     * Seed the simulators (Tahaqoq + Yakeen identity + guardianship relation) for a FRESH,
+     * randomly generated parent + kid (&lt; 18) pair WITHOUT registering either consumer through
+     * the backend or the app. Use this to pre-provision a simulator-known, linkable identity pair
+     * that a later run (API or app-driven) can register and link for real.
+     *
+     * @return the generated parent/kid mobile+POI, or {@code null} if any seed was rejected
+     */
+    @Step("Seed simulators only for a fresh parent + kid pair (no registration)")
+    public static SeededFamilyPair seedFamilyPairOnly() {
+        Member parent = buildParent();
+        Member kid = buildKid();
+        parent.depthPoi = kid.poi;
+        kid.depthPoi = parent.poi;
+
+        log.info("=== Seeding simulators ONLY for parent + kid (not registering) ===");
+        log.info("  parent : mobile {} | poi {}", parent.mobile, parent.poi);
+        log.info("  kid    : mobile {} | poi {}", kid.mobile, kid.poi);
+
+        RestAssured.useRelaxedHTTPSValidation();
+        if (!seedFamilyPair(kid, parent)) {
+            log.error("=== Family seed-only aborted: simulator seeding did not take effect. Check the "
+                    + "neoleap VPN + simulator ({}). ===", simBaseUrl());
+            return null;
+        }
+
+        RegistrationApiHelper.logCredentials("PARENT SEEDED ONLY (not registered)", parent.poiType,
+                parent.mobile, parent.poi, "");
+        RegistrationApiHelper.logCredentials("KID SEEDED ONLY (not registered, relation " + kid.relationCode + ")",
+                kid.poiType, kid.mobile, kid.poi, "");
+        SeededFamilyPair pair = new SeededFamilyPair(parent.mobile, parent.poi, kid.mobile, kid.poi);
+        appendSeededFamilyPair(pair);
+        log.info("=== Family pair seeded (not registered). Register + link parent/kid yourself next. ===");
+        return pair;
+    }
+
+    /** Append a seeded (unregistered) parent+kid pair to the seeded-family-pairs CSV (best-effort). */
+    private static synchronized void appendSeededFamilyPair(SeededFamilyPair pair) {
+        String path = ConfigManager.getInstance().get("registration.seededFamilyPairsFile",
+                "logcat/seeded-family-pairs.csv");
+        try {
+            java.io.File file = new java.io.File(path);
+            java.io.File parentDir = file.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            boolean writeHeader = !file.exists();
+            try (java.io.FileWriter writer = new java.io.FileWriter(file, true)) {
+                if (writeHeader) {
+                    writer.write("timestamp,parentMobile,parentPoi,kidMobile,kidPoi\n");
+                }
+                writer.write(java.time.LocalDateTime.now() + "," + pair.parentMobile + "," + pair.parentPoi
+                        + "," + pair.kidMobile + "," + pair.kidPoi + "\n");
+            }
+            log.info("Seeded family pair appended to {}", path);
+        } catch (Exception e) {
+            log.warn("Failed to persist seeded family pair to {}: {}", path, e.getMessage());
+        }
+    }
+
     // ── Per-member registration (reuses RegistrationApiHelper steps) ──
 
     @Step("Register family member {member.role}")
@@ -374,16 +449,20 @@ public final class FamilyRegistrationApiHelper {
     }
 
     /**
-     * Seed BOTH members into the simulators (tahaqoq + Yakeen identity + guardianship relation) and
-     * verify every seed actually took effect. Returns {@code false} if any seed was rejected — the
-     * callers must abort, because a member whose Yakeen record never landed logs in normally yet can
-     * NOT be linked: the parent's APPROVE resolves the kid via a Yakeen dependent lookup on the kid's
-     * poi + Hijri DOB. This is exactly the "kid looks fine but the link fails" failure mode.
+     * Seed BOTH members into the simulators (tahaqoq + NafathElm + Yakeen identity + guardianship
+     * relation) and verify every seed actually took effect. Returns {@code false} if any seed was
+     * rejected — the callers must abort, because a member whose Yakeen record never landed logs in
+     * normally yet can NOT be linked: the parent's APPROVE resolves the kid via a Yakeen dependent
+     * lookup on the kid's poi + Hijri DOB. This is exactly the "kid looks fine but the link fails"
+     * failure mode. NafathElm is required for the APP registration journey specifically — without
+     * it the in-app Nafath number-match screen never auto-verifies (SIT has no record to match).
      */
     private static boolean seedFamilyPair(Member kid, Member parent) {
         // Non-short-circuit (&) so every seed runs and is logged even if an earlier one failed.
         return verifySeed("tahaqoq kid",              RegistrationApiHelper.seedTahaqoqInfo(kid.poi, kid.mobile))
              & verifySeed("tahaqoq parent",           RegistrationApiHelper.seedTahaqoqInfo(parent.poi, parent.mobile))
+             & verifySeed("nafathElm kid",            RegistrationApiHelper.seedNafathElmInfo(kid.poi, kid.poiType))
+             & verifySeed("nafathElm parent",         RegistrationApiHelper.seedNafathElmInfo(parent.poi, parent.poiType))
              & verifySeed("yakeen-info kid",          seedYakeenInfo(kid))
              & verifySeed("yakeen-info parent",       seedYakeenInfo(parent))
              & verifySeed("yakeen-relation kid->parent", seedYakeenRelation(kid))

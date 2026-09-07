@@ -55,6 +55,10 @@ DMP_1/
 # -- Temporary page-source debug dumps (investigation artefacts, not source code) --
 nb-*.xml
 
+# -- Generated per-run seeding logs (grow locally every run, not source code) --
+logcat/seeded-users.csv
+logcat/seeded-family-pairs.csv
+
 # -- Python bytecache & LambdaTest log downloads --
 tools/__pycache__/
 tools/lt-logs/

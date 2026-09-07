@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xray Test Report — DW-127570 — IPS Routing for Local Transfers</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 0;
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Cover Header */
+        .cover-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+            color: white;
+            padding: 60px 50px;
+            position: relative;
+            overflow: hidden;
+        }
+        .cover-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .cover-header .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .cover-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .cover-header .subtitle {
+            font-size: 18px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 24px;
+        }
+        .cover-meta {
+            display: flex;
+            gap: 32px;
+            font-size: 13px;
+            opacity: 0.8;
+            position: relative;
+        }
+        .cover-meta span { display: flex; align-items: center; gap: 6px; }
+
+        /* Content */
+        .content { padding: 40px 50px; }
+
+        /* Section */
+        .section { margin-bottom: 40px; }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .kpi-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .kpi-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .kpi-card .label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .kpi-card.pass .value { color: #16a34a; }
+        .kpi-card.fail .value { color: #dc2626; }
+        .kpi-card.aborted .value { color: #f59e0b; }
+        .kpi-card.todo .value { color: #6b7280; }
+
+        /* Progress Bar */
+        .progress-section { margin-bottom: 32px; }
+        .progress-bar-container {
+            background: #f1f5f9;
+            border-radius: 8px;
+            height: 32px;
+            display: flex;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .progress-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            transition: width 0.3s;
+        }
+        .progress-segment.pass { background: #16a34a; }
+        .progress-segment.fail { background: #dc2626; }
+        .progress-segment.aborted { background: #f59e0b; }
+        .progress-segment.todo { background: #cbd5e1; color: #475569; }
+        
+        .progress-legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .progress-legend span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .legend-dot.pass { background: #16a34a; }
+        .legend-dot.fail { background: #dc2626; }
+        .legend-dot.aborted { background: #f59e0b; }
+        .legend-dot.todo { background: #cbd5e1; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        thead th {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        tbody tr:hover { background: #f8fafc; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-badge.pass { background: #dcfce7; color: #166534; }
+        .status-badge.fail { background: #fee2e2; color: #991b1b; }
+        .status-badge.aborted { background: #fef3c7; color: #92400e; }
+        .status-badge.todo { background: #f1f5f9; color: #475569; }
+        .status-badge.blocked { background: #fce7f3; color: #9d174d; }
+
+        /* Num columns */
+        .num { text-align: center; font-weight: 600; }
+        .num.pass { color: #16a34a; }
+        .num.fail { color: #dc2626; }
+        .num.aborted { color: #f59e0b; }
+        .num.todo { color: #6b7280; }
+
+        /* Defect card */
+        .defect-list { list-style: none; }
+        .defect-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #fff7ed;
+            border-left: 3px solid #f59e0b;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 8px;
+        }
+        .defect-item.critical {
+            background: #fef2f2;
+            border-left-color: #dc2626;
+        }
+        .defect-item .defect-key {
+            font-weight: 600;
+            font-size: 12px;
+            color: #1e40af;
+            white-space: nowrap;
+        }
+        .defect-item .defect-summary {
+            font-size: 13px;
+            color: #374151;
+        }
+        .defect-item .defect-impact {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        /* Recommendations */
+        .rec-list { list-style: none; counter-reset: rec; }
+        .rec-item {
+            counter-increment: rec;
+            display: flex;
+            gap: 12px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .rec-item::before {
+            content: counter(rec);
+            min-width: 28px;
+            height: 28px;
+            background: #1e40af;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .rec-item.critical { border-color: #fca5a5; background: #fef2f2; }
+        .rec-item.critical::before { background: #dc2626; }
+        .rec-item.high { border-color: #fcd34d; background: #fffbeb; }
+        .rec-item.high::before { background: #f59e0b; }
+        .rec-item .rec-content { flex: 1; }
+        .rec-item .rec-priority {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .rec-item.critical .rec-priority { color: #dc2626; }
+        .rec-item.high .rec-priority { color: #f59e0b; }
+        .rec-item .rec-text { font-size: 13px; color: #374151; }
+
+        /* Mini donut chart */
+        .donut-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin: 20px 0;
+        }
+        .donut-chart {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            position: relative;
+        }
+        .donut-chart .center-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .donut-chart .center-label .pct {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .donut-chart .center-label .pct-label {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* Footer */
+        .report-footer {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 20px 50px;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        /* Page break */
+        .page-break { page-break-before: always; }
+
+        @media print {
+            body { background: white; }
+            .page { box-shadow: none; max-width: 100%; }
+            .cover-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .kpi-card, .progress-segment, .status-badge, .defect-item, .rec-item { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break { page-break-before: always; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- Cover Header -->
+    <div class="cover-header">
+        <div class="badge">Xray Test Report</div>
+        <h1>IPS Routing for Local Transfers</h1>
+        <div class="subtitle">Epic DW-127570 — Merged Test Execution Report</div>
+        <div class="cover-meta">
+            <span>📅 Report Date: August 10, 2026</span>
+            <span>📊 Status: Implementing</span>
+            <span>🧪 146 Total Test Runs</span>
+            <span>📋 10 Test Plans</span>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <!-- Executive Summary KPIs -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon" style="background:#1e40af;">📊</span>
+                Executive Summary
+            </div>
+            <div class="kpi-grid">
+                <div class="kpi-card pass">
+                    <div class="value">67</div>
+                    <div class="label">Passed</div>
+                </div>
+                <div class="kpi-card fail">
+                    <div class="value">5</div>
+                    <div class="label">Failed</div>
+                </div>
+                <div class="kpi-card aborted">
+                    <div class="value">16</div>
+                    <div class="label">Aborted</div>
+                </div>
+                <div class="kpi-card todo">
+                    <div class="value">58</div>
+                    <div class="label">Not Executed</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-section">
+                <div class="progress-bar-container">
+                    <div class="progress-segment pass" style="width:45.9%">67 Pass</div>
+                    <div class="progress-segment fail" style="width:3.4%">5</div>
+                    <div class="progress-segment aborted" style="width:11%">16</div>
+                    <div class="progress-segment todo" style="width:39.7%">58 TODO</div>
+                </div>
+                <div class="progress-legend">
+                    <span><span class="legend-dot pass"></span> Pass (45.9%)</span>
+                    <span><span class="legend-dot fail"></span> Fail (3.4%)</span>
+                    <span><span class="legend-dot aborted"></span> Aborted (11.0%)</span>
+                    <span><span class="legend-dot todo"></span> Not Executed (39.7%)</span>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:20px; text-align:center;">
+                    <div style="font-size:36px; font-weight:700; color:#16a34a;">76.1%</div>
+                    <div style="font-size:12px; color:#166534; font-weight:500;">PASS RATE (Executed Tests)</div>
+                    <div style="font-size:11px; color:#6b7280; margin-top:4px;">67 passed out of 88 executed</div>
+                </div>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:20px; text-align:center;">
+                    <div style="font-size:36px; font-weight:700; color:#1e40af;">60.3%</div>
+                    <div style="font-size:12px; color:#1e3a5f; font-weight:500;">EXECUTION COVERAGE</div>
+                    <div style="font-size:11px; color:#6b7280; margin-top:4px;">88 executed out of 146 total</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results by Test Execution -->
+        <div class="section page-break">
+            <div class="section-title">
+                <span class="icon" style="background:#7c3aed;">🧪</span>
+                Results by Test Execution
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Execution</th>
+                        <th>Story</th>
+                        <th>Platform</th>
+                        <th class="num">Total</th>
+                        <th class="num">Pass</th>
+                        <th class="num">Fail</th>
+                        <th class="num">Aborted</th>
+                        <th class="num">TODO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>DW-138325</strong></td>
+                        <td>IPS Feature Flag & Fees Configuration in Staff Portal</td>
+                        <td>—</td>
+                        <td class="num">20</td>
+                        <td class="num pass">17</td>
+                        <td class="num">0</td>
+                        <td class="num aborted">3</td>
+                        <td class="num">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138347</strong></td>
+                        <td>IPS Eligibility Check on urpay side for Local Transfers</td>
+                        <td>—</td>
+                        <td class="num">20</td>
+                        <td class="num pass">14</td>
+                        <td class="num">0</td>
+                        <td class="num aborted">3</td>
+                        <td class="num todo">3</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138268</strong></td>
+                        <td>Capture user consent for IPS Terms & Conditions</td>
+                        <td><span class="status-badge pass">AOS</span></td>
+                        <td class="num">12</td>
+                        <td class="num pass">7</td>
+                        <td class="num">0</td>
+                        <td class="num aborted">5</td>
+                        <td class="num">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138269</strong></td>
+                        <td>Capture user consent for IPS Terms & Conditions</td>
+                        <td><span class="status-badge todo">iOS</span></td>
+                        <td class="num">12</td>
+                        <td class="num pass">8</td>
+                        <td class="num">0</td>
+                        <td class="num aborted">4</td>
+                        <td class="num">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138302</strong></td>
+                        <td>Execute IPS Payment</td>
+                        <td>—</td>
+                        <td class="num">14</td>
+                        <td class="num pass">8</td>
+                        <td class="num">0</td>
+                        <td class="num aborted">1</td>
+                        <td class="num todo">5</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138248</strong></td>
+                        <td>Display transaction and share details</td>
+                        <td><span class="status-badge pass">AOS</span></td>
+                        <td class="num">18</td>
+                        <td class="num pass">13</td>
+                        <td class="num fail">5</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138270</strong></td>
+                        <td>Display transaction and share details</td>
+                        <td><span class="status-badge todo">iOS</span></td>
+                        <td class="num">18</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num todo">18</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138228</strong></td>
+                        <td>Online PSR Handling for IPS transactions</td>
+                        <td>—</td>
+                        <td class="num">10</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num todo">10</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138203</strong></td>
+                        <td>EOD File Processing for IPS Transactions</td>
+                        <td>—</td>
+                        <td class="num">12</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num todo">12</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138215</strong></td>
+                        <td>IPS Transaction Status Inquiry</td>
+                        <td>—</td>
+                        <td class="num">10</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num todo">10</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Test Plans Without Executions -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon" style="background:#6b7280;">⏳</span>
+                Test Plans Awaiting Execution
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Plan</th>
+                        <th>Story</th>
+                        <th class="num">Tests Planned</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>DW-138376</strong></td>
+                        <td>DW-132442 — IPS Transaction Validation on ARB</td>
+                        <td class="num">25</td>
+                        <td><span class="status-badge todo">Not Started</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138285</strong></td>
+                        <td>DW-135029 — Transaction Notifications for IPS</td>
+                        <td class="num">10</td>
+                        <td><span class="status-badge blocked">Blocked</span></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size:12px; color:#64748b; margin-top:8px; padding-left:4px;">
+                ⚠️ 35 additional tests have no execution runs created yet.
+            </p>
+        </div>
+
+        <!-- Failed Tests -->
+        <div class="section page-break">
+            <div class="section-title">
+                <span class="icon" style="background:#dc2626;">❌</span>
+                Failed Tests (5)
+            </div>
+            <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+                All failures are in <strong>DW-138248</strong> — Display transaction and share details (Android)
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Key</th>
+                        <th>Test Summary</th>
+                        <th>Linked Defect</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>DW-138236</strong></td>
+                        <td>Verify Share as Image from Success Screen</td>
+                        <td><span class="status-badge fail">DW-138583</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138237</strong></td>
+                        <td>Verify Share as Image from Transaction Details</td>
+                        <td><span class="status-badge fail">DW-138583</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138239</strong></td>
+                        <td>Verify local transfer filter includes IPS transactions</td>
+                        <td><span class="status-badge fail">DW-138665</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138245</strong></td>
+                        <td>Verify user can complete transfer after Retransfer from IPS transaction</td>
+                        <td><span class="status-badge fail">DW-138794</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138246</strong></td>
+                        <td>Verify Retransfer negative case with insufficient balance</td>
+                        <td><span class="status-badge fail">DW-138794</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Aborted Tests -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon" style="background:#f59e0b;">⚠️</span>
+                Aborted Tests (16)
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Key</th>
+                        <th>Test Summary</th>
+                        <th>Execution</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>DW-138307</strong></td>
+                        <td>Verify IPS feature flag toggle action is recorded in the audit log</td>
+                        <td>DW-138325</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138312</strong></td>
+                        <td>Verify updating the non-IPS fee reflects on the IPS fee (shared configuration)</td>
+                        <td>DW-138325</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138323</strong></td>
+                        <td>IPS feature flag OFF, Check Banks List</td>
+                        <td>DW-138325</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138337</strong></td>
+                        <td>Beneficiary (existing) bank not in IPS bank table — routed to non-IPS</td>
+                        <td>DW-138347</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138341</strong></td>
+                        <td>Incoming IPS transfer to urpay account — received and credited correctly</td>
+                        <td>DW-138347</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138342</strong></td>
+                        <td>Incoming IPS transfer — transaction history entry is correct</td>
+                        <td>DW-138347</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138259</strong></td>
+                        <td>Field variation coverage for mixed transaction attributes</td>
+                        <td>DW-138268 (AOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138260</strong></td>
+                        <td>Consent behavior after filtering beneficiary or transaction list</td>
+                        <td>DW-138268 (AOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138261</strong></td>
+                        <td>Consent displayed during retransfer flow from transaction history/details</td>
+                        <td>DW-138268 (AOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138263</strong></td>
+                        <td>Negative: disclaimer content service/configuration unavailable</td>
+                        <td>DW-138268 (AOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138265</strong></td>
+                        <td>Edge: transaction data changes after consent screen display</td>
+                        <td>DW-138268 (AOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138259</strong></td>
+                        <td>Field variation coverage for mixed transaction attributes</td>
+                        <td>DW-138269 (iOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138260</strong></td>
+                        <td>Consent behavior after filtering beneficiary or transaction list</td>
+                        <td>DW-138269 (iOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138261</strong></td>
+                        <td>Consent displayed during retransfer flow from transaction history/details</td>
+                        <td>DW-138269 (iOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138263</strong></td>
+                        <td>Negative: disclaimer content service/configuration unavailable</td>
+                        <td>DW-138269 (iOS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DW-138300</strong></td>
+                        <td>Timeout during execution</td>
+                        <td>DW-138302</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Blocking Defects -->
+        <div class="section page-break">
+            <div class="section-title">
+                <span class="icon" style="background:#be123c;">🐛</span>
+                Blocking Defects
+            </div>
+            <ul class="defect-list">
+                <li class="defect-item critical">
+                    <div>
+                        <div class="defect-key">DW-138807</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">PSR Is Not Received & Transfers Remain in Accepted Status</div>
+                        <div class="defect-impact">🔴 Blocks 5 stories: DW-133029, DW-135029, DW-137209, DW-137210, DW-137211</div>
+                    </div>
+                </li>
+                <li class="defect-item">
+                    <div>
+                        <div class="defect-key">DW-138646</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">Sarie limit validation is performed before determining transfer type (Sarie/IPS)</div>
+                        <div class="defect-impact">Blocks: DW-130635</div>
+                    </div>
+                </li>
+                <li class="defect-item">
+                    <div>
+                        <div class="defect-key">DW-138667</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">OTP message displays currency placeholder instead of currency code</div>
+                        <div class="defect-impact">Blocks: DW-135029</div>
+                    </div>
+                </li>
+                <li class="defect-item">
+                    <div>
+                        <div class="defect-key">DW-138752</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">"The entered ID isn't correct" Error When Adding/Editing Local Beneficiary</div>
+                        <div class="defect-impact">Blocks: DW-130635</div>
+                    </div>
+                </li>
+            </ul>
+            <ul class="defect-list" style="margin-top:16px;">
+                <li class="defect-item" style="background:#fef2f2; border-left-color:#f87171;">
+                    <div>
+                        <div class="defect-key">DW-138583</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">local - Share Image option is missing</div>
+                        <div class="defect-impact">Causes test failures: DW-138236, DW-138237</div>
+                    </div>
+                </li>
+                <li class="defect-item" style="background:#fef2f2; border-left-color:#f87171;">
+                    <div>
+                        <div class="defect-key">DW-138662</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">Keys are displayed in Shared Text</div>
+                        <div class="defect-impact">Related to: DW-135030</div>
+                    </div>
+                </li>
+                <li class="defect-item" style="background:#fef2f2; border-left-color:#f87171;">
+                    <div>
+                        <div class="defect-key">DW-138664</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">Incorrect Details are displayed in Transaction Details</div>
+                        <div class="defect-impact">Related to: DW-135030</div>
+                    </div>
+                </li>
+                <li class="defect-item" style="background:#fef2f2; border-left-color:#f87171;">
+                    <div>
+                        <div class="defect-key">DW-138665</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">Existing Local Transfer Filter isn't working for IPS transfers</div>
+                        <div class="defect-impact">Causes test failure: DW-138239</div>
+                    </div>
+                </li>
+                <li class="defect-item" style="background:#fef2f2; border-left-color:#f87171;">
+                    <div>
+                        <div class="defect-key">DW-138794</div>
+                    </div>
+                    <div>
+                        <div class="defect-summary">Error Displayed in Re-transfer flow for IPS Transactions</div>
+                        <div class="defect-impact">Causes test failures: DW-138245, DW-138246</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Detailed Test Plan: ARB Validation -->
+        <div class="section page-break">
+            <div class="section-title">
+                <span class="icon" style="background:#0ea5e9;">📋</span>
+                Test Plan: IPS Transaction Validation on ARB (DW-138376)
+            </div>
+            <p style="font-size:12px; color:#64748b; margin-bottom:12px;">25 tests — No execution created yet</p>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Test Key</th><th>Summary</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td class="num">1</td><td>DW-138351</td><td>Trigger ARB validation for IPS-eligible transaction after urpay checks pass</td></tr>
+                    <tr><td class="num">2</td><td>DW-138352</td><td>Do not trigger ARB validation when urpay eligibility checks fail</td></tr>
+                    <tr><td class="num">3</td><td>DW-138353</td><td>Route to IPS when ARB response is IPSEnabled Y and Status 01 Available</td></tr>
+                    <tr><td class="num">4</td><td>DW-138354</td><td>Block transfer when ARB response is Status 02 Unavailable</td></tr>
+                    <tr><td class="num">5</td><td>DW-138355</td><td>Route to Sarie when ARB response is Status 03 Unsubscribed</td></tr>
+                    <tr><td class="num">6</td><td>DW-138356</td><td>Block transfer when ARB response is Status 04 IPS Unavailable</td></tr>
+                    <tr><td class="num">7</td><td>DW-138357</td><td>Route to Sarie when IPSEnabled is N</td></tr>
+                    <tr><td class="num">8</td><td>DW-138358</td><td>Reroute to Sarie when ARB validation fails</td></tr>
+                    <tr><td class="num">9</td><td>DW-138359</td><td>Reroute to Sarie when ARB validation times out</td></tr>
+                    <tr><td class="num">10</td><td>DW-138360</td><td>Reroute to Sarie on ARB technical error</td></tr>
+                    <tr><td class="num">11</td><td>DW-138361</td><td>Ignore sarieEnabled flag from ARB validation response</td></tr>
+                    <tr><td class="num">12</td><td>DW-138362</td><td>Verify behavior when Beneficiary with IPS only bank attempts transfer when IPS flag OFF</td></tr>
+                    <tr><td class="num">13</td><td>DW-138363</td><td>Use Neoleap Staff Portal fee override instead of ARB default fees</td></tr>
+                    <tr><td class="num">14</td><td>DW-138364</td><td>Use ARB default transaction fees when no internal override exists</td></tr>
+                    <tr><td class="num">15</td><td>DW-138365</td><td>Auto-select previous Purpose of Transfer for same beneficiary</td></tr>
+                    <tr><td class="num">16</td><td>DW-138366</td><td>Require user to select Purpose of Transfer when no previous POT exists</td></tr>
+                    <tr><td class="num">17</td><td>DW-138367</td><td>Validate POT mapping 001 to IPS key 1</td></tr>
+                    <tr><td class="num">18</td><td>DW-138368</td><td>Validate POT mapping 002 to IPS key 9</td></tr>
+                    <tr><td class="num">19</td><td>DW-138369</td><td>Validate POT mapping 004 to IPS key E</td></tr>
+                    <tr><td class="num">20</td><td>DW-138370</td><td>Validate POT mapping 005 to IPS key F</td></tr>
+                    <tr><td class="num">21</td><td>DW-138371</td><td>Display IPS confirmation screen with instant receipt message and mandatory disclaimer</td></tr>
+                    <tr><td class="num">22</td><td>DW-138372</td><td>Use production bank code for bank not available in IPS list</td></tr>
+                    <tr><td class="num">23</td><td>DW-138373</td><td>Use IPS bank ID for bank not available in Sarie but available in IPS</td></tr>
+                    <tr><td class="num">24</td><td>DW-138374</td><td>Handle merged bank mapping when production and IPS names/codes differ</td></tr>
+                    <tr><td class="num">25</td><td>DW-138375</td><td>Validate transfer amount passed to ARB matches user-entered amount</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Detailed Test Plan: Notifications -->
+        <div class="section">
+            <div class="section-title">
+                <span class="icon" style="background:#0ea5e9;">📋</span>
+                Test Plan: Transaction Notifications for IPS (DW-138285)
+            </div>
+            <p style="font-size:12px; color:#64748b; margin-bottom:12px;">10 tests — No execution created yet | Blocked by DW-138667, DW-138807</p>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Test Key</th><th>Summary</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td class="num">1</td><td>DW-138275</td><td>IPS transfer to ARB bank during working hours</td></tr>
+                    <tr><td class="num">2</td><td>DW-138276</td><td>IPS transfer to ARB bank outside working hours</td></tr>
+                    <tr><td class="num">3</td><td>DW-138277</td><td>IPS transfer to IPS-supported non-ARB bank on weekend (COUT_IPS)</td></tr>
+                    <tr><td class="num">4</td><td>DW-138278</td><td>IPS transfer to IPS-supported non-ARB bank on holiday (COUT_IPS)</td></tr>
+                    <tr><td class="num">5</td><td>DW-138279</td><td>Non-IPS transfer to ARB bank (COUT_BANK)</td></tr>
+                    <tr><td class="num">6</td><td>DW-138280</td><td>Non-IPS transfer to non-ARB bank during working hours (COUT_SARIE)</td></tr>
+                    <tr><td class="num">7</td><td>DW-138281</td><td>Validate beneficiary name and amount placeholders in PN</td></tr>
+                    <tr><td class="num">8</td><td>DW-138282</td><td>Boundary time scenario at configured start/end</td></tr>
+                    <tr><td class="num">9</td><td>DW-138283</td><td>Arabic / English SMS content</td></tr>
+                    <tr><td class="num">10</td><td>DW-138284</td><td>Arabic / English PN content</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="section page-break">
+            <div class="section-title">
+                <span class="icon" style="background:#059669;">💡</span>
+                Recommendations
+            </div>
+            <ol class="rec-list">
+                <li class="rec-item critical">
+                    <div class="rec-content">
+                        <div class="rec-priority">Critical</div>
+                        <div class="rec-text"><strong>DW-138807</strong> (PSR Not Received) blocks 5 stories — must be resolved before test execution can proceed on Online PSR Handling, EOD File Processing, and Transaction Status Inquiry.</div>
+                    </div>
+                </li>
+                <li class="rec-item high">
+                    <div class="rec-content">
+                        <div class="rec-priority">High</div>
+                        <div class="rec-text">Create test executions for <strong>DW-138376</strong> (ARB Validation — 25 tests) and <strong>DW-138285</strong> (Notifications — 10 tests). These test plans have 0 executions.</div>
+                    </div>
+                </li>
+                <li class="rec-item high">
+                    <div class="rec-content">
+                        <div class="rec-priority">High</div>
+                        <div class="rec-text">Execute iOS test run <strong>DW-138270</strong> (Display transaction & share details) — all 18 tests remain in TODO status.</div>
+                    </div>
+                </li>
+                <li class="rec-item">
+                    <div class="rec-content">
+                        <div class="rec-priority">Medium</div>
+                        <div class="rec-text">Investigate and re-run 16 aborted tests, particularly consent-related tests on both AOS and iOS platforms.</div>
+                    </div>
+                </li>
+                <li class="rec-item">
+                    <div class="rec-content">
+                        <div class="rec-priority">Medium</div>
+                        <div class="rec-text">Fix 5 failing tests related to Share Image and Re-transfer flows — linked defects DW-138583, DW-138665, DW-138794 already raised.</div>
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="report-footer">
+        Generated from Jira Xray REST API • Epic DW-127570 • Neoleap Digital Wallet • August 10, 2026
+    </div>
+
+</div>
+</body>
+</html>
