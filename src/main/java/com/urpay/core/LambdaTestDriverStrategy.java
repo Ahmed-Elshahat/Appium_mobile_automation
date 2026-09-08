@@ -10,6 +10,7 @@ import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.options.UiAutomator2Options;
 import io.appium.java_client.ios.IOSDriver;
 import io.appium.java_client.ios.options.XCUITestOptions;
+import org.openqa.selenium.html5.Location;
 
 /**
  * OCP: Strategy for creating LambdaTest remote drivers.
@@ -34,13 +35,30 @@ public class LambdaTestDriverStrategy implements DriverCreationStrategy {
             String remoteUrl = String.format("https://%s:%s@%s",
                     ltUser, ltKey, ltUrl.replaceFirst("https?://", ""));
 
+            AppiumDriver driver;
             if ("ios".equalsIgnoreCase(platform)) {
-                return createIOSDriver(config, ltOptions, remoteUrl);
+                driver = createIOSDriver(config, ltOptions, remoteUrl);
             } else {
-                return createAndroidDriver(config, ltOptions, remoteUrl);
+                driver = createAndroidDriver(config, ltOptions, remoteUrl);
             }
+            applyConfiguredLocation(config, driver);
+            return driver;
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid LambdaTest URL", e);
+        }
+    }
+
+    private void applyConfiguredLocation(ConfigManager config, AppiumDriver driver) {
+        String latitude = config.get("lt.latitude", "");
+        String longitude = config.get("lt.longitude", "");
+        if (latitude.isEmpty() || longitude.isEmpty() || !(driver instanceof AndroidDriver)) {
+            return;
+        }
+        try {
+            ((AndroidDriver) driver).setLocation(new Location(
+                    Double.parseDouble(latitude), Double.parseDouble(longitude), 0));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid LambdaTest location coordinates", e);
         }
     }
 
