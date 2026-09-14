@@ -265,10 +265,6 @@ public abstract class AbstractCardTest extends BaseTest {
     @Description("Disable ATM → verify → Enable → verify (runs after physical card request — ATM only available for physical cards)")
     @Severity(SeverityLevel.NORMAL)
     public void testToggleAtmTransactions() {
-        // DISABLED 2026-08-04: ATM toggle depends on physical card, removed from app flow for Mada. Keep code for future re-enable.
-        if ("madaCard".equals(getCardPrefix())) {
-            throw new org.testng.SkipException("ATM toggle removed from app flow for Mada Card (no physical card)");
-        }
         CardsFlow flow = new CardsFlow();
         String expected = cardConfig("expectedChangesApplied");
 
@@ -408,10 +404,6 @@ public abstract class AbstractCardTest extends BaseTest {
     @Description("Request physical card copy — skips if already requested or not available")
     @Severity(SeverityLevel.CRITICAL)
     public void testRequestPhysicalCard() {
-        // DISABLED 2026-08-04: Physical card removed from app flow for Mada. Keep code for future re-enable.
-        if ("madaCard".equals(getCardPrefix())) {
-            throw new org.testng.SkipException("Request Physical Card removed from app flow for Mada Card");
-        }
         CardsFlow flow = new CardsFlow();
         try {
             flow.requestPhysicalCard(getCardPrefix());

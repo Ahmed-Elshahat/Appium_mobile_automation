@@ -39,6 +39,10 @@ import io.qameta.allure.Story;
 @Feature("Saddad Bills")
 public class SadadBillsTest extends BaseTest {
 
+    // Generated once per run so the bill nickname never collides with a bill left over from a
+    // previous run; shared between the add and pay steps below.
+    private static String billName;
+
     @Test(groups = {"payments", "sadad-bills", "smoke"}, priority = 1)
     @Story("Saddad Login")
     @Description("Login with Saddad Bills user and verify dashboard is loaded")
@@ -64,10 +68,11 @@ public class SadadBillsTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
         SadadBillsFlow flow = new SadadBillsFlow();
 
+        billName = c.get("sadad.billName", "hamada Bill") + " " + (System.currentTimeMillis() % 100000);
         SadadBillsPage page = flow.addNewPrepaidBill(
                 c.get("sadad.billNumber", "966503745901"),
                 c.get("sadad.billAmount", "10"),
-                c.get("sadad.billName", "hamada Bill"));
+                billName);
 
         Assert.assertTrue(page.isDoneButtonVisible() || page.isBillsListLoaded(),
                 "Bill should be saved — Done button or bills list visible");
@@ -83,7 +88,7 @@ public class SadadBillsTest extends BaseTest {
         ConfigManager c = ConfigManager.getInstance();
         SadadBillsFlow flow = new SadadBillsFlow();
         SadadBillsPage page = flow.selectBillAndPay(
-                c.get("sadad.billName", "hamada Bill"),
+                billName,
                 c.get("sadad.payAmount", "100"));
         Assert.assertTrue(page.isBillsListLoaded() || page.isFirstBillVisible(),
                 "Should return to the bills list after paying");
