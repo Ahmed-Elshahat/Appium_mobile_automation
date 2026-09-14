@@ -59,7 +59,8 @@ public class RegistrationFlow {
 
     // Onboarding skippable elements and the landing-ready marker (mirrors LoginFlow / InvitationCodeFlow)
     private static final By SKIP_BTN = AppiumBy.xpath(
-            "//*[@text='Skip' or @text='SKIP' or @label='Skip']");
+            "//*[@text='Skip' or @text='SKIP' or @label='Skip']"
+                + "/ancestor-or-self::*[@clickable='true'][1]");
 
     private static final By LANDING_READY = AppiumBy.xpath(
             "//*[@content-desc='testID-secondary-login-main'"

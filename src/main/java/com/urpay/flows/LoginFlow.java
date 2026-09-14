@@ -377,11 +377,14 @@ public class LoginFlow {
 
         // ALL skippable elements in ONE xpath
         By skipAll = AppiumBy.xpath(
-                "//*[@text='Skip' or @text='No thanks' or @text='NO THANKS' "
+            "(//*[@text='Skip' or @text='NO THANKS' or @text='No thanks' "
                 + "or @text='Allow' or @text='ALLOW' or @text='While using the app' "
                 + "or @text='Later' "
                 + "or @content-desc='testID-secondary-action-main' "
-                + "or @content-desc='testID-primary-enableLocation-main']");
+            + "or @content-desc='testID-primary-enableLocation-main']"
+            + "/ancestor-or-self::*[@clickable='true'][1])"
+            + " | //*[@content-desc='testID-secondary-action-main'"
+            + " or @content-desc='testID-primary-enableLocation-main']");
 
         // Login button on the welcome screen (tap it to go to login form). Covers multiple builds:
         // testID-secondary-login-main / g35-main (obfuscated) / text "Login"/"LOGIN".

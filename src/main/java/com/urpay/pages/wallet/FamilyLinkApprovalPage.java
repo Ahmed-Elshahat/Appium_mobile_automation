@@ -17,6 +17,19 @@ import io.qameta.allure.Step;
  */
 public class FamilyLinkApprovalPage extends BasePage {
 
+    private static final By MORE_BTN = AppiumBy.xpath(
+        "//*[@content-desc='testID-MORENAV' or @text='More']");
+
+    private static final By REQUESTS_OPTION = AppiumBy.xpath(
+        "//*[contains(@content-desc,'ReactText') and (@text='Requests' or @text='Request')]"
+            + " | //*[@text='Requests' or @text='Request']");
+
+    private static final By FAMILY_REQUESTS_OPTION = AppiumBy.xpath(
+        "//*[contains(@content-desc,'ReactText') and translate(@text,"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='family requests']"
+            + " | //*[(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')="
+            + "'family requests')]");
+
     private static final By PENDING_LINK_REQUEST_CARD = AppiumBy.xpath(
             "//android.widget.TextView[contains(translate(@text,"
             + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'wallet linking request')"
@@ -30,6 +43,18 @@ public class FamilyLinkApprovalPage extends BasePage {
 
     private static final By APPROVE_BTN = AppiumBy.xpath(
             "//*[@text='Approve' or @text='Accept' or @content-desc='testID-primary--main']");
+
+    @Step("Open Family requests (More -> Requests -> Family requests)")
+    public void openFamilyRequests() {
+        tap(MORE_BTN);
+        tap(REQUESTS_OPTION);
+        tap(FAMILY_REQUESTS_OPTION);
+    }
+
+    public boolean isFamilyRequestsScreenDisplayed(long timeoutSec) {
+        return isPresent(FAMILY_REQUESTS_OPTION, timeoutSec)
+                || isPresent(PENDING_LINK_REQUEST_CARD, timeoutSec);
+    }
 
     @Step("Check for a pending family-link (\"Wallet Linking Request\") card on screen")
     public boolean isPendingLinkRequestVisible(long timeoutSec) {

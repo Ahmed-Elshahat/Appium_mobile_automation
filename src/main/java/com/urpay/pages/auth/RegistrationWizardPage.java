@@ -5,6 +5,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.openqa.selenium.By;
 
 import com.urpay.core.BasePage;
+import com.urpay.pages.dashboard.SettingsPage;
 import com.urpay.utils.BackendErrorGuard;
 import com.urpay.utils.DatePickerHandler;
 
@@ -117,6 +118,14 @@ public class RegistrationWizardPage extends BasePage {
             "//*[@content-desc='testID-primary-buttonAction-main'"
             + " or @text='Done' or @text='Get Started' or @text='Welcome']");
 
+        private static final By KID_VERIFICATION_THANK_YOU_MARKER = AppiumBy.xpath(
+            "//*[@text='Thank You!' or contains(@text,'verification request has been shared')]"
+                + " | //*[@content-desc='testID-primary-done-main']");
+
+        private static final By KID_VERIFICATION_DONE_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-done-main' or @text='Done']"
+                + "/ancestor-or-self::*[@clickable='true'][1]");
+
     // Some builds return to the remembered-login "Enter your passcode" screen right after
     // registration completes (instead of showing the Done/Finish screen) — distinct from the
     // Create/Confirm passcode screens by its text (those say 'Create'/'Confirm your passcode').
@@ -164,6 +173,20 @@ public class RegistrationWizardPage extends BasePage {
     // Top-left LogOut icon on the Waiting-For-Parent-Approval screen (no Settings nav there).
     private static final By WAITING_APPROVAL_LOGOUT_ICON = AppiumBy.xpath(
             "//*[contains(@content-desc,'.LogOut')]/ancestor-or-self::*[@clickable='true'][1]");
+
+        // The cloud build exposes the logout icon as a non-clickable child of this clickable header.
+        private static final By WAITING_APPROVAL_LOGOUT_CONTAINER =
+            AppiumBy.accessibilityId("testID-left-icon-back");
+
+            private static final By UNLINK_DEVICE_CONFIRM_BTN = AppiumBy.xpath(
+                "//*[contains(translate(normalize-space(@text),"
+                + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'unlink')"
+                + " and contains(translate(normalize-space(@text),"
+                + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'device')]"
+                + "/ancestor-or-self::*[@clickable='true'][1]");
+
+            private static final By LANDING_LOGIN_BTN = AppiumBy.xpath(
+                "//*[@content-desc='testID-secondary-login-main' or @text='Login' or @text='Log in']");
 
     // Nafath number-match screen shown after tapping Next on the requirements screen
     private static final By NAFATH_NUMBER_SCREEN_MARKER = AppiumBy.xpath(
@@ -503,11 +526,40 @@ public class RegistrationWizardPage extends BasePage {
         return waitUtils.isPresent(WAITING_FOR_PARENT_APPROVAL_MARKER, timeoutSec);
     }
 
+    /** True when kid verification has been shared and the app shows the Thank You screen. */
+    public boolean isKidVerificationThankYouScreenDisplayed(long timeoutSec) {
+        return waitUtils.isPresent(KID_VERIFICATION_THANK_YOU_MARKER, timeoutSec);
+    }
+
+    /** Tap Done on the kid verification Thank You screen to reach the logout screen. */
+    @Step("Tap Done on kid verification Thank You screen")
+    public void tapDoneOnKidVerificationThankYouScreen() {
+        waitUtils.waitForClickable(KID_VERIFICATION_DONE_BTN, 15).click();
+        log.info("Tapped Done on kid verification Thank You screen");
+    }
+
     /** Tap the top-left LogOut icon on the kid's Waiting-For-Parent-Approval screen. */
     @Step("Tap LogOut icon on Waiting For Parent Approval screen")
     public void tapLogoutFromWaitingApprovalScreen() {
-        waitUtils.waitForClickable(WAITING_APPROVAL_LOGOUT_ICON, 15).click();
-        log.info("Tapped top-left LogOut icon on Waiting For Parent Approval screen");
+        waitUtils.waitForClickable(WAITING_APPROVAL_LOGOUT_CONTAINER, 15).click();
+        waitUtils.waitForInvisible(WAITING_FOR_PARENT_APPROVAL_MARKER, 15);
+        log.info("Tapped clickable top-left LogOut container and left Waiting For Parent Approval screen");
+    }
+
+    /** Complete this scenario's remembered-device logout without using the shared Settings flow. */
+    @Step("Unlink the kid device and return to landing login")
+    public void unlinkKidDeviceAndReturnToLanding() {
+        waitUtils.waitForClickable(WAITING_APPROVAL_LOGOUT_CONTAINER, 15).click();
+        if (waitUtils.isPresent(UNLINK_DEVICE_CONFIRM_BTN, 10)) {
+            waitUtils.waitForClickable(UNLINK_DEVICE_CONFIRM_BTN, 15).click();
+            if (waitUtils.isPresent(LANDING_LOGIN_BTN, 30)) {
+                log.info("Unlinked kid device and returned to landing login");
+                return;
+            }
+        }
+        dumpPageSource("kid-logout-after-unlink");
+        throw new org.openqa.selenium.TimeoutException(
+                "Kid device unlink did not return to the landing login screen");
     }
 
     @Step("Accept Terms of Service checkbox")

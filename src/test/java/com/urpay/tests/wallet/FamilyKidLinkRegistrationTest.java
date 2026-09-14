@@ -12,6 +12,7 @@ import com.urpay.helpers.FamilyRegistrationApiHelper;
 import com.urpay.helpers.FamilyRegistrationApiHelper.SeededFamilyPair;
 import com.urpay.helpers.RegistrationApiHelper.PoiType;
 import com.urpay.pages.auth.RegistrationWizardPage;
+import com.urpay.pages.auth.LandingPage;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.dashboard.SettingsPage;
 import com.urpay.pages.wallet.FamilyLinkApprovalPage;
@@ -90,18 +91,32 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
         // identity behind the kid's POI, which this guardian-verification screen validates against.
         kidFirstName = c.get("familyLink.kid.firstName", "Mutez");
 
-        SeededFamilyPair pair = FamilyRegistrationApiHelper.seedFamilyPairOnly();
-        Assert.assertNotNull(pair, "Failed to seed a fresh parent + kid pair into the simulators "
-                + "(requires the neoleap VPN for the SIT simulator)");
-        parentMobileIntl = pair.parentMobile;
-        parentMobileLocal = toLocalMobile(pair.parentMobile);
-        parentPoi = pair.parentPoi;
-        kidMobileIntl = pair.kidMobile;
-        kidPoi = pair.kidPoi;
-
-        log.info("Family link (freshly seeded): parent {} / {} | kid {} / {}",
+        if (Boolean.parseBoolean(c.get("familyLink.skipSeeding", "false"))) {
+            parentMobileIntl = requireConfigured(c, "familyLink.parent.mobile");
+            parentPoi = requireConfigured(c, "familyLink.parent.poi");
+            kidMobileIntl = requireConfigured(c, "familyLink.kid.mobile");
+            kidPoi = requireConfigured(c, "familyLink.kid.poi");
+            log.info("Using configured family pair: parent {} / {} | kid {} / {}",
                 parentMobileIntl, parentPoi, kidMobileIntl, kidPoi);
+        } else {
+            SeededFamilyPair pair = FamilyRegistrationApiHelper.seedFamilyPairOnly();
+            Assert.assertNotNull(pair, "Failed to seed a fresh parent + kid pair into the simulators "
+                + "(requires the neoleap VPN for the SIT simulator)");
+            parentMobileIntl = pair.parentMobile;
+            parentPoi = pair.parentPoi;
+            kidMobileIntl = pair.kidMobile;
+            kidPoi = pair.kidPoi;
+            log.info("Family link (freshly seeded): parent {} / {} | kid {} / {}",
+                parentMobileIntl, parentPoi, kidMobileIntl, kidPoi);
+        }
+        parentMobileLocal = toLocalMobile(parentMobileIntl);
     }
+
+        private static String requireConfigured(ConfigManager config, String key) {
+        String value = config.get(key, "");
+        Assert.assertFalse(value.isBlank(), key + " must be configured when familyLink.skipSeeding=true");
+        return value;
+        }
 
     @Test(groups = {"wallet", "family"}, priority = 1)
     @Story("Register the parent through the app")
@@ -153,6 +168,7 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
             // The Waiting-For-Parent-Approval screen has no Settings nav — it exposes its own
             // top-left LogOut icon instead.
             wizardPage.tapLogoutFromWaitingApprovalScreen();
+            wizardPage.unlinkKidDeviceAndReturnToLanding();
             log.info("Logged out via the Waiting-For-Parent-Approval screen's LogOut icon");
         } else {
             logout();
@@ -164,8 +180,12 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
     @Description("Full login as the parent to reach the dashboard where the link request is approved")
     @Severity(SeverityLevel.CRITICAL)
     public void testLoginAsParent() {
+        // LoginFlow owns onboarding/Skip handling; after device unlink the app may still show
+        // the walkthrough before exposing the Login button.
         dashboard = new LoginFlow().loginWith(parentMobileLocal, parentPoi, parentOtp, parentPasscode);
-        Assert.assertTrue(dashboard.isLoaded(), "Dashboard should be visible after parent re-login");
+        FamilyLinkApprovalPage approval = new FamilyLinkApprovalPage();
+        Assert.assertTrue(dashboard.isLoaded() || approval.isFamilyRequestsScreenDisplayed(10),
+            "Parent login should reach the dashboard or Family requests screen");
     }
 
     @Test(groups = {"wallet", "family"}, priority = 6, dependsOnMethods = "testLoginAsParent")
@@ -175,15 +195,18 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
     @Severity(SeverityLevel.NORMAL)
     public void testApproveKidLinkRequest() {
         FamilyLinkApprovalPage approval = new FamilyLinkApprovalPage();
-        if (approval.isPendingLinkRequestVisible(15)) {
-            approval.openPendingLinkRequest();
-            approval.tapApprove();
-            log.info("Approved the kid's family-link request");
-        } else {
-            approval.dumpForInvestigation();
-            log.warn("No pending family-link request found by the current locators — inspect "
-                    + "logcat/family-link-approval-investigation.xml to locate the real approval UI");
+        if (!approval.isFamilyRequestsScreenDisplayed(3)) {
+            approval.openFamilyRequests();
         }
+        boolean requestVisible = approval.isPendingLinkRequestVisible(15);
+        if (!requestVisible) {
+            approval.dumpForInvestigation();
+        }
+        Assert.assertTrue(requestVisible,
+                "Family request should be visible after More -> Requests -> Family requests");
+        approval.openPendingLinkRequest();
+        approval.tapApprove();
+        log.info("Approved the kid's family-link request");
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -229,6 +252,10 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
             // runs (sometimes no separate first-name step, sometimes a slow transition) — capture
             // the ground truth instead of silently skipping.
             wizardPage.dumpCurrentScreen("post-parent-mobile-no-firstname-" + mobileLocal);
+        }
+        if (guardianMobile != null && wizardPage.isKidVerificationThankYouScreenDisplayed(30)) {
+            wizardPage.tapDoneOnKidVerificationThankYouScreen();
+            return null;
         }
         if (guardianMobile != null && wizardPage.isWaitingForParentApprovalScreenDisplayed(120)) {
             // Kid's END STATE: registration itself auto-creates the family link request; there is

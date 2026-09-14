@@ -50,7 +50,11 @@ public class SettingsPage extends BasePage {
     // "Unlink this Device?" bottom-sheet confirm button — obfuscation-tolerant (testID-secondary-
     // <hash>-main), keyed on its visible text since the middle segment is hashed on cloud builds.
     private static final By UNLINK_DEVICE_CONFIRM_BTN = AppiumBy.xpath(
-            "//*[@text='Unlink Device']/ancestor::*[@clickable='true'][1]");
+            "//*[contains(translate(normalize-space(@text),"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'unlink')"
+            + " and contains(translate(normalize-space(@text),"
+            + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'device')]"
+            + "/ancestor-or-self::*[@clickable='true'][1]");
 
     @Step("Open Settings from More options")
     public void openSettings() {
@@ -80,8 +84,8 @@ public class SettingsPage extends BasePage {
      * screen instead of the landing page, requiring an explicit device-unlink to finish
      * logging out. No-op when that screen doesn't appear (older builds / already on landing).
      */
-    @Step("Unlink device if prompted (post-logout passcode screen)")
-    private void unlinkDeviceIfPrompted() {
+    @Step("Unlink remembered device if prompted")
+    public void unlinkDeviceIfPrompted() {
         if (isPresent(UNLINK_DEVICE_ICON, 10)) {
             tap(UNLINK_DEVICE_ICON);
             if (isPresent(UNLINK_DEVICE_CONFIRM_BTN, 10)) {

@@ -28,12 +28,14 @@ public final class DeviceContactsHelper {
 
     // Save / done buttons in the native Contacts editor (cross-OEM: AOSP/Pixel + Samsung).
     private static final org.openqa.selenium.By SAVE_BTN = AppiumBy.xpath(
-            "//*[@text='Save' or @content-desc='Save'"
+            "//*[@text='Save' or @text='SAVE' or @text='Done' or @text='DONE'"
+            + " or @content-desc='Save' or @content-desc='SAVE'"
+            + " or @content-desc='Done' or @content-desc='DONE'"
             + " or contains(@resource-id,'save') or contains(@resource-id,'menu_done')]");
     // Optional "Save contact to" account picker — pick a local/phone account so Save is enabled.
     private static final org.openqa.selenium.By ACCOUNT_OPTION = AppiumBy.xpath(
             "//*[@text='Phone' or @text='Device' or @text='Phone contact'"
-            + " or @text='Save to device' or @text='Save to phone']");
+             + " or @text='Save to device' or @text='Save to phone']");
 
     private DeviceContactsHelper() {
     }

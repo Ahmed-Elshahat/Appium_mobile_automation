@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Send Gift 20x" verbose="2" parallel="methods" thread-count="20">
+    <test name="Send Gift 20x Parallel">
+        <parameter name="profile" value="sit-wmv" />
+        <classes>
+            <class name="com.urpay.tests.wallet.SendGiftFromParentTest">
+                <methods>
+                    <include name="testParentSendsGiftToKid" />
+                </methods>
+            </class>
+        </classes>
+    </test>
+</suite>

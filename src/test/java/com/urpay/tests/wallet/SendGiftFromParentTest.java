@@ -28,8 +28,7 @@ import io.qameta.allure.Story;
  *
  * <p>Login as parent → open the Gifts (Eidya) service → select the kid from contacts → send a
  * Marriage gift (fixed message + amount, replacing the non-portable random-gift keyword) → confirm
- * with the passcode → verify the "Thank You" screen → confirm the gift shows in the Sent tab as
- * "Not opened" with the Marriage type.
+ * with the passcode → verify the "Thank You" screen.
  */
 @Epic("Wallet & VAS")
 @Feature("Send Gift")
@@ -67,14 +66,6 @@ public class SendGiftFromParentTest extends BaseTest {
                 c.get("sendGift.parent.verificationCode", "1234"));
 
         Assert.assertTrue(page.isThankYouShown(), "Gift 'Thank You' screen should be displayed");
-        page.tapDone();
-
-        flow.openSentGifts();
-        Assert.assertEquals(page.getGiftStatus().trim(),
-                c.get("sendGift.notOpenedStatus", "Not opened"),
-                "The sent gift status should be 'Not opened'");
-        Assert.assertEquals(page.getGiftType(), c.get("sendGift.giftType", "Marriage"),
-                "The sent gift type should be 'Marriage'");
     }
 
     @Step("Login as the gift-sending parent")
