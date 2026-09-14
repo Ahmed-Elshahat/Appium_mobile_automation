@@ -323,14 +323,12 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Tap 'Save & Add Bill' button")
     public void tapSaveBillConfirm() {
-        // The button testID varies across app versions:
-        //   - testID-primary-onConfirmSave-main (older)
-        //   - testID-primary-bSv-main (current)
-        //   - fallback: any primary button with "Add Bill" text
+        // The button testID varies across app versions (onConfirmSave-main, bSv-main, tXI-main, …)
+        // and is always obfuscated — match ANY primary button whose "Add Bill" text is a
+        // DESCENDANT (the text is a nested TextView, never the container itself or an ancestor).
         By confirm = AppiumBy.xpath(
-                "//*[@content-desc='testID-primary-onConfirmSave-main' "
-                + "or @content-desc='testID-primary-bSv-main' "
-                + "or (contains(@content-desc,'testID-primary') and ancestor-or-self::*[contains(@text,'Add Bill')])]"
+                "//*[contains(@content-desc,'testID-primary') and @clickable='true'"
+                + " and .//*[contains(@text,'Add Bill')]]"
                 + " | //*[@text='Add Bill' and @clickable='true']");
         try {
             waitUtils.waitForClickable(confirm, 6).click();
@@ -380,9 +378,15 @@ public class SadadBillsPage extends BasePage {
 
     @Step("Tap Next on the bill-amount screen")
     public void tapNextBillAmount() {
-        // Pay flow's Next (Katalon NextButtonBillAmountScreen) is a DIFFERENT button than
-        // the add-bill Next (testID-primary--main).
-        tap(AppiumBy.accessibilityId("testID-primary-onPressNext-main"));
+        // Pay flow's Next (Katalon NextButtonBillAmountScreen) testID is obfuscated and varies
+        // per build (seen onPressNext-main, KPE-main, …) — match ANY primary button whose "Next"
+        // text is a DESCENDANT (nested TextView, never the container itself).
+        By next = AppiumBy.xpath(
+                "//*[@content-desc='testID-primary-onPressNext-main']"
+                + " | //*[contains(@content-desc,'testID-primary') and @clickable='true'"
+                + " and .//*[@text='Next']]"
+                + " | //*[@text='Next' and @clickable='true']");
+        waitUtils.waitForClickable(next, 15).click();
     }
 
     @Step("Tap the final 'Pay Bill' step")
