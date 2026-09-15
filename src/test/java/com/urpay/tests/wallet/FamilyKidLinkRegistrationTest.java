@@ -12,10 +12,10 @@ import com.urpay.helpers.FamilyRegistrationApiHelper;
 import com.urpay.helpers.FamilyRegistrationApiHelper.SeededFamilyPair;
 import com.urpay.helpers.RegistrationApiHelper.PoiType;
 import com.urpay.pages.auth.RegistrationWizardPage;
-import com.urpay.pages.auth.LandingPage;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.dashboard.SettingsPage;
 import com.urpay.pages.wallet.FamilyLinkApprovalPage;
+import com.urpay.pages.wallet.FamilyWalletPage;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
@@ -190,11 +190,17 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
 
     @Test(groups = {"wallet", "family"}, priority = 6, dependsOnMethods = "testLoginAsParent")
     @Story("Approve the kid's link request")
-    @Description("EXPLORATORY: best-effort search for the pending family-link request; dumps the "
-            + "screen to logcat/ for follow-up if the request isn't found by the current locators")
-    @Severity(SeverityLevel.NORMAL)
+        @Description("Open the pending family request, dismiss notification preferences, approve it, "
+            + "and confirm with the kid's configured Hijri date of birth")
+        @Severity(SeverityLevel.CRITICAL)
     public void testApproveKidLinkRequest() {
         FamilyLinkApprovalPage approval = new FamilyLinkApprovalPage();
+        if (approval.isYesTakeMeTherePromptVisible(10)) {
+            approval.tapYesTakeMeThere();
+            approval.dismissNotificationsPopupIfDisplayed();
+            Assert.assertTrue(approval.isPendingLinkRequestVisibleAfterPrompt(15),
+                    "Tapping 'Yes, take me there' should open the pending Wallet Linking Request");
+        }
         if (!approval.isFamilyRequestsScreenDisplayed(3)) {
             approval.openFamilyRequests();
         }
@@ -204,9 +210,26 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
         }
         Assert.assertTrue(requestVisible,
                 "Family request should be visible after More -> Requests -> Family requests");
-        approval.openPendingLinkRequest();
+        approval.dismissNotificationsPopupIfDisplayed();
         approval.tapApprove();
-        log.info("Approved the kid's family-link request");
+        approval.enterKidHijriDateOfBirthAndConfirm(
+            ConfigManager.getInstance().get("familyLink.kid.hijriDob", "03.08.1435"));
+        approval.dismissNotificationsPopupIfDisplayed();
+        Assert.assertTrue(approval.completeKidFamilyMemberKyc(20),
+            "Kid family-member KYC should complete to finish the family-link approval");
+        approval.dismissApprovalSuccessScreens();
+        log.info("Approved the kid's family-link request and completed the kid KYC");
+
+        Assert.assertTrue(approval.isLinkRequestVerified(15),
+            "Wallet Linking Request should be marked Verified after kid KYC");
+        approval.returnToDashboard();
+        DashboardPage parentDashboard = new DashboardPage();
+        Assert.assertTrue(parentDashboard.isLoaded(), "Parent should return to the dashboard after approval");
+        FamilyWalletPage familyWallet = new FamilyWalletPage();
+        familyWallet.tapFamilyWallet();
+        Assert.assertTrue(familyWallet.isLoaded(),
+            "Kid should be listed in Family Wallet after a successful family-link approval");
+        log.info("Validated the kid is linked \u2014 appears in Family Wallet");
     }
 
     // ── Helpers ─────────────────────────────────────────────────────

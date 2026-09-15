@@ -4,7 +4,6 @@ import org.openqa.selenium.By;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.urpay.core.ConfigManager;
 import com.urpay.core.DriverFactory;
 import com.urpay.helpers.RegistrationApiHelper;
 import com.urpay.helpers.RegistrationApiHelper.PoiType;
@@ -65,7 +64,7 @@ public class RegistrationFlow {
     private static final By LANDING_READY = AppiumBy.xpath(
             "//*[@content-desc='testID-secondary-login-main'"
             + " or @content-desc='testID-primary-register-main'"
-            + " or @content-desc='testID-primary--main' or @text='Register']");
+            + " or @text='Register' or @label='Register']");
 
     private static final By DASHBOARD_MARKER = AppiumBy.xpath(
             "//*[@content-desc='testID-master-amount-main'"
