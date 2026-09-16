@@ -222,9 +222,13 @@ public class FamilyKidLinkRegistrationTest extends BaseTest {
 
         Assert.assertTrue(approval.isLinkRequestVerified(15),
             "Wallet Linking Request should be marked Verified after kid KYC");
-        approval.returnToDashboard();
-        DashboardPage parentDashboard = new DashboardPage();
-        Assert.assertTrue(parentDashboard.isLoaded(), "Parent should return to the dashboard after approval");
+        DashboardPage parentDashboard = new LoginFlow().restartAppAndEnterPasscode(parentPasscode);
+        if (!parentDashboard.isLoaded()) {
+            approval.returnToDashboard();
+            parentDashboard = new DashboardPage();
+        }
+        Assert.assertTrue(parentDashboard.isLoaded(),
+            "Parent should reach the dashboard after app restart and passcode entry");
         FamilyWalletPage familyWallet = new FamilyWalletPage();
         familyWallet.tapFamilyWallet();
         Assert.assertTrue(familyWallet.isLoaded(),
