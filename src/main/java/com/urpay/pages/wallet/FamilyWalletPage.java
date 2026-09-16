@@ -39,6 +39,30 @@ public class FamilyWalletPage extends BasePage {
     private static final By FAMILY_MEMBER_MARKER =
             AppiumBy.accessibilityId("testID-data-0");
 
+        private static final By FAMILY_WALLET_SCREEN = AppiumBy.xpath(
+            "//*[@text='Family Wallets' or @text='Family Wallet' or @text='Get Started!' "
+            + "or @content-desc='testID-data-0']");
+
+        private static final By GET_STARTED_BTN = AppiumBy.xpath(
+            "//*[@text='Get Started!' or @text='Get Started' or @text='Add child' "
+            + "or @text='Add Kid' or @text='Add family member']"
+            + "/ancestor-or-self::*[@clickable='true'][1]");
+
+        private static final By KID_POI_INPUT = AppiumBy.xpath(
+            "//android.widget.EditText[contains(@text,'ID') or contains(@text,'National') "
+            + "or contains(@text,'POI') or contains(@content-desc,'id') "
+            + "or contains(@content-desc,'poi') or contains(@content-desc,'national')]");
+
+        private static final By PRIMARY_ACTION_BTN = AppiumBy.xpath(
+            "//*[@content-desc='testID-primary-action-main' or @content-desc='testID-primary--main' "
+            + "or @text='Next' or @text='Send Request' or @text='Send request' or @text='Continue']"
+            + "/ancestor-or-self::*[@clickable='true'][1]");
+
+        private static final By REQUEST_SENT_MARKER = AppiumBy.xpath(
+            "//*[contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'request') "
+            + "and (contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sent') "
+            + "or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'success'))]");
+
     // ── First family member (kid) ─────────────────────
     @AndroidFindBy(accessibility = "testID-data-0")
     @iOSXCUITFindBy(accessibility = "testID-data-0")
@@ -86,7 +110,7 @@ public class FamilyWalletPage extends BasePage {
                 try {
                     tile.click();
                 } catch (Exception ignored) {}
-                if (isFamilyWalletScreenShown()) {
+                if (isFamilyWalletScreenShown() || isFamilyWalletEntryShown()) {
                     return;
                 }
             }
@@ -143,6 +167,37 @@ public class FamilyWalletPage extends BasePage {
     /** True once the Family Wallet screen (first kid row) has opened. */
     private boolean isFamilyWalletScreenShown() {
         return !waitUtils.findQuick(FAMILY_MEMBER_MARKER, 4).isEmpty();
+    }
+
+    private boolean isFamilyWalletEntryShown() {
+        return !waitUtils.findQuick(FAMILY_WALLET_SCREEN, 4).isEmpty();
+    }
+
+    @Step("Send family link request to kid POI {kidPoi}")
+    public boolean sendFamilyRequestToKid(String kidPoi) {
+        if (isPresent(GET_STARTED_BTN, 8)) {
+            tap(GET_STARTED_BTN);
+        }
+        for (int step = 0; step < 3 && !isPresent(KID_POI_INPUT, 6); step++) {
+            if (isPresent(PRIMARY_ACTION_BTN, 4)) {
+                tap(PRIMARY_ACTION_BTN);
+            }
+        }
+        if (!isPresent(KID_POI_INPUT, 10)) {
+            dumpPageSource("family-wallet-send-request-no-poi-input");
+            return false;
+        }
+        type(KID_POI_INPUT, kidPoi);
+        hideKeyboard();
+        tap(PRIMARY_ACTION_BTN, 15);
+        if (isPresent(PRIMARY_ACTION_BTN, 6) && !isPresent(REQUEST_SENT_MARKER, 2)) {
+            tap(PRIMARY_ACTION_BTN, 10);
+        }
+        boolean sent = isPresent(REQUEST_SENT_MARKER, 15);
+        if (!sent) {
+            dumpPageSource("family-wallet-send-request-after-submit");
+        }
+        return sent;
     }
 
     /** A short (~15% of screen) upward scroll to reveal the Services grid without overshooting. */

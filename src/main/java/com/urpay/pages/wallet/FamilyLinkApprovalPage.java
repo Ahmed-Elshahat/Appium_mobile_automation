@@ -163,6 +163,10 @@ public class FamilyLinkApprovalPage extends BasePage {
         log.info("Tapped Approve on the pending Wallet Linking Request");
     }
 
+    public boolean isKidHijriDobInputDisplayed(long timeoutSec) {
+        return isPresent(KID_HIJRI_DOB_INPUT, timeoutSec);
+    }
+
     @Step("Enter kid Hijri date of birth {hijriDob} to confirm approval")
     public void enterKidHijriDateOfBirthAndConfirm(String hijriDob) {
         String[] parts = hijriDob.split("\\.");

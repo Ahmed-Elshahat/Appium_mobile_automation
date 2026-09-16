@@ -234,6 +234,11 @@ public final class FamilyRegistrationApiHelper {
      */
     @Step("Provision a linkable parent + kid pair (no backend link)")
     public static boolean registerFamilyPairForManualLink() {
+        return provisionRegisteredFamilyPairForManualLink() != null;
+    }
+
+    @Step("Provision and return a linkable parent + kid pair (no backend link)")
+    public static LinkedPair provisionRegisteredFamilyPairForManualLink() {
         ConfigManager config = ConfigManager.getInstance();
         String baseUrl = config.get("registration.baseUrl", "https://192.168.100.71:14301/walletapp/v1");
 
@@ -256,20 +261,20 @@ public final class FamilyRegistrationApiHelper {
                 log.error("=== Family pair aborted: simulator seeding did not take effect, so the pair "
                         + "would NOT be linkable from the app. Check the neoleap VPN + simulator ({}). ===",
                         simBaseUrl());
-                return false;
+                return null;
             }
 
             // 2. Register + activate the PARENT fully (register → seed/activate → KYC), then the KID.
             if (!registerMember(baseUrl, parent)) {
                 log.warn("Family pair aborted: parent registration failed");
-                return false;
+                return null;
             }
             parent.partyId = forceVerification(parent, true);
             completeParentKyc(baseUrl, parent);
 
             if (!registerMember(baseUrl, kid)) {
                 log.warn("Family pair aborted: kid registration failed");
-                return false;
+                return null;
             }
             // BE createFamilyRequest leaves the kid UN-seeded (null name / unverified, tier 3) with only a
             // 3-query activation — its identity is populated by the LINK. Match that so the app link is
@@ -286,10 +291,10 @@ public final class FamilyRegistrationApiHelper {
                     + "family request to the PARENT, then approve as the PARENT. ===");
             log.info("  parent poi {} (partyId {}) | kid poi {} (partyId {}) | passcode {}",
                     parent.poi, parent.partyId, kid.poi, kid.partyId, RegistrationApiHelper.PASSCODE_PLAINTEXT);
-            return true;
+            return new LinkedPair(parent, kid);
         } catch (Exception e) {
             log.warn("Family pair provisioning failed: {}", e.getMessage());
-            return false;
+            return null;
         }
     }
 
