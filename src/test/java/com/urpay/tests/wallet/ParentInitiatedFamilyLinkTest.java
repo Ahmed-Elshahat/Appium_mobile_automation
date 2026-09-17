@@ -11,6 +11,7 @@ import com.urpay.helpers.FamilyRegistrationApiHelper;
 import com.urpay.helpers.FamilyRegistrationApiHelper.LinkedPair;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.dashboard.SettingsPage;
+import com.urpay.pages.auth.RegistrationWizardPage;
 import com.urpay.pages.wallet.FamilyLinkApprovalPage;
 import com.urpay.pages.wallet.FamilyWalletPage;
 
@@ -36,18 +37,27 @@ public class ParentInitiatedFamilyLinkTest extends BaseTest {
     @BeforeClass(alwaysRun = true)
     public void registerParentAndKidByApi() {
         ConfigManager config = ConfigManager.getInstance();
-        otp = config.get("familyLink.parent.verificationCode", "1234");
-        passcode = config.get("familyLink.parent.passCode", "2233");
-        kidHijriDob = config.get("familyLink.kid.hijriDob", "03.08.1435");
+        otp = config.get("parentInitiatedFamilyLink.verificationCode", "1234");
+        passcode = config.get("parentInitiatedFamilyLink.passCode", "2233");
+        kidHijriDob = config.get("parentInitiatedFamilyLink.kid.hijriDob", "03.08.1435");
 
-        LinkedPair pair = FamilyRegistrationApiHelper.provisionRegisteredFamilyPairForManualLink();
-        Assert.assertNotNull(pair, "API setup should register a parent and kid without linking them");
-        parentMobile = toLocalMobile(pair.parentMobile());
-        parentPoi = pair.parentPoi();
-        kidMobile = toLocalMobile(pair.kidMobile());
-        kidPoi = pair.kidPoi();
-        log.info("Parent-initiated family link pair: parent {} / {} | kid {} / {}",
-                pair.parentMobile(), parentPoi, pair.kidMobile(), kidPoi);
+        if (Boolean.parseBoolean(config.get("parentInitiatedFamilyLink.useConfiguredPair", "false"))) {
+            parentMobile = toLocalMobile(requireConfigured(config, "parentInitiatedFamilyLink.parent.mobile"));
+            parentPoi = requireConfigured(config, "parentInitiatedFamilyLink.parent.poi");
+            kidMobile = toLocalMobile(requireConfigured(config, "parentInitiatedFamilyLink.kid.mobile"));
+            kidPoi = requireConfigured(config, "parentInitiatedFamilyLink.kid.poi");
+            log.info("Using configured parent-initiated family link pair: parent {} / {} | kid {} / {}",
+                    parentMobile, parentPoi, kidMobile, kidPoi);
+        } else {
+            LinkedPair pair = FamilyRegistrationApiHelper.provisionRegisteredFamilyPairForManualLink();
+            Assert.assertNotNull(pair, "API setup should register a parent and kid without linking them");
+            parentMobile = toLocalMobile(pair.parentMobile());
+            parentPoi = pair.parentPoi();
+            kidMobile = toLocalMobile(pair.kidMobile());
+            kidPoi = pair.kidPoi();
+            log.info("Parent-initiated family link pair: parent {} / {} | kid {} / {}",
+                    pair.parentMobile(), parentPoi, pair.kidMobile(), kidPoi);
+        }
     }
 
     @Test(groups = {"wallet", "family"}, priority = 1)
@@ -59,20 +69,33 @@ public class ParentInitiatedFamilyLinkTest extends BaseTest {
         Assert.assertTrue(dashboard.isLoaded(), "Parent dashboard should be visible after login");
         FamilyWalletPage familyWallet = new FamilyWalletPage();
         familyWallet.tapFamilyWallet();
-        Assert.assertTrue(familyWallet.sendFamilyRequestToKid(kidPoi),
+        Assert.assertTrue(familyWallet.sendFamilyRequestToKid(kidPoi, kidMobile, kidHijriDob),
                 "Parent should send a family-link request to the kid by POI");
         logout();
     }
 
     @Test(groups = {"wallet", "family"}, priority = 2, dependsOnMethods = "testParentSendsFamilyRequestToKid")
     @Story("Kid completes the parent family-link request")
-    @Description("Login as the API-registered kid, open the pending family request, and complete required data")
+        @Description("Login as the API-registered kid, accept terms, open the pending family request, "
+            + "complete required data, and validate the kid dashboard")
     @Severity(SeverityLevel.CRITICAL)
     public void testKidCompletesParentFamilyRequest() {
         DashboardPage dashboard = new LoginFlow().loginWith(kidMobile, kidPoi, otp, passcode);
+        RegistrationWizardPage terms = new RegistrationWizardPage();
+        terms.acceptTermsAndPrivacyIfPresent();
+        terms.acceptStandalonePrivacyOrTermsIfPresent();
         FamilyLinkApprovalPage request = new FamilyLinkApprovalPage();
-        Assert.assertTrue(dashboard.isLoaded() || request.isFamilyRequestsScreenDisplayed(10),
-                "Kid login should reach dashboard or Family Requests");
+        boolean kidKycVisible = request.isKidKycFormDisplayed(10);
+        Assert.assertTrue(kidKycVisible || dashboard.isLoaded() || request.isFamilyRequestsScreenDisplayed(10),
+            "Kid login should reach dashboard, Family Requests, or kid KYC");
+        if (kidKycVisible) {
+            Assert.assertTrue(request.completeKidFamilyMemberKyc(20),
+                "Kid should complete required personal information after login");
+            DashboardPage kidDashboard = new LoginFlow().restartAppAndEnterPasscode(passcode);
+            Assert.assertTrue(kidDashboard.isLoaded(),
+                "Kid dashboard should be visible after completing required data");
+            return;
+        }
         if (request.isYesTakeMeTherePromptVisible(10)) {
             request.tapYesTakeMeThere();
             request.dismissNotificationsPopupIfDisplayed();
@@ -90,6 +113,9 @@ public class ParentInitiatedFamilyLinkTest extends BaseTest {
         request.dismissNotificationsPopupIfDisplayed();
         Assert.assertTrue(request.completeKidFamilyMemberKyc(20),
                 "Kid should complete all required family-link data");
+        DashboardPage kidDashboard = new LoginFlow().restartAppAndEnterPasscode(passcode);
+        Assert.assertTrue(kidDashboard.isLoaded(),
+            "Kid dashboard should be visible after completing required data");
     }
 
     private void logout() {
@@ -103,5 +129,11 @@ public class ParentInitiatedFamilyLinkTest extends BaseTest {
 
     private static String toLocalMobile(String mobile) {
         return mobile.startsWith("+966") ? "0" + mobile.substring(4) : mobile;
+    }
+
+    private static String requireConfigured(ConfigManager config, String key) {
+        String value = config.get(key, "");
+        Assert.assertFalse(value.isBlank(), key + " must be configured");
+        return value;
     }
 }

@@ -86,6 +86,7 @@
         <suite-file path="family-wallet.xml"/>
         <suite-file path="family-mission-suite.xml"/>
         <suite-file path="family-kid-link.xml"/>
+        <suite-file path="parent-initiated-family-link.xml"/>
 
         <!-- ── Qatta ─────────────────────────────────────────────── -->
         <suite-file path="edit-group-qatta-details.xml"/>

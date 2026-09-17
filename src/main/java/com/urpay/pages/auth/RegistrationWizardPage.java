@@ -43,6 +43,20 @@ public class RegistrationWizardPage extends BasePage {
     private static final By PRIVACY_CHECKBOX = AppiumBy.xpath(
             "(//*[@content-desc='testID-check-box-main'])[2]");
 
+        private static final By STANDALONE_CONSENT_MARKER = AppiumBy.xpath(
+            "//*[contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'privacy')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'terms and conditions')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'terms & conditions')] ");
+
+        private static final By STANDALONE_CONSENT_ACTION = AppiumBy.xpath(
+            "//*[self::android.widget.TextView or self::android.widget.Button]"
+            + "[translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='accept'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='agree'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='i agree'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='continue'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='next']"
+            + "/ancestor::*[@clickable='true'][1]");
+
     // ── Passcode setup (Create / Confirm) ────────────────────────────
     // The custom RN passCode component; clickable=true = inner wrapper that focuses the input.
     private static final By PASSCODE_SCREEN_MARKER = AppiumBy.xpath(
@@ -596,6 +610,20 @@ public class RegistrationWizardPage extends BasePage {
             tap(PRIVACY_CHECKBOX);
             log.info("Accepted Privacy Policy checkbox on credentials form");
         }
+    }
+
+    @Step("Accept standalone Privacy or Terms screen if present")
+    public boolean acceptStandalonePrivacyOrTermsIfPresent() {
+        if (!waitUtils.isPresent(STANDALONE_CONSENT_MARKER, 5)) {
+            return false;
+        }
+        if (!waitUtils.isPresent(STANDALONE_CONSENT_ACTION, 5)) {
+            log.warn("Standalone Privacy/Terms screen detected without an actionable consent button");
+            return false;
+        }
+        tap(STANDALONE_CONSENT_ACTION);
+        log.info("Accepted standalone Privacy/Terms screen");
+        return true;
     }
 
     /**

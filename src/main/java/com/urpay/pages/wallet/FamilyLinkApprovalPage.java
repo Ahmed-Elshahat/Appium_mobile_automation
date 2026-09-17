@@ -74,16 +74,25 @@ public class FamilyLinkApprovalPage extends BasePage {
                     private static final By DOB_SUBMIT_BTN = AppiumBy.accessibilityId("testID-primary--main");
 
     // Kid family-member KYC form shown after Approve + Hijri DOB (same testIDs as registration KYC).
+    // Some builds land directly on an already-open income picker (title label + search-item list)
+    // instead of the collapsed multi-select dropdowns, so detect both shapes.
     private static final By KID_KYC_MARKER = AppiumBy.xpath(
             "//*[@content-desc='testID-multi-select-basicIncomeSource' "
             + "or @content-desc='testID-multi-select-incomeRange' "
-            + "or @content-desc='testID-input-container-employmentStatus']");
+            + "or @content-desc='testID-input-container-employmentStatus' "
+            + "or @text='Income source' or @text='Income Source' "
+            + "or @text='Income range' or @text='Income Range']");
 
-    private static final By KYC_INCOME_SOURCE_DROPDOWN =
-            AppiumBy.accessibilityId("testID-multi-select-basicIncomeSource");
+    // Field openers: prefer the collapsed multi-select testID, fall back to the visible label.
+    private static final By KYC_INCOME_SOURCE_DROPDOWN = AppiumBy.xpath(
+            "//*[@content-desc='testID-multi-select-basicIncomeSource'] "
+            + "| //*[@text='Income source' or @text='Income Source']"
+            + "/ancestor-or-self::*[@clickable='true'][1]");
 
-    private static final By KYC_INCOME_RANGE_DROPDOWN =
-            AppiumBy.accessibilityId("testID-multi-select-incomeRange");
+    private static final By KYC_INCOME_RANGE_DROPDOWN = AppiumBy.xpath(
+            "//*[@content-desc='testID-multi-select-incomeRange'] "
+            + "| //*[@text='Income range' or @text='Income Range']"
+            + "/ancestor-or-self::*[@clickable='true'][1]");
 
     private static final By KYC_FIRST_OPTION = AppiumBy.xpath(
             "//*[contains(@content-desc,'testID-search-item-') "
@@ -194,8 +203,8 @@ public class FamilyLinkApprovalPage extends BasePage {
             return false;
         }
         log.info("Kid family-member KYC detected \u2014 filling required fields");
-        selectRandomKycOption(KYC_INCOME_SOURCE_DROPDOWN, "Income Source");
-        selectRandomKycOption(KYC_INCOME_RANGE_DROPDOWN, "Income Range");
+        fillKycSelection(KYC_INCOME_SOURCE_DROPDOWN, "Income Source");
+        fillKycSelection(KYC_INCOME_RANGE_DROPDOWN, "Income Range");
         for (int attempt = 1; attempt <= 3 && isPresent(KID_KYC_MARKER, 4); attempt++) {
             log.info("Kid KYC Save attempt {}", attempt);
             try {
@@ -249,21 +258,42 @@ public class FamilyLinkApprovalPage extends BasePage {
         log.info("Scrolled inside the kid KYC form to reveal Save");
     }
 
-    private void selectRandomKycOption(By dropdown, String label) {
+    /**
+     * Fill one KYC selection field. Handles two build shapes: a collapsed dropdown that must be
+     * tapped to open its option picker, and a picker that is already open on screen (the option
+     * list is visible without tapping). In the already-open case the dropdown tap is skipped so a
+     * fresh selection is not dismissed.
+     */
+    private void fillKycSelection(By dropdown, String label) {
+        if (selectOpenPickerOption(label)) {
+            return;
+        }
         try {
             tap(dropdown, 10);
-            List<WebElement> options = waitUtils.findQuick(KYC_OPTION_ITEMS, 6);
-            if (!options.isEmpty()) {
-                WebElement chosen = options.get(ThreadLocalRandom.current().nextInt(options.size()));
-                chosen.click();
-                log.info("Selected random option for {} ({} options)", label, options.size());
-            } else {
+        } catch (Exception e) {
+            log.warn("Could not open {} field: {}", label, e.getMessage());
+            return;
+        }
+        if (!selectOpenPickerOption(label)) {
+            try {
                 tap(KYC_FIRST_OPTION, 6);
                 log.info("Selected first option for {} (options not enumerable)", label);
+            } catch (Exception e) {
+                log.warn("Failed to select {} option: {}", label, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Failed to select {} option: {}", label, e.getMessage());
         }
+    }
+
+    /** Select a random option from an already-open KYC picker; returns false when none is visible. */
+    private boolean selectOpenPickerOption(String label) {
+        List<WebElement> options = waitUtils.findQuick(KYC_OPTION_ITEMS, 3);
+        if (options.isEmpty()) {
+            return false;
+        }
+        WebElement chosen = options.get(ThreadLocalRandom.current().nextInt(options.size()));
+        chosen.click();
+        log.info("Selected random option for {} ({} options)", label, options.size());
+        return true;
     }
 
     @Step("Dismiss approval success/confirmation screens after the kid link is approved")
