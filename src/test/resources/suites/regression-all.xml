@@ -74,6 +74,9 @@
         <suite-file path="change-app-language.xml"/>
         <suite-file path="rating.xml"/>
         <suite-file path="privacy-and-terms.xml"/>
+        <suite-file path="open-new-ticket.xml"/>
+        <suite-file path="update-kyc.xml"/>
+        <suite-file path="update-name.xml"/>
         <suite-file path="validate-notifications.xml"/>
 
         <!-- ── Wallet & Money ────────────────────────────────────── -->

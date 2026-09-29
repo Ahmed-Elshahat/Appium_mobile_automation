@@ -116,6 +116,15 @@
     <test name="Privacy And Terms">
         <classes><class name="com.urpay.tests.settings.PrivacyAndTermsTest"/></classes>
     </test>
+    <test name="Open New Ticket">
+        <classes><class name="com.urpay.tests.settings.OpenNewTicketTest"/></classes>
+    </test>
+    <test name="Update KYC">
+        <classes><class name="com.urpay.tests.settings.UpdateKycTest"/></classes>
+    </test>
+    <test name="Update Name">
+        <classes><class name="com.urpay.tests.settings.UpdateNameTest"/></classes>
+    </test>
     <test name="Notifications">
         <classes><class name="com.urpay.tests.wallet.NotificationsTest"/></classes>
     </test>

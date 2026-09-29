@@ -89,6 +89,15 @@
     <test name="rating">
         <classes><class name="com.urpay.tests.settings.RatingTest"/></classes>
     </test>
+    <test name="open-new-ticket">
+        <classes><class name="com.urpay.tests.settings.OpenNewTicketTest"/></classes>
+    </test>
+    <test name="update-kyc">
+        <classes><class name="com.urpay.tests.settings.UpdateKycTest"/></classes>
+    </test>
+    <test name="update-name">
+        <classes><class name="com.urpay.tests.settings.UpdateNameTest"/></classes>
+    </test>
     <test name="change-app-language">
         <classes><class name="com.urpay.tests.settings.ChangeAppLanguageTest"/></classes>
     </test>
