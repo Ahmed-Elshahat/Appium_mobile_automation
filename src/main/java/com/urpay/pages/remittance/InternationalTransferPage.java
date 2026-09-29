@@ -564,13 +564,17 @@ public class InternationalTransferPage extends BasePage {
     /** Reveal (scroll into view) and tap the Confirm button on the confirmation screen. */
     @Step("Scroll to and tap Confirm")
     public void scrollToConfirmAndTap() {
-        // The Confirm button's testID varies (onConfirm-main / primary--main) and its RN onPress
-        // may not fire via element taps.
+        // The Confirm button's testID varies (onConfirm-main / primary--main / validate-main / any
+        // other obfuscated suffix — same drift seen across the app) and its RN onPress may not
+        // fire via element taps. Fall back to a structural match: any testID-primary clickable
+        // whose "Confirm" text is a DESCENDANT (never assume it's the clickable's own @text).
         By confirm = AppiumBy.xpath(
                 "//*[@content-desc='testID-primary-onConfirm-main' "
                 + "or @content-desc='testID-primary--main' "
                 + "or @content-desc='testID-primary-validate-main' or @text='Confirm']"
-                + "/ancestor-or-self::*[@clickable='true'][1]");
+                + "/ancestor-or-self::*[@clickable='true'][1]"
+                + " | //*[contains(@content-desc,'testID-primary') and @clickable='true'"
+                + " and .//*[@text='Confirm']]");
 
         // 1) Bring Confirm INTO the visible viewport with real swipe-up gestures. The button sits
         //    below the fold; a flingToEnd is unreliable on RN and — worse — tapping an element that

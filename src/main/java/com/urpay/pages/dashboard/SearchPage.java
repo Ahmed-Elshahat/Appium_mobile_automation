@@ -46,7 +46,9 @@ public class SearchPage extends BasePage {
                 return;
             }
             log.warn("testID-right-icon-0 did not open search (likely the new chat icon) — trying testID-right-icon-1");
-            pressBack();
+            // Raw Back would exit the app if this wrong tap landed back on the dashboard root —
+            // use the exit-safe Back + re-activation so a misfire never backgrounds the app.
+            com.urpay.utils.AppGuard.safeBack(driver);
         }
         By icon1 = io.appium.java_client.AppiumBy.accessibilityId("testID-right-icon-1");
         if (waitUtils.isPresent(icon1, 3)) {
@@ -55,7 +57,7 @@ public class SearchPage extends BasePage {
                 return;
             }
             log.warn("testID-right-icon-1 did not open search either — trying description/name fallback");
-            pressBack();
+            com.urpay.utils.AppGuard.safeBack(driver);
         }
         // Last resort: some builds label the icon itself (content-desc/name containing "search").
         By byDescription = io.appium.java_client.AppiumBy.xpath(

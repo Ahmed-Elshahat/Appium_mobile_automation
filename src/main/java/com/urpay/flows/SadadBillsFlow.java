@@ -118,6 +118,7 @@ public class SadadBillsFlow {
 
         // Land on the dashboard reliably via the bottom-nav Home button (works from any
         // tab screen once Sadad's modals are exited above), then verify the search icon.
+        com.urpay.utils.AppGuard.ensureForeground(driver);
         dashboardPage.navigateToHome();
         for (int i = 0; i < 2; i++) {
             if (dashboardPage.isSearchIconVisible(2)) {
