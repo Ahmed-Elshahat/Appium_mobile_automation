@@ -79,6 +79,9 @@
     <test name="Family - Kid Registration + Link"> <!-- NEW, unmeasured: app-driven register-parent -> logout -> register-kid -> logout -> login-parent -> approve link -->
         <classes><class name="com.urpay.tests.wallet.FamilyKidLinkRegistrationTest"/></classes>
     </test>
+    <test name="Family - Parent Initiated Link"> <!-- parent sends family-link request by POI -> kid accepts + completes KYC -->
+        <classes><class name="com.urpay.tests.wallet.ParentInitiatedFamilyLinkTest"/></classes>
+    </test>
 
     <!-- ── Auth: Registration (all POI types) — NEW, unmeasured ─────────── -->
     <test name="Registration - National (NAT)">

@@ -16,6 +16,7 @@ import com.urpay.utils.WaitUtils;
 
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.InteractsWithApps;
 import io.qameta.allure.Step;
 
 /**
@@ -139,6 +140,27 @@ public class LoginFlow {
         enterCredentials(mobile, id);
         enterOtp(otp);
         enterLoginPasscode(passcode);
+        dismissPostLoginPopups();
+        return new DashboardPage();
+    }
+
+    @Step("Restart app and enter remembered-user passcode")
+    public DashboardPage restartAppAndEnterPasscode(String passcode) {
+        String appPackage = ConfigManager.getInstance().get("appPackage", "com.urpay.consumer.sit");
+        if (driver instanceof InteractsWithApps apps) {
+            apps.terminateApp(appPackage);
+            apps.activateApp(appPackage);
+            log.info("Restarted app package {} before Family Wallet validation", appPackage);
+        } else {
+            log.warn("Driver does not support app lifecycle commands; continuing without restart");
+        }
+
+        LoginState state = waitForLoginState(75);
+        if (state == LoginState.PASSCODE) {
+            enterLoginPasscode(passcode);
+        } else if (state != LoginState.DASHBOARD) {
+            log.warn("After app restart expected passcode/dashboard but found {}", state);
+        }
         dismissPostLoginPopups();
         return new DashboardPage();
     }

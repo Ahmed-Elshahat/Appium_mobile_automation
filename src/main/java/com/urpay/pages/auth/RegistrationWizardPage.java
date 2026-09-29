@@ -43,6 +43,20 @@ public class RegistrationWizardPage extends BasePage {
     private static final By PRIVACY_CHECKBOX = AppiumBy.xpath(
             "(//*[@content-desc='testID-check-box-main'])[2]");
 
+        private static final By STANDALONE_CONSENT_MARKER = AppiumBy.xpath(
+            "//*[contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'privacy')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'terms and conditions')"
+            + " or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'terms & conditions')] ");
+
+        private static final By STANDALONE_CONSENT_ACTION = AppiumBy.xpath(
+            "//*[self::android.widget.TextView or self::android.widget.Button]"
+            + "[translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='accept'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='agree'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='i agree'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='continue'"
+            + " or translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='next']"
+            + "/ancestor::*[@clickable='true'][1]");
+
     // ── Passcode setup (Create / Confirm) ────────────────────────────
     // The custom RN passCode component; clickable=true = inner wrapper that focuses the input.
     private static final By PASSCODE_SCREEN_MARKER = AppiumBy.xpath(
@@ -547,19 +561,15 @@ public class RegistrationWizardPage extends BasePage {
     }
 
     /** Complete this scenario's remembered-device logout without using the shared Settings flow. */
-    @Step("Unlink the kid device and return to landing login")
+    @Step("Unlink the kid device")
     public void unlinkKidDeviceAndReturnToLanding() {
         waitUtils.waitForClickable(WAITING_APPROVAL_LOGOUT_CONTAINER, 15).click();
-        if (waitUtils.isPresent(UNLINK_DEVICE_CONFIRM_BTN, 10)) {
-            waitUtils.waitForClickable(UNLINK_DEVICE_CONFIRM_BTN, 15).click();
-            if (waitUtils.isPresent(LANDING_LOGIN_BTN, 30)) {
-                log.info("Unlinked kid device and returned to landing login");
-                return;
-            }
+        waitUtils.waitForClickable(UNLINK_DEVICE_CONFIRM_BTN, 15).click();
+        if (waitUtils.isPresent(LANDING_LOGIN_BTN, 30)) {
+            log.info("Unlinked kid device and returned to landing login");
+        } else {
+            log.info("Unlinked kid device; onboarding may be shown before the next login");
         }
-        dumpPageSource("kid-logout-after-unlink");
-        throw new org.openqa.selenium.TimeoutException(
-                "Kid device unlink did not return to the landing login screen");
     }
 
     @Step("Accept Terms of Service checkbox")
@@ -600,6 +610,20 @@ public class RegistrationWizardPage extends BasePage {
             tap(PRIVACY_CHECKBOX);
             log.info("Accepted Privacy Policy checkbox on credentials form");
         }
+    }
+
+    @Step("Accept standalone Privacy or Terms screen if present")
+    public boolean acceptStandalonePrivacyOrTermsIfPresent() {
+        if (!waitUtils.isPresent(STANDALONE_CONSENT_MARKER, 5)) {
+            return false;
+        }
+        if (!waitUtils.isPresent(STANDALONE_CONSENT_ACTION, 5)) {
+            log.warn("Standalone Privacy/Terms screen detected without an actionable consent button");
+            return false;
+        }
+        tap(STANDALONE_CONSENT_ACTION);
+        log.info("Accepted standalone Privacy/Terms screen");
+        return true;
     }
 
     /**

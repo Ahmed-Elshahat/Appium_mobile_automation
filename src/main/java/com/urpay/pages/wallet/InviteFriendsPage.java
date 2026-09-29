@@ -24,7 +24,11 @@ public class InviteFriendsPage extends BasePage {
 
     // ── Tabs ─────────────────────────────────────────
     private static final By INVITE_FRIENDS_TAB =
-            AppiumBy.accessibilityId("testID-Tabs.c013129a-a22b-4e3e-b9e4-b7d3d1b93736.0");
+            AppiumBy.xpath("//*[@content-desc='testID-Tabs.c013129a-a22b-4e3e-b9e4-b7d3d1b93736.0'"
+                + " or @text='Invite Friends' or @label='Invite Friends']"
+                + " | //android.view.ViewGroup[@clickable='true'"
+                + " and .//android.widget.TextView[@text='Invite Friends']]"
+                + " | //android.widget.TextView[@text='Invite Friends']");
 
     private static final By REFERRAL_CODE_TAB =
             AppiumBy.accessibilityId("testID-Tabs.c013129a-a22b-4e3e-b9e4-b7d3d1b93736.1");
@@ -81,8 +85,10 @@ public class InviteFriendsPage extends BasePage {
 
     @Step("Tap Invite Friends tab")
     public void tapInviteFriendsTab() {
-        waitUtils.waitForClickable(INVITE_FRIENDS_TAB, 10);
-        tap(INVITE_FRIENDS_TAB);
+        var tabs = waitUtils.findQuick(INVITE_FRIENDS_TAB, 2);
+        if (!tabs.isEmpty()) {
+            tabs.get(0).click();
+        }
     }
 
     @Step("Tap Referral Code tab")

@@ -1,0 +1,19 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Parent Initiated Family Link: parent logs in -> opens Family Wallet -> sends a family-link
+  request to the kid by POI (kid POI, mobile, Hijri DOB) -> logs out. Kid logs in, accepts any
+  standalone Privacy/Terms screen, completes the required family-member KYC, then the kid
+  dashboard is validated after an app restart + passcode.
+
+  Parent/kid pair is read from sit-wmv.properties (parentInitiatedFamilyLink.*) when
+  useConfiguredPair=true; otherwise it is provisioned via
+  FamilyRegistrationApiHelper.provisionRegisteredFamilyPairForManualLink().
+
+  Run: mvn test -Dsuite=suites/parent-initiated-family-link.xml -Dprofile=sit-wmv
+  (add -Dremote=true for LambdaTest)
+-->
+<suite name="Parent Initiated Family Link" verbose="1" parallel="none">
+    <test name="parent-initiated-family-link">
+        <classes><class name="com.urpay.tests.wallet.ParentInitiatedFamilyLinkTest"/></classes>
+    </test>
+</suite>
