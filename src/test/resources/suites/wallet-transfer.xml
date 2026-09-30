@@ -7,6 +7,10 @@
           - testSearchWalletBeneficiary  logs in and validates navigation + search.
           - testWalletTransferToUnsavedNumber reuses the session (dependsOnMethods)
             and runs the full transfer end-to-end.
+          - testValidateSenderTransactionHistory opens the latest transaction.
+          - testAccountStatementAfterTransfer deep-links back to the dashboard and
+            runs the Account Statement scenario (last month → today → PDF) for the
+            same user, so the statement contains the transfer just made.
 
         Run:
           mvn -f d:\mobile-automation\urpay-mobile-tests\pom.xml clean test ^

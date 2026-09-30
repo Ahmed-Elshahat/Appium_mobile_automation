@@ -82,6 +82,14 @@ public class DashboardPage extends BasePage {
     @Step("Navigate to More tab")
     public void navigateToMore() { tapNavAt(NAV_MORE_X_RATIO); }
 
+    /** Deep-link home from any screen — UI back-navigation is unreliable from deep stacks. */
+    @Step("Open dashboard directly via deep link")
+    public void openViaDeepLink() {
+        openDeepLink("urpay://DashboardHome");
+        waitUtils.waitForVisible(yourBalanceLabel, 20);
+        dismissPopups();
+    }
+
     private void tapNavAt(double xRatio) {
         Dimension size = driver.manage().window().getSize();
         int x = (int) (size.getWidth() * xRatio);

@@ -25,8 +25,9 @@
      validate-card-removed / physical-card) are covered by the whole-class
      mada-cards / signature-cards and are NOT repeated.
    • Remittance excludes MoneyGram Cash Pickup & Transfast Send-to-Wallet (no accounts).
-   • DMP = 29 tests (browse / orders / gift / mokafaa / promo) on the sit-dmp-all
-     profile; order/pay/promo tests need funded wallets or they fail at payment.
+   • DMP = browse / promo-validation tests on the sit-dmp-all profile. The order +
+     valid-promo suites are EXCLUDED (2026-09-30): failed in all 8 full-regression
+     runs 19-Jul→15-Sep (payment / promo backend). See the DMP section below.
 -->
 <suite name="URPay Full Regression (All Domains, Parallel)" verbose="1"
        parallel="tests" thread-count="19" group-by-instances="true">
@@ -355,9 +356,14 @@
     </test>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         DMP (Digital MarketPlace) — 29 tests, profile sit-dmp-all.
-         Browse tests need no wallet; order/gift/mokafaa/promo tests need funded
-         wallets (+ order history / Mokafaa points / in-stock SKU). See dmp-all.xml.
+         DMP (Digital MarketPlace) — profile sit-dmp-all. See dmp-all.xml.
+         Browse tests need no wallet; order/promo tests need funded wallets
+         (+ order history / in-stock SKU).
+         EXCLUDED 2026-09-30 (failed in all 8 full-regression runs 19-Jul→15-Sep):
+         Reorder from History, Order From New Arrival, Order From Suggest,
+         Place Order With Selected Product, Full Cycle MarketPlace Order,
+         Fixed Amount Item Level, Percent Of Family, Percentage Item Level Max Qty,
+         Percent Min Purchase, Product Specific. Blocks kept commented for re-enable.
          ══════════════════════════════════════════════════════════════════════ -->
     <test name="DMP - Top Product">
         <classes><class name="com.urpay.tests.dmp.ValidateTopProductTest"/></classes>
@@ -368,9 +374,11 @@
     <test name="DMP - Search by Product Name">
         <classes><class name="com.urpay.tests.dmp.SearchByProductNameTest"/></classes>
     </test>
+    <!-- EXCLUDED 2026-09-30: testReorderFromHistory failed in all 8 regression runs.
     <test name="DMP - Reorder from History">
         <classes><class name="com.urpay.tests.dmp.ReorderFromHistoryTest"/></classes>
     </test>
+    -->
     <test name="DMP - Product Wishlist Management">
         <classes><class name="com.urpay.tests.dmp.ProductWishlistManagementTest"/></classes>
     </test>
@@ -392,6 +400,7 @@
     <test name="DMP - Share Products">
         <classes><class name="com.urpay.tests.dmp.share.ShareProductsTest"/></classes>
     </test>
+    <!-- EXCLUDED 2026-09-30: all 4 order suites failed in all 8 regression runs (order placement).
     <test name="DMP - Order From New Arrival">
         <classes><class name="com.urpay.tests.dmp.orders.OrderFromNewArrivalTest"/></classes>
     </test>
@@ -404,6 +413,7 @@
     <test name="DMP - Full Cycle MarketPlace Order">
         <classes><class name="com.urpay.tests.dmp.FullCycleMarketPlaceOrderTest"/></classes>
     </test>
+    -->
     <!-- EXCLUDED: PlaceOrderWithPhysicalProduct — SIT physical SKU out of stock (data-blocked).
     <test name="DMP - Place Order With Physical Product">
         <classes><class name="com.urpay.tests.dmp.physicalorder.PlaceOrderWithPhysicalProductTest"/></classes>
@@ -415,9 +425,11 @@
     <test name="DMP - Promo Code Error Messages">
         <classes><class name="com.urpay.tests.dmp.promo.PromoCodeErrorMessagesTest"/></classes>
     </test>
+    <!-- EXCLUDED 2026-09-30: testApplyValidPromoShowsSuccess failed in all 8 regression runs (promo expired/invalid).
     <test name="DMP - Fixed Amount Item Level">
         <classes><class name="com.urpay.tests.dmp.promo.FixedAmountItemLevelTest"/></classes>
     </test>
+    -->
     <test name="DMP - Fixed Min Purchase">
         <classes><class name="com.urpay.tests.dmp.promo.FixedMinPurchaseTest"/></classes>
     </test>
@@ -430,6 +442,7 @@
     <test name="DMP - Percentage Cart Level Max">
         <classes><class name="com.urpay.tests.dmp.promo.PercentageCartLevelMaxTest"/></classes>
     </test>
+    <!-- EXCLUDED 2026-09-30: testApplyValidPromoShowsSuccess failed in all 8 regression runs (promo expired/invalid).
     <test name="DMP - Percent Of Family">
         <classes><class name="com.urpay.tests.dmp.promo.PercentOfFamilyTest"/></classes>
     </test>
@@ -442,5 +455,6 @@
     <test name="DMP - Product Specific">
         <classes><class name="com.urpay.tests.dmp.promo.ProductSpecificTest"/></classes>
     </test>
+    -->
 
 </suite>

@@ -51,6 +51,13 @@ public class AccountStatementFlow {
         return page;
     }
 
+    /** Same journey, but usable from any screen (e.g. chained after a transfer) — deep-links home first. */
+    @Step("Return to dashboard via deep link, then open Account Statement")
+    public AccountStatementPage returnHomeAndNavigateToAccountStatement() {
+        dashboardPage.openViaDeepLink();
+        return navigateToAccountStatement();
+    }
+
     @Step("Select date range: from previous month to today")
     public void selectLastMonthDateRange(AccountStatementPage page) {
         page.tapFromDate();
