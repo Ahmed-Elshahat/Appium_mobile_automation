@@ -391,6 +391,7 @@ public class LoginFlow {
                 + "or @content-desc='testID-input-direct-mobile' "
                 + "or @content-desc='testID-secondary-action-main' "
                 + "or @content-desc='testID-primary-enableLocation-main' "
+                + "or @text='Enable Location' "
                 + "or @content-desc='testID-master-amount-main']");
         // Cold start of this FLAG_SECURE banking app can take well over 15s to first render
         // (the welcome screen's root wrapper is testID-notification-contaniner). On a cold/idle
@@ -401,7 +402,7 @@ public class LoginFlow {
         By skipAll = AppiumBy.xpath(
             "(//*[@text='Skip' or @text='NO THANKS' or @text='No thanks' "
                 + "or @text='Allow' or @text='ALLOW' or @text='While using the app' "
-                + "or @text='Later' "
+                + "or @text='Later' or @text='Enable Location' "
                 + "or @content-desc='testID-secondary-action-main' "
             + "or @content-desc='testID-primary-enableLocation-main']"
             + "/ancestor-or-self::*[@clickable='true'][1])"

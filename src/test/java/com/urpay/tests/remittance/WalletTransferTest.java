@@ -5,11 +5,13 @@ import org.testng.annotations.Test;
 
 import com.urpay.core.BaseTest;
 import com.urpay.core.ConfigManager;
+import com.urpay.flows.AccountStatementFlow;
 import com.urpay.flows.LoginFlow;
 import com.urpay.flows.WalletTransferFlow;
 import com.urpay.pages.dashboard.DashboardPage;
 import com.urpay.pages.remittance.WalletTransactionDetailsPage;
 import com.urpay.pages.remittance.WalletTransferPage;
+import com.urpay.pages.wallet.AccountStatementPage;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
@@ -30,6 +32,8 @@ import io.qameta.allure.Story;
  *   1. Search a wallet beneficiary  → verify the search results screen
  *   2. Transfer to an unsaved number → verify the success (Done) screen
  *   3. Validate the sender's transaction history for that transfer
+ *   4. Back to dashboard (deep link) → Account Statement for last month → PDF generated
+ *      (the transfer above is the transaction that makes the statement non-empty)
  */
 @Epic("Remittance")
 @Feature("Wallet Transfer")
@@ -97,5 +101,28 @@ public class WalletTransferTest extends BaseTest {
                 "Transaction details should show the receiver mobile " + recipient);
         Assert.assertTrue(details.showsAmount(amount),
                 "Transaction details should show the transferred amount " + amount);
+    }
+
+    @Test(priority = 4, dependsOnMethods = "testValidateSenderTransactionHistory",
+            groups = {"remittance", "wallet-transfer", "account-statement"})
+    @Story("Account Statement After Transfer")
+    @Description("Dashboard (deep link) → Wallet → Account Details → Account Statement → "
+            + "previous month to today → View → PDF (or no-data) → Back")
+    @Severity(SeverityLevel.CRITICAL)
+    public void testAccountStatementAfterTransfer() {
+        AccountStatementFlow flow = new AccountStatementFlow();
+
+        // Same authenticated session — the statement range covers the transfer made above.
+        AccountStatementPage page = flow.returnHomeAndNavigateToAccountStatement();
+        Assert.assertTrue(page.isAccountStatementLoaded(), "Account Statement header should be visible");
+
+        flow.selectLastMonthDateRange(page);
+        // The PDF renders on a secure surface (blank screenshots) — capture the form as evidence first.
+        captureScreenshot("Account Statement - Before View (form)");
+        page.tapViewAccountStatement();
+
+        Assert.assertTrue(page.isPdfVisible() || page.isNoDataMessageVisible(),
+                "Expected either PDF statement or 'no data' message after tapping View Account Statement");
+        page.tapBack();
     }
 }
